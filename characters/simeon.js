@@ -470,10 +470,10 @@ const moves = {
   // Overhead punch swing. Comes out on frame 8 and never spikes: the fist
   // knocks forward at every point of the arc. Big hitbox on the fist.
   fair: { faf: 31, landLag: 8, autoCancel: [3, 28], trail: { part: 'fistF', from: 7, to: 13 }, hitboxes: [
-    hit(8, 9, 'fistF', 10, 12, 361, 30, 98),
-    hit(8, 9, 'elbowF', 8, 11, 361, 30, 95),
-    hit(10, 12, 'fistF', 9, 10, 361, 25, 92),
-    hit(10, 12, 'elbowF', 7, 9, 361, 25, 92),
+    hit(8, 9, 'fistF', 13, 12, 361, 30, 98),
+    hit(8, 9, 'elbowF', 10, 11, 361, 30, 95),
+    hit(10, 12, 'fistF', 12, 10, 361, 25, 92),
+    hit(10, 12, 'elbowF', 9, 9, 361, 25, 92),
   ] },
   bair: { faf: 22, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 4, to: 8 }, hitboxes: [
     ...hits(6, 7, LEG_B, 10.5, 361, 12, 106, BACK),
