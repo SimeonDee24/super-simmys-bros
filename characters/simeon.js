@@ -179,6 +179,8 @@ const FAIR_KICK = { torso: -26, head: -6, legF: [100, -6], legB: [-30, -50], arm
 const LIE = { rot: -90, hip: [-2, 15], torso: 0, head: 0, armF: [20, 30], armB: [-10, 20], legF: [5, -10], legB: [-5, -6], footF: 80, footB: 80, face: 'hurt' };
 const GUA_FRONT = { rot: -70, hip: [0, 13], torso: 10, legF: [80, -4], legB: [30, -90], armF: [-30, 40], armB: [60, 30], footF: 40, ...FISTS, face: 'yell' };
 const GUA_BACK = { rot: -70, hip: [0, 13], torso: 10, legF: [30, -90], legB: [-140, -4], armF: [-30, 40], armB: [60, 30], footB: -40, ...FISTS, face: 'yell' };
+// ledge attack: a low kick out onto the stage from a crouch
+const LEDGE_KICK = { hip: [-1, 6], torso: -10, head: -4, legF: [88, -4], legB: [40, -100], armF: [-40, 40], armB: [30, 50], footF: 30, ...FISTS, face: 'yell' };
 const BAIR_KICK = { rot: 72, torso: 6, head: -30, legF: [-6, -8], legB: [-16, -2], armF: [60, 70], armB: [40, 80], footF: -60, footB: -60, ...FISTS, face: 'yell' };
 const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
 const UAIR_TUCK = { torso: 12, head: 10, legF: [70, -100], legB: [55, -95], armF: [30, 80], armB: [10, 85], ...FISTS };
@@ -261,6 +263,16 @@ const animations = {
     [2, { rot: -70, hip: [0, 13], torso: 10, legF: [-40, -40], legB: [-60, -40], armF: [-30, 40], armB: [60, 30], ...FISTS, face: 'yell' }],
     [2, GUA_BACK], [2, GUA_BACK],
     [10, { hip: [0, 6], torso: 16, legF: [48, -90], legB: [32, -80], armF: [20, 40], armB: [0, 40] }],
+    [5, STAND],
+  ]),
+
+  // Ledge attack: pull up from the ledge, then a low sweeping kick onto the stage.
+  ledgeAttack: anim(false, [
+    [8, { torso: 4, armF: [163, 8], armB: [168, 6], legF: [10, -15], legB: [-2, -10], footF: 25 }],
+    [8, { torso: 30, armF: [60, 60], armB: [50, 70], legF: [70, -100], legB: [20, -40] }],
+    [4, { hip: [0, 6], torso: 24, armF: [20, 40], armB: [5, 40], legF: [50, -95], legB: [32, -82] }],
+    [2, LEDGE_KICK], [3, LEDGE_KICK],
+    [10, { hip: [0, 4], torso: 10, legF: [40, -70], legB: [10, -50], armF: [-10, 40], armB: [20, 40] }],
     [5, STAND],
   ]),
 
@@ -383,6 +395,7 @@ const animations = {
 //                  { part, from, to } (frames), so the hitbox is easy to see
 //   next         combo link: pressing attack from frame `from` starts `move`
 //   intangible   cannot be hit during frames 1..intangible
+//   fromLedge    started from the ledge: climbs up over `rise` frames first
 //   slide        ground move that slides: starting speed and friction
 //   endsCrouched stay crouching afterwards if down is held
 // ---------------------------------------------------------------------------
@@ -425,6 +438,10 @@ const moves = {
     ...hits(18, 19, [['toeF', 6], ['shinF', 5]], 7, 361, 80, 50),
     ...hits(22, 23, [['toeB', 6], ['shinB', 5]], 7, 361, 80, 50, BACK),
   ] },
+
+  // Ledge attack: climbs up during frames 1-20 (cannot be hit), kicks on 21-23.
+  ledgeAttack: { faf: 40, fromLedge: { rise: 16 }, intangible: 20, trail: { part: 'toeF', from: 19, to: 23 }, hitboxes:
+    hits(21, 23, [['toeF', 6], ['shinF', 5], ['kneeF', 5]], 9, 361, 90, 20) },
 
   // --- Aerials ---
   nair: { faf: 30, landLag: 4, autoCancel: [3, 26], hitboxes: [

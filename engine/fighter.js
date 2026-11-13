@@ -299,11 +299,18 @@ const STATES = {
   },
 
   // Hanging from a ledge. Toward the stage (or up) = get up, jump = ledge jump,
-  // down or away = let go. (Ledge attack, roll, intangibility and trumping
-  // arrive with milestone 3.)
+  // down or away = let go, attack = ledge attack. (Ledge roll, intangibility
+  // and trumping arrive with milestone 3.)
   ledge(c) {
     const { f, st } = c;
     if (f.stateFrame < st.ledgeMinHang) return;
+    if (c.pressed & BTN.ATTACK) {
+      // Ledge attack: he is on the stage from now on; the move lifts him up.
+      const l = getStage(c.match.stageId).ledges[f.ledge];
+      f.grounded = 1; f.ground = l.solid; f.vx = 0; f.vy = 0;
+      startMove(f, 'ledgeAttack', false);
+      return;
+    }
     if (c.pressed & BTN.JUMP) {
       f.buf &= ~BTN.JUMP;
       f.ledge = -1; f.ledgeCd = CONFIG.LEDGE_REGRAB_FRAMES;
@@ -340,12 +347,20 @@ const STATES = {
   attack(c) {
     const { f, st } = c;
     const mv = c.ch.moves[f.move];
-    if (f.moveAir) airMotion(c);
+    if (mv.fromLedge && f.ledge >= 0) {
+      // Climbing up from the ledge, then stepping onto the stage.
+      const l = getStage(c.match.stageId).ledges[f.ledge];
+      const rise = mv.fromLedge.rise;
+      if (f.stateFrame <= rise) f.y = l.y * FX + Math.trunc((st.ledgeHang * (rise - f.stateFrame)) / rise);
+      else { f.y = l.y * FX; if (f.stateFrame <= rise + 4) f.x += f.facing * FX * 2; else f.ledge = -1; }
+      f.vx = 0;
+    } else if (f.moveAir) airMotion(c);
     else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
     // combo link (jab 1 -> 2 -> 3)
     if (mv.next && (c.pressed & BTN.ATTACK) && f.stateFrame >= mv.next.from) { startMove(f, mv.next.move, false); return; }
     if (f.stateFrame < mv.faf) return;
     f.move = '';
+    f.ledge = -1;
     if (f.moveAir) { setState(f, 'air', f.vy < 0 ? 'jump' : 'fall'); return; }
     if (mv.endsCrouched && (c.input & BTN.DOWN)) { setState(f, 'crouch', 'crouch'); f.animFrame = 99; }
     else setState(f, 'idle', 'idle');

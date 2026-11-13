@@ -214,4 +214,15 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   const { STAGES } = await import('../stages/index.js');
   check('3 stages registered with collision, ledges and art', STAGES.length === 3 && STAGES.every((st) => st.solids.length && st.ledges.length === 2 && typeof st.art.draw === 'function'));
 }
+// Ledge attack
+{
+  const s = createMatch(setup); const [f, v] = s.fighters;
+  for (let i = 0; i < 200 && f.state !== 'ledge'; i++) step(s, [f.grounded ? BTN.LEFT : BTN.RIGHT, 0]);
+  for (let i = 0; i < 10; i++) step(s, [0, 0]);
+  v.x = 125 * FX; v.facing = -1;
+  step(s, [BTN.ATTACK, 0]);
+  check('ledge attack starts from the ledge and is intangible', f.move === 'ledgeAttack' && f.intangible > 0);
+  for (let i = 0; i < 60; i++) step(s, [0, 0]);
+  check('ledge attack climbs onto the stage and hits for 9%', f.state === 'idle' && f.grounded && f.y === 170 * FX && f.x > 100 * FX && v.percent === 90, `${v.percent / 10}% x ${f.x / FX}`);
+}
 process.exit(fails ? 1 : 0);
