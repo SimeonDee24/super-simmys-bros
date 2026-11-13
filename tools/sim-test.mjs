@@ -178,7 +178,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
   let fairFrame = -1;
   for (let i = 0; i < 20; i++) { step(s, [0, 0]); a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; if (fairFrame < 0 && v.percent) fairFrame = a.stateFrame; }
-  check('forward air foot hit: 12% on frame 10', v.percent === 120 && fairFrame === 10, `${v.percent / 10}% on ${fairFrame}`);
+  check('forward air punch: 12% on frame 8, launched forward not down', v.percent === 120 && fairFrame === 8 && v.kbAngle !== 270, `${v.percent / 10}% on ${fairFrame}, angle ${v.kbAngle}`);
   // knockdown and getup attack
   s = createMatch(setup); [a, v] = s.fighters;
   v.percent = 900; v.x = a.x + 16 * FX;
