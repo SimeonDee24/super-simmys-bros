@@ -364,8 +364,8 @@ const moves = {
   // --- Tilts ---
   ftilt: { faf: 22, trail: { part: 'toeF', from: 3, to: 7 }, hitboxes: hits(5, 7, LEG_F, 7, 361, 8, 100) },
   utilt: { faf: 28, trail: { part: 'fistF', from: 4, to: 11 }, hitboxes: [
-    ...hits(5, 11, [['fistF', 4], ['elbowF', 3]], 5.5, 96, 88, 105),
-    hit(5, 7, 'chest', 3, 5.5, 96, 88, 105, { off: [5, 0] }),   // close to the body on the way up
+    ...hits(5, 11, [['fistF', 8], ['elbowF', 6]], 5.5, 96, 62, 105),
+    hit(5, 8, 'chest', 6, 5.5, 96, 62, 105, { off: [5, 0] }),   // close to the body on the way up
   ] },
   dtilt: { faf: 23, endsCrouched: true, trail: { part: 'toeF', from: 4, to: 7 }, hitboxes: [
     hit(5, 7, 'kneeF', 5, 7, 80, 30, 80), hit(5, 7, 'shinF', 5, 7, 80, 30, 80), hit(5, 7, 'toeF', 6, 5, 80, 30, 80),
@@ -391,8 +391,8 @@ const moves = {
     ...hits(8, 10, LEG_B, 7, 361, 12, 100, BACK),
   ] },
   uair: { faf: 22, landLag: 4, autoCancel: [3, 14], trail: { part: 'toeF', from: 3, to: 10 }, hitboxes: [
-    ...hits(3, 8, [['toeF', 6], ['shinF', 5], ['kneeF', 4]], 7, 75, 9, 135),
-    hit(3, 5, 'hip', 6, 7, 75, 9, 135, { off: [7, -3] }),   // point-blank, level with him
+    ...hits(3, 8, [['toeF', 4], ['shinF', 4], ['kneeF', 3]], 7, 80, 40, 120),
+    hit(3, 5, 'hip', 4, 7, 80, 40, 120, { off: [8, -3] }),   // point-blank, level with him
   ] },
   dair: { faf: 29, landLag: 8, autoCancel: [5, 26], hitboxes: [
     spin(5, 0), spin(9, 1), spin(13, 2), spin(17, 3), spin(21, 4),
