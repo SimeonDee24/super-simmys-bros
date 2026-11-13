@@ -5,7 +5,7 @@ import { createMatch, step, hashState, serialize, deserialize } from '../engine/
 import { BTN } from '../engine/input.js';
 import { FX } from '../engine/fixed.js';
 
-const setup = { stageId: 'cloudrest', players: [{ charId: 'simeon', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 1234 };
+const setup = { stageId: 'nest', players: [{ charId: 'simeon', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 1234 };
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log((ok ? 'PASS ' : 'FAIL ') + name + (extra ? '  ' + extra : '')); if (!ok) fails++; };
 
