@@ -176,7 +176,8 @@ const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: 
 // down air: knees pulled up high, then both feet driven straight down
 // Down air: Dr. Mario style. Knees pulled up and arms tucked, then both feet
 // stomp straight down together while the arms fling up into a V.
-const DAIR_TUCK = { hip: [0, -5], torso: 8, head: 6, legF: [85, -140], legB: [75, -135], armF: [35, 70], armB: [-30, 75], footF: 20, footB: 20, ...FISTS };
+const DAIR_GATHER = { hip: [0, -3], torso: 12, head: 8, legF: [70, -115], legB: [60, -110], armF: [20, 95], armB: [-10, 100], footF: 20, footB: 20, ...FISTS };
+const DAIR_TUCK = { hip: [0, -5], torso: 20, head: 6, legF: [88, -145], legB: [78, -140], armF: [10, 125], armB: [-5, 120], footF: 15, footB: 15, ...FISTS };
 const DAIR_STOMP = { hip: [0, 3], torso: 0, head: -6, legF: [3, -1], legB: [-3, -1], armF: [95, 60], armB: [-105, -55], footF: 35, footB: 35, ...FISTS, face: 'yell' };
 const DTILT_LOW = { hip: [-1, 9], torso: 24, head: 8, legF: [62, -112], legB: [50, -108], armF: [10, 50], armB: [-10, 40] };
 // down tilt: a low karate floor sweep. Dropped onto one knee with a hand
@@ -500,8 +501,8 @@ const animations = {
   // Down air: a heavy double-foot stomp straight down. Slow to start,
   // spikes if the feet land the hit cleanly.
   dair: anim(false, [
-    [5, { ...AIR, legF: [40, -70], legB: [30, -60] }],
-    [8, DAIR_TUCK], [1, DAIR_TUCK],
+    [5, { ...AIR, torso: 2, head: -4, legF: [40, -70], legB: [30, -60], armF: [95, 35], armB: [-95, 30] }],
+    [7, DAIR_GATHER], [2, DAIR_TUCK],
     [9, DAIR_STOMP],
     [12, { torso: 4, legF: [20, -30], legB: [8, -25], armF: [90, 40], armB: [-80, 30], footF: 25, footB: 30 }],
     [8, AIR],
