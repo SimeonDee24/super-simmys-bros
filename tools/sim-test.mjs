@@ -268,4 +268,82 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
     check(`${name}: jump held early comes out on the first free frame`, jumped === faf, `frame ${jumped}, free on ${faf}`);
   }
 }
+// Shield, parry and dodges
+{
+  const { CONFIG } = await import('../config/config.js');
+  const near = (gap = 16) => { const s = createMatch(setup); s.fighters[1].x = s.fighters[0].x + gap * FX; s.fighters[1].facing = -1; return s; };
+  // holding shield drains it, letting go regenerates it
+  let s = near(); let [a, v] = s.fighters;
+  for (let i = 0; i < 60; i++) step(s, [0, BTN.SHIELD]);
+  const drained = v.shieldHp;
+  for (let i = 0; i < 60; i++) step(s, [0, 0]);
+  check('holding shield drains it and letting go refills it', v.state === 'idle' && CONFIG.SHIELD_MAX - drained >= 59 * CONFIG.SHIELD_DEPLETE && v.shieldHp > drained);
+  // a forward tilt into shield: no damage, shield loses health, shield stun and pushback
+  s = near(); [a, v] = s.fighters;
+  for (let i = 0; i < 5; i++) step(s, [0, BTN.SHIELD]);
+  const x0 = v.x, hp0 = v.shieldHp;
+  step(s, [BTN.ATTACK | BTN.RIGHT, BTN.SHIELD]);
+  let stunned = false;
+  for (let i = 0; i < 30; i++) { step(s, [0, BTN.SHIELD]); if (v.state === 'shieldStun') stunned = true; }
+  check('shield blocks: no damage, shield stun, pushed back', v.percent === 0 && stunned && v.x > x0 && hp0 - v.shieldHp >= 8330, `shield lost ${(hp0 - v.shieldHp) / 1000}`);
+  // holding shield for too long breaks it
+  s = near(60); [a, v] = s.fighters;
+  let broke = false, dizzy = false;
+  for (let i = 0; i < 400; i++) { step(s, [0, BTN.SHIELD]); if (v.state === 'shieldBreak') broke = true; if (v.state === 'dizzy') dizzy = true; }
+  check('shield breaks: launched up, then dizzy', broke && dizzy);
+  for (let i = 0; i < 300; i++) step(s, [0, 0]);
+  check('recovers from dizzy with part of the shield back', v.state === 'idle' && v.shieldHp >= CONFIG.SHIELD_BREAK_REFILL);
+  // parry: let go of shield just before the hit lands
+  s = near(); [a, v] = s.fighters;
+  for (let i = 0; i < 10; i++) step(s, [0, BTN.SHIELD]);
+  step(s, [BTN.ATTACK | BTN.RIGHT, BTN.SHIELD]);
+  for (let i = 0; i < 2; i++) step(s, [0, BTN.SHIELD]);
+  step(s, [0, 0]); step(s, [0, 0]);   // released 2 frames before the frame-5 hit
+  let parried = false;
+  for (let i = 0; i < 4; i++) { step(s, [0, 0]); if (v.parryTick >= 0) parried = true; }
+  check('parry: no damage and the attacker is frozen longer', parried && v.percent === 0 && a.hitlag > 10, `attacker frozen ${a.hitlag}`);
+  // shield poking: a low sweep hits the feet under a worn-down shield
+  s = near(); [a, v] = s.fighters;
+  v.shieldHp = 9000;
+  for (let i = 0; i < 3; i++) step(s, [0, BTN.SHIELD]);
+  step(s, [BTN.ATTACK | BTN.DOWN, BTN.SHIELD]);
+  for (let i = 0; i < 12; i++) step(s, [BTN.DOWN, BTN.SHIELD]);
+  check('a small shield can be poked under', v.percent > 0, `${v.percent / 10}%`);
+  // jump out of shield
+  s = near(60); [a, v] = s.fighters;
+  for (let i = 0; i < 5; i++) step(s, [0, BTN.SHIELD]);
+  step(s, [0, BTN.SHIELD | BTN.JUMP]);
+  check('jump out of shield', v.state === 'jumpsquat');
+  // rolls
+  s = near(60); [a, v] = s.fighters;
+  for (let i = 0; i < 3; i++) step(s, [0, BTN.SHIELD]);
+  const rx = v.x, face = v.facing;
+  step(s, [0, BTN.SHIELD | BTN.LEFT]);   // v faces left: this is a forward roll
+  const intang = [];
+  for (let i = 0; i < 40; i++) { step(s, [0, BTN.SHIELD]); if (v.state === 'roll') intang.push(v.intangible ? 1 : 0); }
+  check('forward roll travels, is intangible mid-roll, ends facing the other way', (rx - v.x) / FX > 25 && intang[6] === 1 && intang[0] === 0 && v.facing === -face, `${((rx - v.x) / FX).toFixed(1)}px`);
+  // spot dodge: an attack passes straight through
+  s = near(); [a, v] = s.fighters;
+  for (let i = 0; i < 3; i++) step(s, [0, BTN.SHIELD]);
+  step(s, [BTN.ATTACK | BTN.RIGHT, BTN.SHIELD | BTN.DOWN]);
+  for (let i = 0; i < 20; i++) step(s, [0, BTN.SHIELD]);
+  check('spot dodge: the attack goes through', v.percent === 0 && v.shieldHitTick < 0);
+  // air dodge: once per airtime, directional travels, landing lag
+  s = near(60); [a, v] = s.fighters;
+  a.y -= 60 * FX; a.grounded = 0; a.ground = -1; a.state = 'air';
+  const ax = a.x;
+  step(s, [BTN.SHIELD | BTN.RIGHT, 0]);
+  check('air dodge starts', a.state === 'airdodge' && a.airDodged === 1);
+  for (let i = 0; i < 20; i++) step(s, [0, 0]);
+  check('directional air dodge travels that way', (a.x - ax) / FX > 20, `${((a.x - ax) / FX).toFixed(1)}px`);
+  let again = false;
+  for (let i = 0; i < 40; i++) { step(s, [i % 2 ? BTN.SHIELD : 0, 0]); if (a.state === 'airdodge' && a.stateFrame < 3 && i > 0) again = true; }
+  check('only one air dodge per airtime', !again);
+  s = createMatch(setup); a = s.fighters[0];
+  a.y -= 10 * FX; a.grounded = 0; a.ground = -1; a.state = 'air';
+  step(s, [BTN.SHIELD | BTN.DOWN, 0]);
+  let lagged = -1;
+  for (let i = 0; i < 20 && lagged < 0; i++) { step(s, [0, 0]); if (a.state === 'land') lagged = a.landLag; }
+  check('landing during an air dodge has landing lag, and air dodge comes back', lagged === CONFIG.AIRDODGE_LAND_LAG && a.airDodged === 0, 'lag ' + lagged);
+}
 process.exit(fails ? 1 : 0);

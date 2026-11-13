@@ -70,7 +70,7 @@ function render() {
     const f = match.state.fighters[0];
     opts.debugLines = [
       'TICK ' + match.state.tick + '  HASH ' + hashState(match.state) + '  FPS ' + fps,
-      'P1 ' + (f.move || f.state) + ' ' + f.stateFrame + '  VX ' + f.vx + ' VY ' + f.vy,
+      'P1 ' + (f.move || f.state) + ' ' + f.stateFrame + '  VX ' + f.vx + ' VY ' + f.vy + '  SHIELD ' + (f.shieldHp / 1000).toFixed(1),
     ];
   }
   renderer.drawMatch(match.state, opts);
@@ -84,6 +84,8 @@ function render() {
       'JUMP  SPACE        TAP = SHORT HOP, HOLD = FULL HOP',
       'FAST FALL  TAP S AT OR AFTER THE TOP OF A JUMP',
       'CROUCH  HOLD S    (HOLD S + A / D TO CRAWL)',
+      'SHIELD  HOLD U.  + A / D = ROLL, + S = SPOT DODGE, + SPACE = JUMP OUT',
+      '        LET GO JUST BEFORE A HIT LANDS TO PARRY.   U IN THE AIR = AIR DODGE',
       'KNOCKED DOWN  J = GETUP ATTACK, A / D = ROLL, SPACE OR W = STAND UP',
       'LEDGE  GRABBED AUTOMATICALLY WHEN FALLING NEXT TO IT',
       '       TOWARD STAGE = GET UP, J = LEDGE ATTACK, SPACE = JUMP, S = DROP',

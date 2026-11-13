@@ -72,6 +72,7 @@ function tryLedgeGrab(f, stage, st) {
     if (Math.abs(handY - l.y * FX) > CONFIG.LEDGE_REACH_Y * FX) continue;
     f.ledge = i;
     f.tumbling = 0;
+    f.airDodged = 0;
     f.x = l.x * FX + l.dir * st.ecbHalfW;
     f.y = l.y * FX + st.ledgeHang;
     f.vx = 0; f.vy = 0;
@@ -101,7 +102,8 @@ export function checkBlastZones(f, stage) {
     f.fastFall = 0;
     f.grounded = 0; f.ground = -1;
     f.ledge = -1; f.ledgeCd = 0;
-    f.tumbling = 0; f.intangible = 0;
+    f.tumbling = 0; f.intangible = 0; f.airDodged = 0;
+    f.shieldHp = CONFIG.SHIELD_MAX; f.mash = 0;
     setState(f, 'dead', 'fall');
   }
 }

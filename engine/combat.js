@@ -5,7 +5,7 @@ import { FX, sinDeg, cosDeg, mulTrig } from './fixed.js';
 import { CONFIG } from '../config/config.js';
 import { samplePose, solve, hurtboxes } from './skeleton.js';
 import { getCharacter } from '../characters/index.js';
-import { setState } from './fighter.js';
+import { setState, breakShield } from './fighter.js';
 
 export function fighterSolve(f, ch) {
   const a = ch.animations[f.anim] || ch.animations.idle;
@@ -92,9 +92,7 @@ function applyHit(state, att, vic, hit) {
   vic.gv = 0;
   vic.hitstun = Math.max(1, Math.trunc((kb * CONFIG.HITSTUN_NUM) / CONFIG.HITSTUN_DEN));
   // Hitlag: short for normal moves; a move can ask for more (smash attacks will).
-  let lag = CONFIG.HITLAG_BASE + Math.trunc((hb.damage * CONFIG.HITLAG_PER_DMG) / 1000);
-  lag = Math.min(CONFIG.HITLAG_MAX, Math.trunc((lag * (hb.lagMult || 100)) / 100));
-  if (hb.lag !== undefined) lag = hb.lag;
+  const lag = lagFor(hb);
   att.hitlag = lag;
   vic.hitlag = lag;
   att.hitGroups |= 1 << (hb.group || 0);
@@ -103,6 +101,8 @@ function applyHit(state, att, vic, hit) {
   if (lifts || !vic.grounded) { vic.grounded = 0; vic.ground = -1; }
   vic.fastFall = 0;
   vic.tumbling = 0;
+  vic.airDodged = 0;
+  vic.shieldStun = 0;
   vic.ledge = -1;
   vic.move = '';
   vic.facing = dir > 0 ? -1 : 1; // face the attacker
@@ -112,6 +112,55 @@ function applyHit(state, att, vic, hit) {
   vic.hitX = hit.px; vic.hitY = hit.py;
   vic.lastHitTick = state.tick;
   vic.lastHitDmg = hb.damage;
+}
+
+// --- Shield ---
+const SHIELDING = { shield: 1, shieldStun: 1 };
+
+// Bubble radius shrinks as shield health runs out.
+export function shieldRadius(f) {
+  const span = CONFIG.SHIELD_MAX_R - CONFIG.SHIELD_MIN_R;
+  return (CONFIG.SHIELD_MIN_R * FX) + Math.trunc((span * FX * Math.max(0, f.shieldHp)) / CONFIG.SHIELD_MAX);
+}
+export function shieldCentre(f) {
+  return [f.x, f.y - getCharacter(f.charId).stats.shieldY * FX];
+}
+function circlesTouch(b, cx, cy, r) {
+  const dx = b.cx - cx, dy = b.cy - cy, rr = b.r + r;
+  return dx * dx + dy * dy <= rr * rr;
+}
+
+function lagFor(hb) {
+  let lag = CONFIG.HITLAG_BASE + Math.trunc((hb.damage * CONFIG.HITLAG_PER_DMG) / 1000);
+  lag = Math.min(CONFIG.HITLAG_MAX, Math.trunc((lag * (hb.lagMult || 100)) / 100));
+  return hb.lag !== undefined ? hb.lag : lag;
+}
+
+// An attack hit the shield bubble.
+function applyShieldHit(state, att, vic, hb) {
+  const lag = lagFor(hb);
+  att.hitlag = lag; vic.hitlag = lag;
+  att.hitGroups |= 1 << (hb.group || 0);
+  vic.shieldHitTick = state.tick;
+  vic.shieldHp -= Math.trunc((hb.damage * CONFIG.SHIELD_DMG_MULT * 100) / 100);
+  if (vic.shieldHp <= 0) { breakShield(vic); vic.breakTick = state.tick; return; }
+  // pushed away from the attacker, and stuck in shield for a moment
+  const away = vic.x >= att.x ? 1 : -1;
+  vic.vx = away * (CONFIG.SHIELD_PUSH_BASE + Math.trunc((hb.damage * CONFIG.SHIELD_PUSH_PER_PCT) / 10));
+  vic.shieldStun = Math.trunc((hb.damage * CONFIG.SHIELDSTUN_MULT) / 1000) + 2;
+  setState(vic, 'shieldStun', 'shield');
+  vic.animFrame = 99;
+}
+
+// The defender let go of shield just before the hit: parry. No damage, and
+// the attacker is frozen for longer so the defender can punish.
+function applyParry(state, att, vic, hb) {
+  const lag = lagFor(hb);
+  vic.hitlag = lag;
+  att.hitlag = lag + CONFIG.PARRY_FREEZE;
+  att.hitGroups |= 1 << (hb.group || 0);
+  vic.parryTick = state.tick;
+  setState(vic, 'idle', 'idle');
 }
 
 // Called once per tick after everyone has moved. All hits are found first,
@@ -126,12 +175,22 @@ export function resolveHits(state) {
       if (vic === att || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state]) continue;
       const vch = getCharacter(vic.charId);
       const hurt = hurtboxes(vch.skeleton, fighterSolve(vic, vch), vic.facing);
+      const shielding = SHIELDING[vic.state];
+      const parrying = vic.state === 'shieldDrop' && vic.stateFrame <= CONFIG.PARRY_WINDOW;
+      const [scx, scy] = shieldCentre(vic);
+      const sr = shieldRadius(vic);
       let found = null;
       for (let i = 0; i < boxes.length && !found; i++) {
         const b = boxes[i];
         if (b.def.downed && vic.state !== 'knockdown') continue;
         if (b.def.onlyGround && !vic.grounded) continue;   // separate versions for grounded
         if (b.def.onlyAir && vic.grounded) continue;       // and airborne targets
+        // The shield bubble takes the hit first. Body parts sticking out of a
+        // small shield can still be hit ("shield poking").
+        if ((shielding || parrying) && circlesTouch(b, scx, scy, sr)) {
+          found = { def: b.def, px: b.cx >> 8, py: b.cy >> 8, shield: 1, parry: parrying ? 1 : 0 };
+          break;
+        }
         for (let k = 0; k < hurt.length; k++) {
           const h = hurt[k];
           const hx1 = vic.x + h[0], hy1 = vic.y + h[1], hx2 = vic.x + h[2], hy2 = vic.y + h[3];
@@ -140,7 +199,7 @@ export function resolveHits(state) {
           const ny = b.cy < hy1 ? hy1 : b.cy > hy2 ? hy2 : b.cy;
           const dx = b.cx - nx, dy = b.cy - ny;
           if (dx * dx + dy * dy <= b.r * b.r) {
-            found = { def: b.def, px: nx >> 8, py: ny >> 8 };
+            found = { def: b.def, px: nx >> 8, py: ny >> 8, parry: parrying ? 1 : 0 };
             break;
           }
         }
@@ -148,5 +207,9 @@ export function resolveHits(state) {
       if (found) hits.push([att, vic, found]);
     }
   }
-  for (const [att, vic, hit] of hits) applyHit(state, att, vic, hit);
+  for (const [att, vic, hit] of hits) {
+    if (hit.parry) applyParry(state, att, vic, hit.def);
+    else if (hit.shield) applyShieldHit(state, att, vic, hit.def);
+    else applyHit(state, att, vic, hit);
+  }
 }

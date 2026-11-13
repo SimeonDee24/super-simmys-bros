@@ -17,8 +17,29 @@ export const CONFIG = {
   BUFFER_FRAMES: 9,         // a jump, attack or dash pressed up to this many frames
                             // too early still comes out on the first possible frame
 
-  // --- Defence (used from milestone 3) ---
+  // --- Shield ---
+  // Shield health is in thousandths of a percent: 50000 = 50 HP, like Smash.
+  SHIELD_MAX: 50000,
+  SHIELD_DEPLETE: 150,      // lost per frame while held (0.15 HP)
+  SHIELD_REGEN: 80,         // regained per frame while not shielding (0.08 HP)
+  SHIELD_DMG_MULT: 119,     // shield damage = attack damage x 1.19
+  SHIELD_MIN_R: 6,          // bubble radius in px when almost broken...
+  SHIELD_MAX_R: 17,         // ...and when full
+  SHIELD_DROP_FRAMES: 11,   // lag after letting go of shield
+  SHIELDSTUN_MULT: 58,      // shield stun = damage% x 0.58 + 2 frames
+  SHIELD_PUSH_BASE: 128,    // pushback speed (1/256 px per frame) = base + per% x damage
+  SHIELD_PUSH_PER_PCT: 23,
+  SHIELD_BREAK_VEL: 1400,   // launch speed upward on shield break (1/256 px per frame)
+  SHIELD_BREAK_STUN: 240,   // frames dizzy after a shield break (mashing shortens it)
+  SHIELD_BREAK_MASH: 3,     // frames taken off per button press while dizzy
+  SHIELD_BREAK_REFILL: 18750, // shield health after recovering from a break (37.5%)
+
+  // --- Parry ---
   PARRY_WINDOW: 5,          // frames after releasing shield that still parry
+  PARRY_FREEZE: 20,         // extra frames the attacker stays frozen after being parried
+
+  // --- Air dodge ---
+  AIRDODGE_LAND_LAG: 11,    // landing lag if you hit the floor during an air dodge
 
   // --- Hits and knockback ---
   // launch speed (px/frame) = knockback * KB_SPEED_NUM / KB_SPEED_DEN / 256

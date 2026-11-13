@@ -49,6 +49,13 @@ const stats = {
   ledgeJumpVel: px(5.29),
   ledgeJumpH: px(1.2),
 
+  // Shield and dodges. intangible = [first, last] frame he cannot be hit.
+  shieldY: 22,             // shield bubble centre, px above the feet
+  roll: { intangible: [4, 15], faf: 31, move: [3, 18], speed: px(2.2) },
+  spotDodge: { intangible: [3, 17], faf: 27 },
+  airDodge: { intangible: [3, 29], faf: 42 },                       // neutral
+  airDodgeDir: { intangible: [3, 19], faf: 48, speed: px(3.4), glide: 18 }, // with a direction
+
   // Knockdown (missed tech)
   getupRollSpeed: px(2.4), getupRollFrames: 26,
 
@@ -239,6 +246,37 @@ const animations = {
     [7, { hip: [0, -3], torso: -50, head: -30, armF: [150, 20], armB: [-150, -10], legF: [70, -50], legB: [10, -60], footF: 30, footB: 40, face: 'hurt' }],
     [7, { hip: [0, -3], torso: -70, head: -40, armF: [120, 40], armB: [-120, -30], legF: [95, -70], legB: [35, -40], footF: 30, footB: 40, face: 'hurt' }],
   ]),
+
+  // --- Shield and dodges ---
+  shield: anim(false, [
+    [3, { hip: [0, 2], torso: 8, armF: [70, 100], armB: [50, 110], legF: [20, -30], legB: [-10, -25], ...FISTS }],
+    [1, { hip: [0, 3], torso: 10, head: 6, armF: [75, 105], armB: [55, 110], legF: [24, -38], legB: [-6, -30], ...FISTS }],
+  ]),
+  roll: anim(false, [
+    [3, { hip: [0, 5], torso: 30, head: 20, armF: [40, 80], armB: [20, 80], legF: [60, -110], legB: [40, -100], ...FISTS }],
+    [5, { rot: 90, hip: [0, 13], torso: 30, head: 30, armF: [60, 100], armB: [40, 100], legF: [85, -135], legB: [75, -130], ...FISTS }],
+    [3, { rot: 200, hip: [0, 21], torso: 30, head: 30, armF: [60, 100], armB: [40, 100], legF: [85, -135], legB: [75, -130], ...FISTS }],
+    [2, { rot: 265, hip: [0, 20], torso: 30, head: 30, armF: [60, 100], armB: [40, 100], legF: [85, -135], legB: [75, -130], ...FISTS }],
+    [5, { rot: 330, hip: [0, 13], torso: 30, head: 30, armF: [60, 100], armB: [40, 100], legF: [85, -135], legB: [75, -130], ...FISTS }],
+    [7, { rot: 360, hip: [0, 6], torso: 22, armF: [30, 60], armB: [10, 60], legF: [50, -95], legB: [35, -85] }],
+    [6, STAND],
+  ]),
+  spotDodge: anim(false, [
+    [3, { hip: [0, 1], torso: 10, legF: [25, -40], legB: [-5, -30], armF: [40, 60], armB: [30, 70] }],
+    [12, { hip: [-3, 3], torso: -28, head: -15, legF: [40, -55], legB: [-20, -50], armF: [-30, 40], armB: [-60, 30] }],
+    [6, { hip: [-2, 1], torso: -16, head: -8, legF: [30, -45], legB: [-15, -40], armF: [-20, 40], armB: [-40, 30] }],
+    [6, STAND],
+  ]),
+  airDodge: anim(false, [
+    [3, { torso: 10, armF: [60, 90], armB: [40, 100], legF: [60, -100], legB: [40, -90], ...FISTS }],
+    [24, { torso: 20, head: 15, armF: [90, 110], armB: [70, 115], legF: [80, -125], legB: [65, -120], ...FISTS }],
+    [10, { torso: 8, armF: [70, 40], armB: [-60, 30], legF: [30, -50], legB: [-10, -40] }],
+    [5, AIR],
+  ]),
+  dizzy: anim(true, [
+    [18, { hip: [-1, 2], torso: -10, head: -20, armF: [10, 20], armB: [-5, 15], legF: [10, -15], legB: [-5, -10], face: 'hurt' }],
+    [18, { hip: [1, 2], torso: 12, head: 20, armF: [5, 15], armB: [-10, 20], legF: [5, -10], legB: [-10, -15], face: 'hurt' }],
+  ], { ease: true }),
 
   // --- Knockdown and getting up ---
   lie: anim(false, [[3, { ...LIE, hip: [-8, 19] }], [1, LIE]]),

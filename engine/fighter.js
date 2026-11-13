@@ -25,7 +25,10 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     // Attacks
     move: '', moveAir: 0, hitGroups: 0,
     // Being hit
-    hitlag: 0, hitstun: 0, intangible: 0, tumbling: 0, kbAngle: 0, kbSpeed: 0, gv: 0,
+    hitlag: 0, hitstun: 0, intangible: 0, tumbling: 0,
+    // Shield and dodges
+    shieldHp: CONFIG.SHIELD_MAX, shieldStun: 0, airDodged: 0, dodgeDir: 0, mash: 0,
+    parryTick: -1, shieldHitTick: -1, breakTick: -1, kbAngle: 0, kbSpeed: 0, gv: 0,
     hitX: 0, hitY: 0, lastHitTick: -1, lastHitDmg: 0,
     koX: 0, koY: 0,         // where the last KO happened (pixels), for the blast effect
     invuln: 0,
@@ -59,7 +62,15 @@ export function land(f, groundIndex, st) {
     if (f.stateFrame >= mv.autoCancel[0] && f.stateFrame < mv.autoCancel[1]) f.landLag = mv.landLag;
   } else if (f.state === 'hitstun') {
     f.landLag = CONFIG.HITSTUN_LAND_LAG;
+  } else if (f.state === 'airdodge') {
+    f.landLag = CONFIG.AIRDODGE_LAND_LAG;
+  } else if (f.state === 'shieldBreak') {
+    f.vx = 0; f.airDodged = 0; f.fastFall = 0;
+    setState(f, 'dizzy', 'dizzy');
+    return;
   }
+  f.airDodged = 0;
+  f.intangible = 0;
   if (f.tumbling || (f.state === 'hitstun' && f.anim === 'tumble')) {
     // Hit the floor while tumbling: knocked down.
     f.tumbling = 0;
@@ -73,6 +84,21 @@ export function land(f, groundIndex, st) {
   f.jumpsLeft = st.airJumps;
   f.wallSide = 0;
   setState(f, 'land', 'land');
+}
+
+function startRoll(c, d) {
+  c.f.dodgeDir = d;
+  setState(c.f, 'roll', 'roll');
+  STATES.roll(c);
+}
+
+export function breakShield(f) {
+  f.shieldHp = 0;
+  f.breakTick = 1; // the renderer watches this
+  f.grounded = 0; f.ground = -1;
+  f.vx = 0; f.vy = -CONFIG.SHIELD_BREAK_VEL;
+  f.mash = 0;
+  setState(f, 'shieldBreak', 'tumble');
 }
 
 export function startMove(f, name, air) {
@@ -134,6 +160,37 @@ function tryDashAttack(c) {
   return true;
 }
 
+// Shield button on the ground: put the shield up.
+function tryShield(c) {
+  if (!(c.input & BTN.SHIELD) || c.f.shieldHp <= 0) return false;
+  setState(c.f, 'shield', 'shield');
+  return true;
+}
+
+// Shield button in the air: air dodge, once per airtime. With a direction it
+// travels that way; without one it dodges in place.
+function tryAirDodge(c) {
+  const f = c.f;
+  if (!(c.pressed & BTN.SHIELD) || f.airDodged) return false;
+  f.airDodged = 1;
+  f.tumbling = 0;
+  f.fastFall = 0;
+  let dx = c.dir, dy = 0;
+  if (c.input & BTN.UP) dy = -1; else if (c.input & BTN.DOWN) dy = 1;
+  f.dodgeDir = dx || dy ? 1 : 0;
+  if (f.dodgeDir) {
+    const sp = c.st.airDodgeDir.speed;
+    const k = dx && dy ? 181 : 256; // diagonal: divide by about 1.41
+    f.vx = Math.trunc((dx * sp * k) / 256);
+    f.vy = Math.trunc((dy * sp * k) / 256);
+  }
+  setState(f, 'airdodge', 'airDodge');
+  return true;
+}
+
+// Is this frame inside a [first, last] intangibility window?
+const within = (fr, w) => fr >= w[0] && fr <= w[1];
+
 function tryJump(c) {
   if (c.pressed & BTN.JUMP) { c.f.buf &= ~BTN.JUMP; setState(c.f, 'jumpsquat', 'jumpsquat'); return true; }
   return false;
@@ -155,7 +212,7 @@ const STATES = {
   idle(c) {
     const { f, st } = c;
     f.vx = approach(f.vx, 0, st.traction);
-    if (tryGroundAttack(c) || tryJump(c) || toCrouch(c)) return;
+    if (tryGroundAttack(c) || tryJump(c) || tryShield(c) || toCrouch(c)) return;
     if (c.dir) {
       f.facing = c.dir;
       if (c.dashInput) startDash(c, c.dir); else setState(f, 'walk', 'walk');
@@ -164,7 +221,7 @@ const STATES = {
 
   walk(c) {
     const { f, st } = c;
-    if (tryGroundAttack(c) || tryJump(c) || toCrouch(c)) return;
+    if (tryGroundAttack(c) || tryJump(c) || tryShield(c) || toCrouch(c)) return;
     if (!c.dir) { setState(f, 'idle', 'idle'); return; }
     if (c.dashInput) { startDash(c, c.dir); return; }
     f.facing = c.dir;
@@ -175,7 +232,7 @@ const STATES = {
   // in that direction (dash dancing).
   dash(c) {
     const { f, st } = c;
-    if (tryDashAttack(c) || tryJump(c)) return;
+    if (tryDashAttack(c) || tryJump(c) || tryShield(c)) return;
     if (c.tap === -f.facing) { startDash(c, c.tap); return; }
     f.vx = f.facing * st.dashSpeed;
     if (f.stateFrame >= st.dashFrames) {
@@ -186,7 +243,7 @@ const STATES = {
 
   run(c) {
     const { f, st } = c;
-    if (tryDashAttack(c) || tryJump(c) || toCrouch(c)) return;
+    if (tryDashAttack(c) || tryJump(c) || tryShield(c) || toCrouch(c)) return;
     if (c.dir === f.facing) f.vx = approach(f.vx, f.facing * st.runSpeed, st.runAccel);
     else if (c.dir === -f.facing) { f.facing = -f.facing; setState(f, 'turn', 'brake'); }
     else setState(f, 'brake', 'brake');
@@ -196,7 +253,7 @@ const STATES = {
   brake(c) {
     const { f, st } = c;
     f.vx = approach(f.vx, 0, st.traction);
-    if (tryGroundAttack(c) || tryJump(c)) return;
+    if (tryGroundAttack(c) || tryJump(c) || tryShield(c)) return;
     if (c.dashInput) { startDash(c, c.dashInput); return; }
     if (f.stateFrame >= st.brakeFrames) setState(f, 'idle', 'idle');
   },
@@ -215,7 +272,7 @@ const STATES = {
   crouch(c) {
     const { f, st } = c;
     f.vx = approach(f.vx, 0, st.traction);
-    if (tryGroundAttack(c) || tryJump(c)) return;
+    if (tryGroundAttack(c) || tryJump(c) || tryShield(c)) return;
     if (!(c.input & BTN.DOWN)) setState(f, 'idle', 'idle');
     else if (c.dir) { f.facing = c.dir; setState(f, 'crawl', 'crawl'); }
   },
@@ -223,7 +280,7 @@ const STATES = {
   // Walking while crouched.
   crawl(c) {
     const { f, st } = c;
-    if (tryGroundAttack(c) || tryJump(c)) return;
+    if (tryGroundAttack(c) || tryJump(c) || tryShield(c)) return;
     if (!(c.input & BTN.DOWN)) { setState(f, c.dir ? 'walk' : 'idle', c.dir ? 'walk' : 'idle'); return; }
     if (!c.dir) { setState(f, 'crouch', 'crouch'); f.animFrame = 99; return; } // stay down, skip the crouch-down blend
     f.facing = c.dir;
@@ -285,6 +342,7 @@ const STATES = {
       if (c.dir) f.vx = c.dir * st.doubleJumpH;
       f.anim = 'djump'; f.animFrame = 0;
     }
+    if (tryAirDodge(c)) { STATES.airdodge(c); return; }
     const attacked = tryAerial(c);
     if (attacked || (c.pressed & BTN.JUMP)) f.tumbling = 0;
     // The down press that starts a down air does not also fast fall.
@@ -422,11 +480,89 @@ const STATES = {
     if (f.stateFrame >= st.getupRollFrames) { f.vx = 0; setState(f, 'idle', 'idle'); }
   },
 
+  // --- Shield ---
+  // Holding shield. Shield shrinks every frame. Out of shield: jump.
+  // Shield + left/right = roll, shield + down = spot dodge.
+  shield(c) {
+    const { f, st } = c;
+    f.vx = approach(f.vx, 0, st.traction);
+    f.shieldHp -= CONFIG.SHIELD_DEPLETE;
+    if (f.shieldHp <= 0) { breakShield(f); return; }
+    if (c.pressed & BTN.JUMP) { f.buf &= ~BTN.JUMP; setState(f, 'jumpsquat', 'jumpsquat'); return; }
+    if (c.tap) { startRoll(c, c.tap); return; }
+    if (c.pressed & BTN.DOWN) { setState(f, 'spotdodge', 'spotDodge'); STATES.spotdodge(c); return; }
+    if (!(c.input & BTN.SHIELD)) setState(f, 'shieldDrop', 'idle');
+  },
+  // Frozen in shield after blocking a hit, sliding back.
+  shieldStun(c) {
+    const { f, st } = c;
+    f.vx = approach(f.vx, 0, st.traction);
+    if (f.stateFrame >= f.shieldStun) {
+      f.shieldStun = 0;
+      setState(f, c.input & BTN.SHIELD ? 'shield' : 'shieldDrop', c.input & BTN.SHIELD ? 'shield' : 'idle');
+      f.anim = 'shield'; f.animFrame = 99;
+    }
+  },
+  // Letting go of shield. The first PARRY_WINDOW frames of this can parry.
+  shieldDrop(c) {
+    const { f, st } = c;
+    f.vx = approach(f.vx, 0, st.traction);
+    if (f.stateFrame >= CONFIG.SHIELD_DROP_FRAMES) setState(f, 'idle', 'idle');
+  },
+  // Shield broke: flung upward, then dizzy on landing.
+  shieldBreak(c) {
+    const { f, st } = c;
+    f.vx = 0;
+    f.vy = Math.min(f.vy + st.gravity, st.fallSpeed);
+  },
+  dizzy(c) {
+    const { f, st } = c;
+    f.vx = approach(f.vx, 0, st.traction);
+    if (c.pressed) f.mash += CONFIG.SHIELD_BREAK_MASH;
+    if (f.stateFrame + f.mash >= CONFIG.SHIELD_BREAK_STUN) {
+      f.mash = 0;
+      f.shieldHp = CONFIG.SHIELD_BREAK_REFILL;
+      setState(f, 'idle', 'idle');
+    }
+  },
+
+  // --- Dodges ---
+  roll(c) {
+    const { f, st } = c;
+    const r = st.roll;
+    f.intangible = within(f.stateFrame, r.intangible) ? 1 : 0;
+    f.vx = f.stateFrame >= r.move[0] && f.stateFrame <= r.move[1] ? f.dodgeDir * r.speed : 0;
+    if (f.stateFrame >= r.faf) {
+      if (f.dodgeDir === f.facing) f.facing = -f.facing; // a forward roll ends facing back
+      f.vx = 0;
+      setState(f, 'idle', 'idle');
+    }
+  },
+  spotdodge(c) {
+    const { f, st } = c;
+    f.vx = 0;
+    f.intangible = within(f.stateFrame, st.spotDodge.intangible) ? 1 : 0;
+    if (f.stateFrame >= st.spotDodge.faf) setState(f, 'idle', 'idle');
+  },
+  airdodge(c) {
+    const { f, st } = c;
+    const d = f.dodgeDir ? st.airDodgeDir : st.airDodge;
+    f.intangible = within(f.stateFrame, d.intangible) ? 1 : 0;
+    if (f.dodgeDir && f.stateFrame <= st.airDodgeDir.glide) {
+      // directional: glide in a straight line, slowing down, no gravity
+      f.vx -= f.vx >> 3; f.vy -= f.vy >> 3;
+    } else {
+      f.vx = approach(f.vx, 0, st.airFriction * 2);
+      f.vy = Math.min(f.vy + st.gravity, st.fallSpeed);
+    }
+    if (f.stateFrame >= d.faf) setState(f, 'air', 'fall');
+  },
+
   land(c) {
     const { f, st } = c;
     f.vx = approach(f.vx, 0, st.traction);
     if (f.stateFrame >= f.landLag) {
-      if (tryGroundAttack(c) || tryJump(c)) return;
+      if (tryGroundAttack(c) || tryJump(c) || tryShield(c)) return;
       setState(f, 'idle', 'idle');
     }
   },
@@ -468,6 +604,9 @@ export function updateFighter(match, f, input) {
   if (f.invuln > 0) f.invuln--;
   if (f.ledgeCd > 0) f.ledgeCd--;
   if (f.intangible > 0) f.intangible--;
+  if (f.state !== 'shield' && f.state !== 'shieldStun' && f.state !== 'shieldBreak' && f.state !== 'dizzy') {
+    f.shieldHp = Math.min(CONFIG.SHIELD_MAX, f.shieldHp + CONFIG.SHIELD_REGEN);
+  }
   STATES[f.state]({ match, f, ch, st, input, pressed: pressed | f.buf, dir, tap, dashInput });
   f.prevIn = input;
 }

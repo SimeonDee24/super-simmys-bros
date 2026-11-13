@@ -4,7 +4,7 @@ import { CONFIG } from '../config/config.js';
 import { GAME_VERSION } from '../config/version.js';
 import { FX, toPx } from '../engine/fixed.js';
 import { samplePose, solve, hurtboxes } from '../engine/skeleton.js';
-import { activeHitboxes, jointAt } from '../engine/combat.js';
+import { activeHitboxes, jointAt, shieldRadius, shieldCentre } from '../engine/combat.js';
 import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { DollRenderer } from './doll.js';
@@ -99,8 +99,13 @@ export class Renderer {
       const blink = f.invuln > 0 && (state.tick >> 2) & 1;
       // the fighter who got hit shakes during hitlag
       const shake = f.hitlag > 0 && f.state === 'hitstun' ? ((f.hitlag & 1) ? 1 : -1) : 0;
+      // dodging: a pale shimmer while he cannot be hit
+      const dodging = f.intangible > 0 && (f.state === 'roll' || f.state === 'spotdodge' || f.state === 'airdodge');
+      const tint = blink ? '#ffffff' : dodging && (state.tick & 2) ? '#d8f4ff' : null;
       this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, toPx(f.x) - camX + shake, toPx(f.y) - camY, f.facing,
-        blink ? { flash: '#ffffff' } : undefined);
+        tint ? { flash: tint } : undefined);
+      if (f.state === 'shield' || f.state === 'shieldStun') this.drawShield(state, f, camX, camY);
+      if (f.state === 'dizzy') this.drawDizzy(f, camX, camY);
     }
 
     for (const f of state.fighters) this.drawTrail(f, getCharacter(f.charId), camX, camY);
@@ -111,6 +116,39 @@ export class Renderer {
     if (opts.debugLines) {
       let y = 4;
       for (const line of opts.debugLines) { drawText(ctx, line, 4, y, '#ffffff', 1, 'left', '#000000'); y += 7; }
+    }
+  }
+
+  // Shield bubble: player-coloured, shrinks with shield health, flashes when hit.
+  drawShield(state, f, camX, camY) {
+    const ctx = this.ctx;
+    const [cx0, cy0] = shieldCentre(f);
+    const cx = toPx(cx0) - camX, cy = toPx(cy0) - camY, r = shieldRadius(f) >> 8;
+    const hitFlash = f.shieldHitTick >= 0 && state.tick - f.shieldHitTick < 4;
+    const low = f.shieldHp < CONFIG.SHIELD_MAX / 4;
+    const col = hitFlash ? '#ffffff' : low && (state.tick & 4) ? '#ff6a4a' : PLAYER_COLORS[f.slot];
+    for (let dy = -r; dy <= r; dy++) {
+      const h = Math.floor(Math.sqrt(r * r - dy * dy));
+      ctx.fillStyle = col; ctx.globalAlpha = 0.38;
+      ctx.fillRect(cx - h, cy + dy, h * 2 + 1, 1);
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(cx - h, cy + dy, 1, 1); ctx.fillRect(cx + h, cy + dy, 1, 1);
+    }
+    // highlight
+    ctx.globalAlpha = 0.7; ctx.fillStyle = '#ffffff';
+    ctx.fillRect(cx - (r >> 1), cy - (r >> 1) - 1, Math.max(1, r >> 2), 1);
+    ctx.fillRect(cx - (r >> 1) - 1, cy - (r >> 1), 1, Math.max(1, r >> 2));
+    ctx.globalAlpha = 1;
+  }
+
+  // Dizzy after a shield break: little stars circling his head.
+  drawDizzy(f, camX, camY) {
+    const ctx = this.ctx, x = toPx(f.x) - camX, y = toPx(f.y) - camY - 46;
+    for (let i = 0; i < 3; i++) {
+      const a = (f.stateFrame / 9) + (i * Math.PI * 2) / 3;
+      const sx = Math.round(x + Math.cos(a) * 8), sy = Math.round(y + Math.sin(a) * 2);
+      ctx.fillStyle = '#ffe14a';
+      ctx.fillRect(sx - 1, sy, 3, 1); ctx.fillRect(sx, sy - 1, 1, 3);
     }
   }
 
@@ -173,13 +211,31 @@ export class Renderer {
       if (f.lastHitTick >= 0 && f.lastHitTick !== was.lastHitTick && was.lastHitTick !== undefined) {
         this.effects.push({ type: 'spark', x: f.hitX, y: f.hitY, tick: state.tick, size: Math.min(14, 5 + (f.lastHitDmg / 14 | 0)), seed: f.lastHitTick });
       }
-      this.seen[i] = { fastFall: f.fastFall, lastHitTick: f.lastHitTick };
+      if (f.parryTick >= 0 && f.parryTick !== was.parryTick && was.parryTick !== undefined) {
+        this.effects.push({ type: 'parry', x: toPx(f.x), y: toPx(f.y) - 22, tick: state.tick });
+      }
+      if (f.state === 'shieldBreak' && was.state !== 'shieldBreak' && was.state !== undefined) {
+        this.effects.push({ type: 'break', x: toPx(f.x), y: toPx(f.y) - 22, tick: state.tick, slot: f.slot });
+      }
+      this.seen[i] = { fastFall: f.fastFall, lastHitTick: f.lastHitTick, parryTick: f.parryTick, state: f.state };
     });
-    this.effects = this.effects.filter((e) => state.tick >= e.tick && state.tick - e.tick < 14);
+    this.effects = this.effects.filter((e) => state.tick >= e.tick && state.tick - e.tick < (e.type === 'break' ? 30 : e.type === 'parry' ? 22 : 14));
     for (const e of this.effects) {
       const age = state.tick - e.tick;
       const x = e.x - camX, y = e.y - camY;
       if (e.type === 'spark') { this.drawSpark(x, y, age, e.size, e.seed); continue; }
+      if (e.type === 'parry') { this.drawRing(x, y, 6 + age * 2, age < 6 ? '#ffffff' : '#9fe9ff', 1 - age / 22); continue; }
+      if (e.type === 'break') {
+        for (let k = 0; k < 10; k++) {
+          const a = (k / 10) * Math.PI * 2, d = 4 + age * 2.2;
+          ctx.fillStyle = k & 1 ? '#ffffff' : PLAYER_COLORS[e.slot];
+          ctx.globalAlpha = Math.max(0, 1 - age / 30);
+          ctx.fillRect(Math.round(x + Math.cos(a) * d) - 1, Math.round(y + Math.sin(a) * d) - 1, 3, 3);
+        }
+        ctx.globalAlpha = 1;
+        if (age < 3) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, 0, W, H); }
+        continue;
+      }
       // four-point twinkle: grows fast, then shrinks
       const len = age < 3 ? 3 + age * 2 : Math.max(1, 8 - ((age - 3) * 2) / 3 | 0);
       ctx.fillStyle = '#5fc8ff';
@@ -227,6 +283,16 @@ export class Renderer {
         }
       }
     });
+  }
+
+  drawRing(x, y, r, color, alpha) {
+    const ctx = this.ctx;
+    ctx.fillStyle = color; ctx.globalAlpha = Math.max(0, alpha);
+    for (let a = 0; a < 64; a++) {
+      const t = (a / 64) * Math.PI * 2;
+      ctx.fillRect(Math.round(x + Math.cos(t) * r), Math.round(y + Math.sin(t) * r), 2, 2);
+    }
+    ctx.globalAlpha = 1;
   }
 
   // Hit spark: a jagged burst that is bigger for stronger hits.
