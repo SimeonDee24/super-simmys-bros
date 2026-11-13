@@ -90,54 +90,59 @@ const skeleton = {
 // The dark outline round the whole figure is added automatically.
 // ---------------------------------------------------------------------------
 const ART_SCALE = 2;
-// Face: the eye, brow and mouth sit at the front (right) of the head.
+// Face, drawn from Simeon's own photos: straight nose, defined jaw, the
+// eye and brow at the front (right) of the head.
 const HEAD = [
-  '...kkkkkkk....',
-  '.kkkkkkkkkkk..',
-  'kKkkkkkkkkkkl.',
-  'kKkkkkkkkkkkl.',
-  'KKkkkkkkkhhhh.',
-  'KKkkkkkkkmmek.',
-  'KkKqkkkkkmeek.',
-  'KkKqkkkkkkkkkl',
-  'KKkKKkkkkkkkKl',
-  'KKkKkkkkkkkkk.',
-  '.KKkkkkkkkkrk.',
-  '.KKkkkkkkkkk..',
-  '..KKkkkkkkk...',
-  '...KKKkkk.....',
+  '....kkkkkkk....',
+  '..kkkkkkkkkk...',
+  '.kkkkkkkkkkkl..',
+  '.Kkkkkkkkkkkl..',
+  'KKkkkkkkkkkkl..',
+  'KKkkkkkhhhkkl..',
+  'KkKqkkkkkmeel..',
+  'KkKqqkkkkkkkkl.',
+  'KkKqkkkkkkkkkkl',
+  'KKKqkkkkkkkkkkk',
+  'KKkKkkkkkkkkKK.',
+  '.KKkkkkkkkkpp..',
+  '.KKkkkkkkkkr...',
+  '..KKkkkkkkpp...',
+  '...KKkkkkkkk...',
+  '.....KKKkkK....',
 ];
 // change some pixels of the head: [row, column, 'letters']
 const face = (...edits) => {
   const rows = HEAD.map((r) => r.split(''));
   for (const [r, c, str] of edits) for (let i = 0; i < str.length; i++) rows[r][c + i] = str[i];
-  return { pivot: [5, 14], px: rows.map((r) => r.join('')) };
+  return { pivot: [6, 16], px: rows.map((r) => r.join('')) };
 };
-// Messy black hair: spiky on top, falling over the forehead at the front,
-// puffed out at the back. Lines up with the head (same neck point).
+// Messy dark brown hair: wavy and full on top, a fringe falling over the
+// forehead, covering the top of the ear and the back of the head. Lines up
+// with the head (hair column = head column + 1, hair row = head row + 3).
 const HAIR = [
-  '......h...h.....',
-  '...h..hh.hh..h..',
-  '..hhhhhhhhhhhh..',
-  '.hhhHHhhhhHhhhh.',
-  'hhhHnnHhhhHnHhhh',
-  '.hhhHHhhhhhhHhhh',
-  'hhhHhhhhHhhhhhh.',
-  '.hhhhHhhhhhHhhhh',
-  'hhhhhhhh.h..h...',
-  'hhhhhh..........',
-  'hhhh............',
-  '.hhh............',
-  '.hh.............',
+  '...h.hh..hh..h....',
+  '..hhhhhhhhhhhhhh..',
+  '.hhhnhhhHhhhnhhhh.',
+  'hhhHhhhHnhhhhHhhhh',
+  'hhhhhHhhhhHnhhhHhh',
+  'hhHnhhhhHhhhhHhhhh',
+  'hhhhhHhhhhhHhhhHhh',
+  'hhhHhhhhhh.hh.hh.h',
+  'hhhhhh.......h....',
+  'hhhh..............',
+  'hhhh..............',
+  '.hhh..............',
+  '.hh...............',
+  '..h...............',
 ];
 const UPPER_LEG = [];
 for (let r = 0; r < 21; r++) UPPER_LEG.push(r === 0 ? 'JJjjjji' : r === 16 ? 'JJyyjii' : r === 17 ? 'JJjjyyi' : r >= 18 ? 'JJjjiji' : 'JJjjjii');
 const parts = {
   head_neutral: face(),
-  head_smile: face([10, 10, 'rmk']),
-  head_yell: face([4, 9, 'kkhh'], [5, 9, 'hmek'], [9, 10, 'rrk'], [10, 10, 'rrr'], [11, 10, 'rr']),
-  head_hurt: face([4, 9, 'hhkk'], [5, 9, 'kkkk'], [6, 9, 'eeek'], [10, 10, 'rr']),
-  hair: { pivot: [7, 18], px: HAIR },
+  head_smile: face([12, 10, 'mr']),
+  head_yell: face([5, 7, 'khhh'], [11, 10, 'rr'], [12, 10, 'rrr'], [13, 10, 'rr']),
+  head_hurt: face([6, 9, 'khhk'], [12, 10, 'rr']),
+  hair: { pivot: [7, 19], px: HAIR },
   // black tee with a silver chain round his neck, hanging on his chest
   torso: {
     pivot: [6, 26],
@@ -194,8 +199,8 @@ const parts = {
 // ---------------------------------------------------------------------------
 const darker = (hex, k) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
 const BASE_COLORS = {
-  k: '#ecba8e', K: '#c98f68', l: '#f8d5ae', q: '#a86d4c',   // skin
-  h: '#16121a', H: '#2c2631', n: '#5b5a6e',                 // black hair, with a shine
+  k: '#f2d0b6', K: '#d8a88b', l: '#fbe4d2', q: '#bf8a6e', p: '#c98a7c',   // skin, lips
+  h: '#2a1c15', H: '#3e2a1f', n: '#5c4232',                 // dark brown hair, with a shine
   w: '#f6f6f2', W: '#bfc5d0', g: '#f6f6f2',                 // sneakers (g = accent)
   c: '#dfe3ea', C: '#9aa1ad', v: '#ffffff',                 // silver chain
   B: '#2a201c',                                             // belt
