@@ -306,10 +306,10 @@ const animations = {
   // in front, over the head, to behind. rot runs from 0 to -360.
   uair: anim(false, [
     [3, { ...UAIR_TUCK, rot: 0 }],
-    [2, { ...UAIR_KICK, rot: -25 }],   // frame 3: leg low and in front
-    [3, { ...UAIR_KICK, rot: -70 }],   // frame 5: leg level, straight out in front
-    [7, { ...UAIR_KICK, rot: -185 }],  // frame 8: leg overhead, slightly behind
-    [5, { ...UAIR_TUCK, rot: -320 }],
+    [1, { ...UAIR_KICK, rot: -100 }],  // frame 3: leg up in front of the head
+    [4, { ...UAIR_KICK, rot: -140 }],  // frame 4: leg straight up
+    [6, { ...UAIR_KICK, rot: -215 }],  // frame 8: leg up behind the head
+    [6, { ...UAIR_TUCK, rot: -320 }],
     [2, { ...AIR, rot: -360 }],
   ], { ease: false }),
   // Down air: spinning with both arms out.
@@ -390,10 +390,9 @@ const moves = {
     ...hits(6, 7, LEG_B, 10.5, 361, 12, 106, BACK),
     ...hits(8, 10, LEG_B, 7, 361, 12, 100, BACK),
   ] },
-  uair: { faf: 22, landLag: 4, autoCancel: [3, 14], trail: { part: 'toeF', from: 3, to: 10 }, hitboxes: [
-    ...hits(3, 8, [['toeF', 4], ['shinF', 4], ['kneeF', 3]], 7, 80, 40, 120),
-    hit(3, 5, 'hip', 4, 7, 80, 40, 120, { off: [8, -3] }),   // point-blank, level with him
-  ] },
+  // Overhead only: hits what is directly above him.
+  uair: { faf: 22, landLag: 4, autoCancel: [3, 14], trail: { part: 'toeF', from: 3, to: 9 }, hitboxes:
+    hits(4, 8, [['toeF', 4], ['shinF', 3]], 7, 80, 40, 120) },
   dair: { faf: 29, landLag: 8, autoCancel: [5, 26], hitboxes: [
     spin(5, 0), spin(9, 1), spin(13, 2), spin(17, 3), spin(21, 4),
     hit(25, 26, 'chest', 15, 5.5, 60, 40, 110, { group: 5, off: [0, -4] }),
