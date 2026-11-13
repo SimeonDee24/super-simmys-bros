@@ -277,6 +277,8 @@ const STATES = {
       f.anim = 'djump'; f.animFrame = 0;
     }
     const attacked = tryAerial(c);
+    // The down press that starts a down air does not also fast fall.
+    if (attacked) c.pressed &= ~BTN.DOWN;
     airMotion(c);
     if (attacked) return;
 

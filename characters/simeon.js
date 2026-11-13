@@ -159,8 +159,9 @@ const RUN_D = { hip: [1, 1], torso: 20, head: 8, armF: [10, 85], armB: [-10, 80]
 const FISTS = { handF: 'fist', handB: 'fist' };
 const STAND = { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6, -2] };
 const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: [-14, -18], footF: 25, footB: 35 };
-const SPIN_A = { torso: 0, armF: [95, 0], armB: [-95, 0], legF: [4, -4], legB: [-4, -4], footF: 60, footB: 60, ...FISTS, face: 'yell' };
-const SPIN_B = { torso: 0, armF: [-95, 0], armB: [95, 0], legF: [-4, -4], legB: [4, -4], footF: 60, footB: 60, ...FISTS, face: 'yell' };
+// down air: knees pulled up high, then both feet driven straight down
+const DAIR_TUCK = { hip: [0, -4], torso: 10, head: 8, legF: [80, -135], legB: [70, -130], armF: [70, 60], armB: [50, 70], footF: 20, footB: 20, ...FISTS };
+const DAIR_STOMP = { hip: [0, 2], torso: -4, head: 12, legF: [6, -2], legB: [-4, -2], armF: [150, 25], armB: [-145, -15], footF: 50, footB: 50, ...FISTS, face: 'yell' };
 const FTILT_KICK = { hip: [-1, 0], torso: -14, legF: [92, -2], legB: [-6, -4], armF: [-45, 25], armB: [45, 35], footF: 30, ...FISTS, face: 'yell' };
 const DTILT_LOW = { hip: [-1, 9], torso: 24, head: 8, legF: [62, -112], legB: [50, -108], armF: [10, 50], armB: [-10, 40] };
 const DTILT_SWEEP = { hip: [-2, 12], torso: 10, legF: [76, -4], legB: [60, -124], armF: [-30, 30], armB: [-50, 20], footF: 20, face: 'yell' };
@@ -312,11 +313,14 @@ const animations = {
     [6, { ...UAIR_TUCK, rot: -320 }],
     [2, { ...AIR, rot: -360 }],
   ], { ease: false }),
-  // Down air: spinning with both arms out.
+  // Down air: a heavy double-foot stomp straight down. Slow to start,
+  // spikes if the feet land the hit cleanly.
   dair: anim(false, [
-    [4, { torso: 0, armF: [40, 60], armB: [-40, 50], legF: [6, -8], legB: [-6, -8], footF: 60, footB: 60, ...FISTS }],
-    [4, SPIN_A], [4, SPIN_B], [4, SPIN_A], [4, SPIN_B], [4, SPIN_A], [4, SPIN_B],
-    [5, AIR],
+    [6, { ...AIR }],
+    [10, DAIR_TUCK],
+    [2, DAIR_STOMP], [3, DAIR_STOMP],
+    [10, { torso: 4, legF: [30, -50], legB: [15, -45], armF: [80, 40], armB: [-60, 30], footF: 20, footB: 20 }],
+    [6, AIR],
   ]),
 
   land: anim(false, [
@@ -353,7 +357,6 @@ const BACK = { dir: -1 };
 const LEG_F = [['toeF', 6], ['shinF', 5], ['kneeF', 5]];
 const LEG_B = [['toeB', 6], ['shinB', 5], ['kneeB', 5], ['toeF', 5]];
 const ARM_F = [['fistF', 7], ['elbowF', 5]];
-const spin = (frame, group) => hit(frame, frame + 1, 'chest', 14, 1.4, 85, 20, 10, { group, off: [0, -4], lag: 2 });
 
 const moves = {
   // --- Jab combo: press attack again to continue into the next hit ---
@@ -393,9 +396,11 @@ const moves = {
   // A tight arc around his upper body: from close in front, over his head, to behind.
   uair: { faf: 22, landLag: 4, autoCancel: [3, 14], trail: { part: 'toeF', from: 3, to: 9 }, hitboxes:
     hits(3, 8, [['kneeF', 4], ['shinF', 4], ['toeF', 3]], 7, 80, 40, 120) },
-  dair: { faf: 29, landLag: 8, autoCancel: [5, 26], hitboxes: [
-    spin(5, 0), spin(9, 1), spin(13, 2), spin(17, 3), spin(21, 4),
-    hit(25, 26, 'chest', 15, 5.5, 60, 40, 110, { group: 5, off: [0, -4] }),
+  // Stomp: both feet spike on frames 16-18 (sweet spot), then a weaker
+  // sideways hit on 19-21.
+  dair: { faf: 40, landLag: 12, autoCancel: [3, 34], trail: { part: 'footF', from: 15, to: 19 }, hitboxes: [
+    ...hits(16, 18, [['footF', 5], ['footB', 5], ['shinF', 4], ['shinB', 4]], 14, 270, 20, 80),
+    ...hits(19, 21, [['footF', 5], ['footB', 5], ['shinF', 4], ['shinB', 4]], 10, 361, 20, 100),
   ] },
 };
 

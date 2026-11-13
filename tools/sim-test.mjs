@@ -163,6 +163,15 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (const dy of [20, 44]) check(`up air hits an opponent directly above (${dy}px up)`, uairAt(0, dy) === 70);
   check('up air hits an opponent right next to him', uairAt(8, 0) === 70);
   check('up air does not reach high overhead (58px up)', uairAt(0, 58) === 0);
+  // down air spikes an opponent below
+  s = createMatch(setup); [a, v] = s.fighters;
+  for (const f of [a, v]) { f.y -= 90 * FX; f.grounded = 0; f.ground = -1; f.state = 'air'; f.vy = 0; }
+  v.x = a.x; v.y = a.y + 30 * FX;
+  step(s, [BTN.ATTACK | BTN.DOWN, 0]);
+  let spiked = false;
+  check('pressing down for a down air does not fast fall', a.fastFall === 0);
+  for (let i = 0; i < 30; i++) { step(s, [0, 0]); a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; else if (v.kbAngle === 270) spiked = true; }
+  check('down air spikes for 14%', spiked && v.percent === 140, v.percent / 10 + '%');
   // dash attack out of a run
   s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 70 * FX;
   for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [6, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
