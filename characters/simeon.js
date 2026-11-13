@@ -173,8 +173,9 @@ const SLIDE = { hip: [-1, 11], torso: -38, head: -15, legF: [82, -2], legB: [65,
 // dash attack: knee driven forward, then a flying front kick
 const DA_KNEE = { hip: [2, 1], torso: 20, head: 6, legF: [95, -110], legB: [-25, -10], armF: [-50, 40], armB: [60, 60], ...FISTS, face: 'yell' };
 const DA_KICK = { hip: [1, -3], torso: -24, head: -6, legF: [88, -2], legB: [10, -90], armF: [-40, 40], armB: [-70, 30], footF: 35, ...FISTS, face: 'yell' };
-// forward air: leg whipped forward, foot at about hip height
-const FAIR_KICK = { torso: -26, head: -6, legF: [100, -6], legB: [-30, -50], armF: [-30, 60], armB: [60, 40], footF: 30, ...FISTS, face: 'yell' };
+// forward air: leaning back with BOTH legs thrust straight out in front
+const FAIR_TUCK = { rot: -10, torso: -6, head: 10, legF: [95, -135], legB: [85, -130], armF: [40, 100], armB: [20, 110], footF: 30, footB: 30, ...FISTS };
+const FAIR_KICK = { rot: -8, torso: -14, head: 14, legF: [92, -4], legB: [86, -8], armF: [60, 90], armB: [-20, 100], footF: 20, footB: 20, ...FISTS, face: 'yell' };
 // knockdown: lying on his back, and the getup attack's spinning sweep
 const LIE = { rot: -90, hip: [-8, 23], torso: 0, head: 0, armF: [20, 30], armB: [-10, 20], legF: [5, -10], legB: [-5, -6], footF: 80, footB: 80, face: 'hurt' };
 const GUA_FRONT = { rot: -30, hip: [-2, 17], torso: 0, legF: [62, -4], legB: [100, -110], armF: [-40, 30], armB: [-60, 20], footF: 40, ...FISTS, face: 'yell' };
@@ -338,13 +339,13 @@ const animations = {
     [8, { torso: -8, legF: [60, -20], legB: [-20, -60], armF: [-30, 40], armB: [40, 40], footF: 20 }],
     [7, AIR],
   ]),
-  // Forward air: a leaning kick that swings the foot forward and down.
+  // Forward air: knees pulled in, then both legs driven straight out in front.
   fair: anim(false, [
-    [6, { torso: -6, legF: [-30, -90], legB: [-10, -40], armF: [40, 60], armB: [-30, 60], footF: 30, ...FISTS }],
-    [4, { torso: -16, legF: [-50, -110], legB: [-20, -40], armF: [70, 50], armB: [-40, 70], footF: 40, ...FISTS }],
-    [2, FAIR_KICK], [3, FAIR_KICK],
-    [8, { torso: 6, legF: [30, -40], legB: [-15, -35], armF: [30, 40], armB: [-20, 50], footF: 20 }],
-    [9, AIR],
+    [5, { ...AIR }],
+    [5, FAIR_TUCK],
+    [2, FAIR_KICK], [4, FAIR_KICK],
+    [8, { torso: 0, legF: [50, -60], legB: [40, -70], armF: [40, 60], armB: [-20, 60], footF: 20, footB: 20 }],
+    [10, AIR],
   ]),
   // Back air: dropkick, body level with both legs thrust out behind.
   bair: anim(false, [
@@ -463,10 +464,12 @@ const moves = {
     ...hits(6, 24, [['toeF', 5], ['shinF', 5], ['hip', 6]], 5, 361, 10, 100),
   ] },
   // Kick timed like Inkling's: strongest right at the start, at the foot.
-  fair: { faf: 34, landLag: 8, autoCancel: [3, 28], trail: { part: 'toeF', from: 9, to: 14 }, hitboxes: [
-    hit(10, 11, 'toeF', 6, 12, 361, 30, 98),
-    ...hits(10, 11, [['shinF', 5], ['kneeF', 4]], 10, 361, 25, 95),
-    ...hits(12, 14, [['toeF', 5], ['shinF', 5], ['kneeF', 4]], 8, 361, 20, 90),
+  // Both legs out in front: a big hitbox at the feet (strongest) and one
+  // along the shins, timed like Inkling's.
+  fair: { faf: 34, landLag: 8, autoCancel: [3, 28], trail: { part: 'toeF', from: 9, to: 13 }, hitboxes: [
+    hit(10, 11, 'toeF', 7, 12, 361, 30, 98, { off: [-1, 0] }),
+    ...hits(10, 11, [['shinF', 6], ['kneeF', 5]], 10, 361, 25, 95),
+    ...hits(12, 15, [['toeF', 6], ['shinF', 5], ['kneeF', 5]], 8, 361, 20, 90),
   ] },
   bair: { faf: 24, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 4, to: 8 }, hitboxes: [
     ...hits(6, 7, LEG_B, 10.5, 361, 12, 106, BACK),
