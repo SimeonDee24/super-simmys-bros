@@ -99,16 +99,16 @@ const HEAD = [
   '.Kkkkkkkkkkkl..',
   'KKkkkkkkkkkkl..',
   'KKkkkkkhhhkkl..',
-  'KkKqkkkkkmeel..',
-  'KkKqqkkkkkkkkl.',
-  'KkKqkkkkkkkkkkl',
-  'KKKqkkkkkkkkkkk',
+  'KkKqkkkkkmeK...',
+  'KkKqqkkkkkkkl..',
+  'KkKqkkkkkkkkkl.',
+  'KKKqkkkkkkkkkkl',
   'KKkKkkkkkkkkKK.',
-  '.KKkkkkkkkkpp..',
-  '.KKkkkkkkkkr...',
-  '..KKkkkkkkpp...',
-  '...KKkkkkkkk...',
-  '.....KKKkkK....',
+  '.KKkkkkkkkkkp..',
+  '..Kkkkkkkkkqp..',
+  '...KkkkkkkkKk..',
+  '....KKkkkkkkl..',
+  '.......KKKKK...',
 ];
 // change some pixels of the head: [row, column, 'letters']
 const face = (...edits) => {
@@ -139,9 +139,9 @@ const UPPER_LEG = [];
 for (let r = 0; r < 21; r++) UPPER_LEG.push(r === 0 ? 'JJjjjji' : r === 16 ? 'JJyyjii' : r === 17 ? 'JJjjyyi' : r >= 18 ? 'JJjjiji' : 'JJjjjii');
 const parts = {
   head_neutral: face(),
-  head_smile: face([12, 10, 'mr']),
-  head_yell: face([5, 7, 'khhh'], [11, 10, 'rr'], [12, 10, 'rrr'], [13, 10, 'rr']),
-  head_hurt: face([6, 9, 'khhk'], [12, 10, 'rr']),
+  head_smile: face([11, 11, 'q'], [12, 11, 'k']),         // closed-mouth smile: corner turned up
+  head_yell: face([5, 7, 'kkk'], [6, 7, 'hh'], [11, 10, 'rr'], [12, 10, 'rrr'], [13, 10, 'rr']),
+  head_hurt: face([6, 9, 'hhK'], [12, 11, 'rr']),
   hair: { pivot: [7, 19], px: HAIR },
   // black tee with a silver chain round his neck, hanging on his chest
   torso: {
@@ -200,7 +200,7 @@ const parts = {
 const darker = (hex, k) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
 const BASE_COLORS = {
   k: '#f2d0b6', K: '#d8a88b', l: '#fbe4d2', q: '#bf8a6e', p: '#c98a7c',   // skin, lips
-  h: '#2a1c15', H: '#3e2a1f', n: '#5c4232',                 // dark brown hair, with a shine
+  h: '#1c130f', H: '#2c1f18', n: '#433026',                 // very dark brown hair, with a shine
   w: '#f6f6f2', W: '#bfc5d0', g: '#f6f6f2',                 // sneakers (g = accent)
   c: '#dfe3ea', C: '#9aa1ad', v: '#ffffff',                 // silver chain
   B: '#2a201c',                                             // belt
