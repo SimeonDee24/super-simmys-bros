@@ -527,15 +527,22 @@ for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BT
   }
   // back throw kills at high percent near the edge
   const { CpuController } = await import('../engine/cpu.js');
-  const backThrowKO = (pct) => {
-    const s = near(); const [a, v] = s.fighters; a.x = 86 * FX; a.facing = 1; v.x = 102 * FX; v.facing = -1; v.percent = pct * 10;
+  // throw toward the left edge from right beside it; the victim tries to recover
+  const throwKO = (dirName, pct) => {
+    const s = near(); const [a, v] = s.fighters;
+    const faceEdge = dirName !== 'back';
+    a.x = (faceEdge ? 102 : 86) * FX; v.x = (faceEdge ? 86 : 102) * FX;
+    a.facing = v.x > a.x ? 1 : -1; v.facing = -a.facing; v.percent = pct * 10;
     step(s, [BTN.GRAB, 0]); for (let i = 0; i < 10 && a.state !== 'holding'; i++) step(s, [0, 0]);
-    step(s, [BTN.LEFT, 0]);
+    step(s, [{ forward: a.facing > 0 ? BTN.RIGHT : BTN.LEFT, back: a.facing > 0 ? BTN.LEFT : BTN.RIGHT, down: BTN.DOWN }[dirName], 0]);
     const d = new CpuController('dummy', 3);   // the victim tries to recover
     for (let i = 0; i < 400; i++) { step(s, [0, d.sample(s, 1)]); if (v.state === 'dead') return true; }
     return false;
   };
-  check('back throw near the edge: survivable at 120%, KOs at 180%', !backThrowKO(120) && backThrowKO(180));
+  const backThrowKO = (pct) => throwKO('back', pct);
+  check('back throw near the edge: survivable at 100%, KOs at 140%', !backThrowKO(100) && backThrowKO(140));
+  check('forward throw near the edge: still survivable at 180%', !throwKO('forward', 180));
+  check('down throw near the edge: still survivable at 250%', !throwKO('down', 250));
   // mashing breaks free sooner
   const escape = (mash) => { const s = near(); grabbed(s); let t = 0; for (; t < 300 && s.fighters[1].state === 'grabbed'; t++) step(s, [0, mash && (t & 1) ? BTN.ATTACK : 0]); return t; };
   const slow = escape(false), fast = escape(true);

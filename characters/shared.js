@@ -98,14 +98,14 @@ export const THROWS = {
   fthrow: {
     anim: 'fthrow', release: 10, faf: 32, dir: 1,
     path: [[0, 16, 0], [5, 10, -6], [10, 24, -14]],
-    hit: { damage: 80, angle: 45, bkb: 60, kbg: 50 },          // 8%, sends forward
+    hit: { damage: 80, angle: 45, bkb: 95, kbg: 38 },          // 8%, sends far forward but rarely kills (about 210% at the edge)
   },
   bthrow: {
     anim: 'bthrow', release: 31, faf: 51, dir: -1,
     spin: [8, 16, 24],
     // swinging round him: in front, passing behind, out the other side...
     path: [[0, 16, 0], [4, 16, -4], [8, 18, -8], [12, 0, -10], [16, -18, -8], [20, 0, -10], [24, 18, -8], [28, 0, -10], [31, -20, -12]],
-    hit: { damage: 110, angle: 45, bkb: 45, kbg: 58 },         // 11%, kills from about 125% at the edge
+    hit: { damage: 110, angle: 45, bkb: 62, kbg: 70 },         // 11%, the kill throw: KOs from about 120% at the edge
   },
   uthrow: {
     anim: 'uthrow', release: 11, faf: 31, dir: 1,
@@ -115,7 +115,7 @@ export const THROWS = {
   dthrow: {
     anim: 'dthrow', release: 11, faf: 33, dir: 1,
     path: [[0, 16, 0], [6, 6, -40], [11, 14, -2]],
-    hit: { damage: 50, angle: 75, bkb: 65, kbg: 35 },          // 5%, pops up in front: combo starter
+    hit: { damage: 50, angle: 70, bkb: 90, kbg: 28 },          // 5%, pops them up and away; never really kills
   },
 };
 
