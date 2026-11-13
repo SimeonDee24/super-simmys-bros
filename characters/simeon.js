@@ -84,63 +84,126 @@ const skeleton = {
 };
 
 // ---------------------------------------------------------------------------
-// Body parts, drawn facing right. Each letter is a palette colour, '.' is empty.
+// Body parts: detailed pixel art at 2 art pixels per world pixel, drawn
+// facing right. Each letter is a palette colour, '.' is empty.
 // pivot = [column, row] the part rotates around (may sit outside the grid).
+// The dark outline round the whole figure is added automatically.
 // ---------------------------------------------------------------------------
-const HAIR = ['..hhHh..', '.hHhhhHh', 'hhhHhhhh', 'hhhhhhh.', 'hh......'];
-const head = (eyes, cheeks, mouth) => ({
-  pivot: [2, 6],
-  px: ['.kkkk.', 'kkkkkl', eyes, cheeks, mouth, '.Kkkk.'],
-});
+const ART_SCALE = 2;
+// Face: the eye, brow and mouth sit at the front (right) of the head.
+const HEAD = [
+  '...kkkkkkk....',
+  '.kkkkkkkkkkk..',
+  'kKkkkkkkkkkkl.',
+  'kKkkkkkkkkkkl.',
+  'KKkkkkkkkhhhh.',
+  'KKkkkkkkkmmek.',
+  'KkKqkkkkkmeek.',
+  'KkKqkkkkkkkkkl',
+  'KKkKKkkkkkkkKl',
+  'KKkKkkkkkkkkk.',
+  '.KKkkkkkkkkrk.',
+  '.KKkkkkkkkkk..',
+  '..KKkkkkkkk...',
+  '...KKKkkk.....',
+];
+// change some pixels of the head: [row, column, 'letters']
+const face = (...edits) => {
+  const rows = HEAD.map((r) => r.split(''));
+  for (const [r, c, str] of edits) for (let i = 0; i < str.length; i++) rows[r][c + i] = str[i];
+  return { pivot: [5, 14], px: rows.map((r) => r.join('')) };
+};
+// Messy black hair: spiky on top, falling over the forehead at the front,
+// puffed out at the back. Lines up with the head (same neck point).
+const HAIR = [
+  '......h...h.....',
+  '...h..hh.hh..h..',
+  '..hhhhhhhhhhhh..',
+  '.hhhHHhhhhHhhhh.',
+  'hhhHnnHhhhHnHhhh',
+  '.hhhHHhhhhhhHhhh',
+  'hhhHhhhhHhhhhhh.',
+  '.hhhhHhhhhhHhhhh',
+  'hhhhhhhh.h..h...',
+  'hhhhhh..........',
+  'hhhh............',
+  '.hhh............',
+  '.hh.............',
+];
+const UPPER_LEG = [];
+for (let r = 0; r < 21; r++) UPPER_LEG.push(r === 0 ? 'JJjjjji' : r === 16 ? 'JJyyjii' : r === 17 ? 'JJjjyyi' : r >= 18 ? 'JJjjiji' : 'JJjjjii');
 const parts = {
-  head_neutral: head('Kkkeke', 'Kkkkkl', 'Kkkrrk'),
-  head_smile:   head('Kkkeke', 'Kkkkkl', 'Kkkmmk'),
-  head_yell:    head('Kkkeke', 'Kkkrrk', 'Kkkrrk'),
-  head_hurt:    head('KkkKkK', 'Kkkkkl', 'Kkkkrk'),
-  hair: { pivot: [3, 8], px: HAIR },
+  head_neutral: face(),
+  head_smile: face([10, 10, 'rmk']),
+  head_yell: face([4, 9, 'kkhh'], [5, 9, 'hmek'], [9, 10, 'rrk'], [10, 10, 'rrr'], [11, 10, 'rr']),
+  head_hurt: face([4, 9, 'hhkk'], [5, 9, 'kkkk'], [6, 9, 'eeek'], [10, 10, 'rr']),
+  hair: { pivot: [7, 18], px: HAIR },
+  // black tee with a silver chain round his neck, hanging on his chest
   torso: {
-    pivot: [3, 13],
+    pivot: [6, 26],
     px: [
-      '...kk..',
-      '.ttkkt.',
-      'tttcctu',
-      'Ttttttu',
-      'Ttttttu',
-      'Ttttttt',
-      'Tttttt.',
-      '.Ttttt.',
-      '.Ttttt.',
-      '.Ttttu.',
-      '.Ttttu.',
-      '.Ttttt.',
-      '.Jjjji.',
-      '.Jjjji.',
+      '.....kkkk.....',
+      '.....KcvcK....',
+      '....TCtttttv..',
+      '...TTttttttuvc',
+      '..TTtttttttucv',
+      '.TTttttttttuvc',
+      'TTTttttttttcvu',
+      'TTttttttttttCv',
+      'TTtttttttttcvu',
+      'TTxttttttttvCu',
+      'TTTxtttttttuuu',
+      'TTtTxtttttttuu',
+      '.TTttxttttttu.',
+      '.TTtttttttttu.',
+      '.TTtttttttxtu.',
+      '.TTttttttxttu.',
+      '.TTtttttxtttu.',
+      '.TTtttttttttu.',
+      '.TTxtttttttuu.',
+      '.TTtxttttttuu.',
+      '.TTtttttttttu.',
+      '.xTTttttttttx.',
+      '.BBBBBBBBccBB.',
+      '.JJjjjjjjjjii.',
+      '.JJjjjjjjjjji.',
+      '.JJjjjjjjjjii.',
+      '.JJjjjjjjjjii.',
+      '..JJjjjjjjii..',
     ],
   },
-  upperArm: { pivot: [1, 0], px: ['Ttu', 'Ttu', 'Ttt', 'Kkl', 'Kkl', 'Kkl', 'Kkl'] },
-  lowerArm: { pivot: [1, 0], px: ['Kkl', 'Kkl', 'Kkl', 'Kkl', 'Kkl', 'Kkl'] },
-  hand_open: { pivot: [1, 0], px: ['kkl', 'kkl', '.k.'] },
-  hand_fist: { pivot: [1, 0], px: ['kkkl', 'kkkl', 'Kkk.'] },
-  upperLeg: { pivot: [1, 0], px: ['Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjj.'] },
-  lowerLeg: { pivot: [1, 0], px: ['Jji', 'Jji', 'Jji', 'Jji', 'Jji', 'Jji', 'Jji', 'Jji', 'Jji', 'Jjj'] },
-  // g = sneaker accent (heel tab and side stripe); white on most palettes
-  foot: { pivot: [1, 1], px: ['gww...', 'wwgww.', 'WwwwwW'] },
+  upperArm: { pivot: [2, 0], px: ['TTtuu', 'TTttu', 'TTttu', 'TTxtu', 'xTTtx', 'Kkkkl', 'Kkkkl', 'Kkkkl', 'KKkkl', 'Kkkkl', 'Kkkkl', 'Kkkkl', '.Kkk.'] },
+  lowerArm: { pivot: [2, 0], px: ['Kkkkl', 'Kkkkl', 'Kkkkl', 'KKkkl', 'Kkkkl', 'Kkkkl', '.Kkkl', '.Kkkl', '.Kkl.', '.Kkl.', '.Kkl.'] },
+  hand_open: { pivot: [2, 0], px: ['.Kkl.', 'Kkkkl', 'Kkkkl', 'KkkKl', 'K.k.l', 'K.k.k'] },
+  hand_fist: { pivot: [2, 0], px: ['.Kkkl.', 'Kkkkkl', 'KkqkKl', 'KkqkKk', 'KKkkKk', '.KKKK.'] },
+  upperLeg: { pivot: [3, 0], px: UPPER_LEG },
+  // jeans narrow toward the ankle, then bunch up over the sneaker
+  lowerLeg: {
+    pivot: [3, 0],
+    px: ['JJjjjii', 'JJjjjii', 'JJjjjii', '.Jjjjii', '.Jjjjii', '.Jjjjii', '.Jjjjii', '.JJjjii', '.Jjjjii', '.Jjjjii',
+      '.Jjjjii', '.Jjjjii', '.JJjjii', 'JJjjjii', 'JJyyjii', 'JJjjyyi', 'JJjjjii', 'JyyjjiJ', 'JJjjyyi'],
+  },
+  // white sneaker: g = accent (heel and side stripe), W = sole
+  foot: { pivot: [3, 2], px: ['..wwww......', '.gwwwwwW....', '.gwwwwwwwW..', 'wwwwgggwwwwW', 'WWWWWWWWWWWW', '.WWWWWWWWWW.'] },
 };
 
 // ---------------------------------------------------------------------------
 // Palettes. Hair and skin are shared; alts change the shirt and jeans.
-// Letters: t/T/u shirt (base/shadow/light), j/J/i jeans (base/shadow/light).
+// Letters: t/T/u shirt (base/shadow/light), j/J/i jeans (base/shadow/light),
+// x and y are shirt and jeans creases (worked out from the shadow colour).
 // ---------------------------------------------------------------------------
+const darker = (hex, k) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
 const BASE_COLORS = {
-  k: '#ecba8e', K: '#c98f68', l: '#f8d5ae',   // skin
-  h: '#231813', H: '#42302a',                 // hair
-  w: '#f6f6f2', W: '#bfc5d0', g: '#f6f6f2',   // sneakers (g = accent)
-  c: '#dfe4ee',                               // chain
-  e: '#1b1310', m: '#ffffff', r: '#8c3a36',   // eyes, teeth, mouth
+  k: '#ecba8e', K: '#c98f68', l: '#f8d5ae', q: '#a86d4c',   // skin
+  h: '#16121a', H: '#2c2631', n: '#5b5a6e',                 // black hair, with a shine
+  w: '#f6f6f2', W: '#bfc5d0', g: '#f6f6f2',                 // sneakers (g = accent)
+  c: '#dfe3ea', C: '#9aa1ad', v: '#ffffff',                 // silver chain
+  B: '#2a201c',                                             // belt
+  e: '#1b1310', m: '#ffffff', r: '#8c3a36',                 // eyes, teeth, mouth
 };
 const alt = (name, shirt, jeans, extra = {}) => ({
   name,
-  colors: { ...BASE_COLORS, t: shirt[0], T: shirt[1], u: shirt[2], j: jeans[0], J: jeans[1], i: jeans[2], ...extra },
+  colors: { ...BASE_COLORS, t: shirt[0], T: shirt[1], u: shirt[2], x: darker(shirt[1], 0.72), j: jeans[0], J: jeans[1], i: jeans[2], y: darker(jeans[1], 0.78), ...extra },
 });
 const BLUE_JEANS = ['#3f6fb8', '#2c5190', '#5b8cd4'];
 const DARK_JEANS = ['#2c2f44', '#1d1f30', '#3e425c'];
@@ -686,6 +749,7 @@ export const SIMEON = {
   stats,
   skeleton,
   parts,
+  artScale: ART_SCALE,
   palettes,
   outline,
   // shared moves (grabs and throws) first, so his own versions win if he has any

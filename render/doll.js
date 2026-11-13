@@ -1,240 +1,161 @@
-// Paper-doll renderer, smooth version. The character is drawn from its
-// skeleton as shaded vector shapes (rounded limbs, a lit head, hair, shoes)
-// in the colours of its palette, with light coming from the upper left.
-// It is drawn into a high-resolution work canvas first, so the whole figure
-// can be tinted or faded as one, then copied to the screen.
-// Rendering only: nothing here feeds the simulation.
+// Paper-doll renderer for pixel-art characters. Each body part is a small
+// pixel grid. It is rotated around its pivot using the RotSprite trick
+// (enlarge the art 8x with an edge-preserving filter, rotate, then sample
+// back down), which keeps lines clean instead of jagged. The parts are layered
+// back to front, then the whole figure gets a dark 1-pixel outline.
+// Characters are drawn at `artScale` art pixels per world pixel (2 = twice
+// the detail of the collision size). Rendering only: nothing here feeds the
+// simulation.
 import { samplePose, solve } from '../engine/skeleton.js';
 
 const SIZE = 128, OX = 64, OY = 96;   // work area in world pixels; feet sit at (OX, OY)
-const RES = 6;                        // work canvas pixels per world pixel
-const FXS = 1 / 256;
-const LX = -0.38, LY = -0.42;         // highlight offset: light from the upper left
+const UP = 8;                         // RotSprite enlargement
 
 function hexToRgb(hex) {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
-function scaleHex(hex, k) {
-  const [r, g, b] = hexToRgb(hex);
-  const f = (v) => Math.max(0, Math.min(255, Math.round(v * k)));
-  return `rgb(${f(r)},${f(g)},${f(b)})`;
+
+// Scale2x on a grid of letters: doubles it, rounding staircase edges.
+function scale2x(g) {
+  const h = g.length, w = g[0].length, out = [];
+  for (let y = 0; y < h; y++) {
+    const r0 = [], r1 = [];
+    for (let x = 0; x < w; x++) {
+      const P = g[y][x];
+      const A = y > 0 ? g[y - 1][x] : P, D = y < h - 1 ? g[y + 1][x] : P;
+      const C = x > 0 ? g[y][x - 1] : P, B = x < w - 1 ? g[y][x + 1] : P;
+      r0.push(C === A && C !== D && A !== B ? A : P, A === B && A !== C && B !== D ? B : P);
+      r1.push(D === C && D !== B && C !== A ? C : P, B === D && B !== A && D !== C ? D : P);
+    }
+    out.push(r0, r1);
+  }
+  return out;
 }
 
 export class DollRenderer {
   constructor() {
     this.canvas = document.createElement('canvas');
-    this.canvas.width = SIZE * RES; this.canvas.height = SIZE * RES;
-    this.ctx = this.canvas.getContext('2d');
-    this.pals = new Map();
+    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+    this.k = 0;
+    this.cache = new Map();
+    this.big = new Map();
+    this.heads = new Map();
   }
 
-  // Palette colours, plus a darker copy for the far-side limbs.
-  colors(ch, altIndex, back) {
-    const key = ch.id + '|' + altIndex + '|' + (back ? 1 : 0);
-    let c = this.pals.get(key);
-    if (!c) {
-      const src = ch.palettes[altIndex].colors;
-      c = {};
-      for (const k of Object.keys(src)) c[k] = back ? scaleHex(src[k], 0.8) : src[k];
-      c.outline = ch.outline;
-      this.pals.set(key, c);
+  // Work canvas sized for this character's art scale.
+  setScale(k) {
+    if (this.k === k) return;
+    this.k = k;
+    this.canvas.width = SIZE * k; this.canvas.height = SIZE * k;
+  }
+
+  // A part's grid enlarged 8x (cached per part).
+  enlarged(ch, partName) {
+    const key = ch.id + '|' + partName;
+    let g = this.big.get(key);
+    if (!g) {
+      const rows = ch.parts[partName].px;
+      const w = Math.max(...rows.map((r) => r.length));
+      g = rows.map((r) => r.padEnd(w, '.').split(''));
+      for (let s = UP; s > 1; s >>= 1) g = scale2x(g);
+      this.big.set(key, g);
     }
-    return c;
+    return g;
   }
 
-  // A rounded line with a shadow side and a highlight streak: reads as a lit tube.
-  tube(ctx, pts, r, dark, base, light) {
-    const path = (dx, dy) => {
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0] + dx, pts[0][1] + dy);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] + dx, pts[i][1] + dy);
-      ctx.stroke();
-    };
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.strokeStyle = dark; ctx.lineWidth = r * 2; path(0, 0);
-    ctx.strokeStyle = base; ctx.lineWidth = r * 2 - 0.9; path(LX, LY);
-    ctx.strokeStyle = light; ctx.lineWidth = r * 0.55; ctx.globalAlpha = 0.75; path(LX * 1.9, LY * 1.9);
-    ctx.globalAlpha = 1;
-  }
-  outlineTube(ctx, pts, r, col) {
-    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.strokeStyle = col; ctx.lineWidth = r * 2 + 0.8;
-    ctx.beginPath();
-    ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-    ctx.stroke();
-  }
-
-  arm(ctx, l, hand, c) {
-    const A = [l.a[0] * FXS, l.a[1] * FXS], B = [l.b[0] * FXS, l.b[1] * FXS], C = [l.c[0] * FXS, l.c[1] * FXS];
-    // sleeve ends a little under halfway down the upper arm
-    const S = [A[0] + (B[0] - A[0]) * 0.5, A[1] + (B[1] - A[1]) * 0.5];
-    const len = Math.hypot(C[0] - B[0], C[1] - B[1]) || 1;
-    const ux = (C[0] - B[0]) / len, uy = (C[1] - B[1]) / len;
-    const fist = hand === 'fist';
-    const H = [C[0] + ux * (fist ? 1.1 : 1.7), C[1] + uy * (fist ? 1.1 : 1.7)];
-    const hr = fist ? 1.9 : 1.45;
-    this.outlineTube(ctx, [A, B, C], 1.55, c.outline);
-    this.outlineTube(ctx, fist ? [H, H] : [C, H], hr, c.outline);
-    this.tube(ctx, [S, B, C], 1.4, c.K, c.k, c.l);
-    this.tube(ctx, [A, S], 1.7, c.T, c.t, c.u);
-    this.tube(ctx, fist ? [H, H] : [C, H], hr, c.K, c.k, c.l);
-  }
-
-  leg(ctx, l, footDeg, c) {
-    const A = [l.a[0] * FXS, l.a[1] * FXS], B = [l.b[0] * FXS, l.b[1] * FXS], C = [l.c[0] * FXS, l.c[1] * FXS];
-    this.outlineTube(ctx, [A, B, C], 2.0, c.outline);
-    // sneaker: drawn pointing right, turned by the foot angle (positive = toes up)
-    const shoe = (grow, fill) => {
-      ctx.beginPath();
-      ctx.moveTo(-1.7 - grow, 1.9 + grow);
-      ctx.lineTo(-1.7 - grow, -0.6);
-      ctx.quadraticCurveTo(-1.6 - grow, -1.9 - grow, 0.2, -1.7 - grow);
-      ctx.quadraticCurveTo(2.2, -1.4 - grow, 3.6, 0.0 - grow);
-      ctx.quadraticCurveTo(5.3 + grow, 0.6 - grow, 5.1 + grow, 1.9 + grow);
-      ctx.closePath();
-      ctx.fillStyle = fill; ctx.fill();
-    };
-    this.tube(ctx, [A, B], 2.05, c.J, c.j, c.i);
-    this.tube(ctx, [B, C], 1.75, c.J, c.j, c.i);
-    ctx.save();
-    ctx.translate(C[0], C[1]);
-    ctx.rotate((-footDeg * Math.PI) / 180);
-    shoe(0.4, c.outline);
-    shoe(0, c.w);
-    // sole, toe shine, coloured stripe and heel tab
-    ctx.fillStyle = c.W; ctx.fillRect(-1.7, 1.25, 6.8, 0.65);
-    ctx.fillStyle = c.g;
-    ctx.beginPath(); ctx.moveTo(0.9, -1.2); ctx.lineTo(1.9, -1.0); ctx.lineTo(1.3, 1.2); ctx.lineTo(0.3, 1.2); ctx.closePath(); ctx.fill();
-    ctx.fillRect(-1.7, -0.9, 0.8, 1.3);
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.beginPath(); ctx.ellipse(3.3, 0.35, 0.9, 0.35, 0.5, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
-
-  torso(ctx, s, c) {
-    const H = [s.hip[0] * FXS, s.hip[1] * FXS], N = [s.neck[0] * FXS, s.neck[1] * FXS];
-    const dx = N[0] - H[0], dy = N[1] - H[1], len = Math.hypot(dx, dy) || 1;
-    const ux = dx / len, uy = dy / len;           // along the spine, hip to neck
-    const at = (t) => [H[0] + dx * t, H[1] + dy * t];
-    const waist = at(0.06), belt = at(0.2), chest = at(0.74), top = at(0.86);
-    this.outlineTube(ctx, [waist, chest], 3.0, c.outline);
-    this.outlineTube(ctx, [chest, top], 3.3, c.outline);
-    // jeans at the hips, shirt above, a little wider at the chest and shoulders
-    this.tube(ctx, [waist, belt], 2.85, c.J, c.j, c.i);
-    this.tube(ctx, [belt, chest], 2.9, c.T, c.t, c.u);
-    this.tube(ctx, [chest, top], 3.2, c.T, c.t, c.u);
-    // neck
-    const nk = [N[0] + ux * 1.6, N[1] + uy * 1.6];
-    this.outlineTube(ctx, [top, nk], 1.35, c.outline);
-    this.tube(ctx, [top, nk], 1.3, c.K, c.k, c.l);
-    // collar and chain
-    const px = -uy, py = ux;                      // across the body
-    const cb = at(0.97);
-    ctx.strokeStyle = c.T; ctx.lineWidth = 0.9; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(cb[0] - px * 1.9, cb[1] - py * 1.9);
-    ctx.quadraticCurveTo(cb[0] - ux * 1.3, cb[1] - uy * 1.3, cb[0] + px * 1.9, cb[1] + py * 1.9); ctx.stroke();
-    ctx.strokeStyle = c.c; ctx.lineWidth = 0.55;
-    ctx.beginPath(); ctx.moveTo(cb[0] - px * 1.5, cb[1] - py * 1.5);
-    ctx.quadraticCurveTo(cb[0] - ux * 3.4, cb[1] - uy * 3.4, cb[0] + px * 1.5, cb[1] + py * 1.5); ctx.stroke();
-  }
-
-  // Head centred on (0, 0) facing right, in head-local coordinates.
-  headShape(ctx, face, c) {
-    const R = 3.75;
-    ctx.fillStyle = c.outline;
-    ctx.beginPath(); ctx.arc(0, 0, R + 0.4, 0, Math.PI * 2); ctx.fill();
-    const g = ctx.createRadialGradient(-1.3, -1.5, 0.4, 0, 0, R + 0.4);
-    g.addColorStop(0, c.l); g.addColorStop(0.5, c.k); g.addColorStop(1, c.K);
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
-    // ear and nose
-    ctx.fillStyle = c.K; ctx.beginPath(); ctx.ellipse(-0.9, 0.5, 0.75, 1.05, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = c.k; ctx.beginPath(); ctx.ellipse(3.75, 0.75, 0.8, 0.65, 0, 0, Math.PI * 2); ctx.fill();
-    // eye and brow
-    ctx.strokeStyle = c.e; ctx.fillStyle = c.e; ctx.lineCap = 'round';
-    if (face === 'hurt') {
-      ctx.lineWidth = 0.5;
-      ctx.beginPath(); ctx.moveTo(1.3, -0.6); ctx.lineTo(2.3, -0.1); ctx.lineTo(1.3, 0.4); ctx.stroke();
-    } else {
-      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.ellipse(1.95, -0.15, 0.85, 0.95, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = c.e; ctx.beginPath(); ctx.ellipse(2.2, -0.1, 0.5, 0.7, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.lineWidth = 0.55;
-      ctx.beginPath();
-      if (face === 'yell') { ctx.moveTo(1.0, -1.7); ctx.lineTo(3.0, -1.05); }
-      else { ctx.moveTo(1.1, -1.45); ctx.lineTo(3.0, -1.35); }
-      ctx.stroke();
+  // A part image rotated by `deg`, in the given palette. Cached.
+  sprite(ch, altIndex, back, partName, deg) {
+    deg = ((Math.round(deg) % 360) + 360) % 360;
+    const key = ch.id + '|' + altIndex + '|' + (back ? 1 : 0) + '|' + partName + '|' + deg;
+    let s = this.cache.get(key);
+    if (s) return s;
+    const part = ch.parts[partName];
+    const colors = ch.palettes[altIndex].colors;
+    const g = this.enlarged(ch, partName);
+    const h = g.length / UP, w = g[0].length / UP;
+    const [pvx, pvy] = part.pivot;
+    let R = 0;
+    for (const cx of [0, w]) for (const cy of [0, h]) R = Math.max(R, Math.hypot(cx - pvx, cy - pvy));
+    R = Math.ceil(R) + 1;
+    const size = 2 * R + 1;
+    const cv = document.createElement('canvas');
+    cv.width = size; cv.height = size;
+    const cx = cv.getContext('2d');
+    const img = cx.createImageData(size, size);
+    const a = (deg * Math.PI) / 180, c = Math.cos(a), sn = Math.sin(a);
+    const shade = back ? 0.8 : 1; // far-side limbs are drawn darker
+    const rgbCache = {};
+    for (let v = 0; v < size; v++) {
+      for (let u = 0; u < size; u++) {
+        // centre of the output pixel, relative to the pivot, turned back into the part
+        const X = u - R, Y = v - R;
+        const sx = Math.floor((X * c - Y * sn + pvx + 0.5) * UP), sy = Math.floor((X * sn + Y * c + pvy + 0.5) * UP);
+        if (sx < 0 || sy < 0 || sx >= w * UP || sy >= h * UP) continue;
+        const ch2 = g[sy][sx];
+        if (ch2 === '.') continue;
+        const rgb = rgbCache[ch2] || (rgbCache[ch2] = hexToRgb(colors[ch2] || '#ff00ff'));
+        const o = (v * size + u) * 4;
+        img.data[o] = rgb[0] * shade; img.data[o + 1] = rgb[1] * shade; img.data[o + 2] = rgb[2] * shade; img.data[o + 3] = 255;
+      }
     }
-    // mouth
-    if (face === 'yell') {
-      ctx.fillStyle = c.r; ctx.beginPath(); ctx.ellipse(2.2, 2.05, 0.95, 0.85, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = c.m; ctx.fillRect(1.6, 1.3, 1.3, 0.35);
-    } else if (face === 'smile') {
-      ctx.fillStyle = c.m; ctx.beginPath(); ctx.moveTo(1.2, 1.7); ctx.quadraticCurveTo(2.3, 3.0, 3.3, 1.6); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = c.r; ctx.lineWidth = 0.3; ctx.stroke();
-    } else if (face === 'hurt') {
-      ctx.strokeStyle = c.r; ctx.lineWidth = 0.5;
-      ctx.beginPath(); ctx.moveTo(1.5, 2.4); ctx.quadraticCurveTo(2.3, 1.7, 3.1, 2.3); ctx.stroke();
-    } else {
-      ctx.strokeStyle = c.r; ctx.lineWidth = 0.45;
-      ctx.beginPath(); ctx.moveTo(1.7, 2.1); ctx.lineTo(3.0, 2.0); ctx.stroke();
-    }
-    // hair: a cap over the top and back with a swept-up front
-    const hair = (grow, fill) => {
-      ctx.fillStyle = fill;
-      ctx.beginPath();
-      ctx.moveTo(3.3 + grow, -1.9);
-      ctx.quadraticCurveTo(4.6 + grow, -4.6 - grow, 2.0, -5.0 - grow);       // quiff
-      ctx.quadraticCurveTo(-1.6, -6.2 - grow, -3.9 - grow, -3.4);            // top
-      ctx.quadraticCurveTo(-5.3 - grow, -0.6, -3.7 - grow, 2.3 + grow);      // back of the head
-      ctx.quadraticCurveTo(-2.6, 2.2, -2.1, 0.6);                            // nape, behind the ear
-      ctx.quadraticCurveTo(-1.9, -0.9, -0.4, -1.2);                          // over the ear
-      ctx.quadraticCurveTo(0.2, -2.3, 2.0, -2.4);                            // hairline
-      ctx.closePath(); ctx.fill();
-    };
-    hair(0.4, c.outline);
-    hair(0, c.h);
-    ctx.strokeStyle = c.H; ctx.lineWidth = 0.6; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(-2.9, -3.3); ctx.quadraticCurveTo(-0.6, -5.1, 2.3, -4.2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(-3.6, -1.2); ctx.quadraticCurveTo(-2.6, -3.0, -0.8, -3.5); ctx.stroke();
+    cx.putImageData(img, 0, 0);
+    s = { canvas: cv, R };
+    this.cache.set(key, s);
+    return s;
   }
 
-  head(ctx, s, c) {
-    const a = (s.head * Math.PI) / 180;
-    ctx.save();
-    ctx.translate(s.neck[0] * FXS + Math.sin(a) * 3.3, s.neck[1] * FXS - Math.cos(a) * 3.3);
-    ctx.rotate(a);
-    this.headShape(ctx, s.face, c);
-    ctx.restore();
+  put(ch, altIndex, back, partName, deg, pos) {
+    const k = this.k, s = this.sprite(ch, altIndex, back, partName, deg);
+    // world fixed-point position -> art pixels
+    this.ctx.drawImage(s.canvas, OX * k + Math.round((pos[0] * k) / 256) - s.R, OY * k + Math.round((pos[1] * k) / 256) - s.R);
+  }
+
+  // Outline every empty pixel that touches a filled one, and tint if asked.
+  outline(ctx, size, col, flash) {
+    const img = ctx.getImageData(0, 0, size, size);
+    const d = img.data;
+    const ol = hexToRgb(col);
+    const solid = new Uint8Array(size * size);
+    for (let i = 0; i < size * size; i++) solid[i] = d[i * 4 + 3] > 0 ? 1 : 0;
+    const tint = flash ? hexToRgb(flash) : null;
+    for (let py = 1; py < size - 1; py++) {
+      for (let px = 1; px < size - 1; px++) {
+        const i = py * size + px, o = i * 4;
+        if (solid[i]) {
+          if (tint) { d[o] = (d[o] + tint[0] * 1.4) / 2.4; d[o + 1] = (d[o + 1] + tint[1] * 1.4) / 2.4; d[o + 2] = (d[o + 2] + tint[2] * 1.4) / 2.4; }
+        } else if (solid[i - 1] || solid[i + 1] || solid[i - size] || solid[i + size]) {
+          d[o] = ol[0]; d[o + 1] = ol[1]; d[o + 2] = ol[2]; d[o + 3] = 255;
+        }
+      }
+    }
+    ctx.putImageData(img, 0, 0);
   }
 
   // Draw a posed character with its feet at (x, y) on the destination context
   // (in world pixels; the destination's own transform decides the real size).
   // opts: { flash: css colour to tint the whole figure, alpha }
   draw(dest, ch, altIndex, poseObj, x, y, facing, opts = {}) {
+    this.setScale(ch.artScale || 1);
     const s = solve(ch.skeleton, poseObj);
-    const ctx = this.ctx;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, SIZE * RES, SIZE * RES);
-    ctx.setTransform(RES, 0, 0, RES, OX * RES, OY * RES);
-    const front = this.colors(ch, altIndex, false), back = this.colors(ch, altIndex, true);
-    this.arm(ctx, s.armB, s.handB, back);
-    this.leg(ctx, s.legB, s.footB, back);
-    this.leg(ctx, s.legF, s.footF, front);
-    this.torso(ctx, s, front);
-    this.head(ctx, s, front);
-    this.arm(ctx, s.armF, s.handF, front);
-    if (opts.flash) {
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.globalCompositeOperation = 'source-atop';
-      ctx.globalAlpha = 0.55; ctx.fillStyle = opts.flash;
-      ctx.fillRect(0, 0, SIZE * RES, SIZE * RES);
-      ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
-    }
+    const ctx = this.ctx, k = this.k;
+    ctx.clearRect(0, 0, SIZE * k, SIZE * k);
+    const limb = (l, back, upper, lower, end, endDeg) => {
+      this.put(ch, altIndex, back, upper, l.up, l.a);
+      this.put(ch, altIndex, back, lower, l.low, l.b);
+      this.put(ch, altIndex, back, end, endDeg, l.c);
+    };
+    limb(s.armB, true, 'upperArm', 'lowerArm', 'hand_' + s.handB, s.armB.low);
+    limb(s.legB, true, 'upperLeg', 'lowerLeg', 'foot', s.footB);
+    limb(s.legF, false, 'upperLeg', 'lowerLeg', 'foot', s.footF);
+    this.put(ch, altIndex, false, 'torso', -s.torso, s.hip);
+    this.put(ch, altIndex, false, 'head_' + s.face, -s.head, s.neck);
+    this.put(ch, altIndex, false, 'hair', -s.head, s.neck);
+    limb(s.armF, false, 'upperArm', 'lowerArm', 'hand_' + s.handF, s.armF.low);
+    this.outline(ctx, SIZE * k, ch.outline, opts.flash);
+
     dest.save();
-    dest.imageSmoothingEnabled = true;
-    dest.imageSmoothingQuality = 'high';
+    dest.imageSmoothingEnabled = false;
     if (opts.alpha !== undefined) dest.globalAlpha = opts.alpha;
     if (facing >= 0) dest.drawImage(this.canvas, x - OX, y - OY, SIZE, SIZE);
     else { dest.scale(-1, 1); dest.drawImage(this.canvas, -x - OX, y - OY, SIZE, SIZE); }
@@ -246,13 +167,27 @@ export class DollRenderer {
     this.draw(dest, ch, altIndex, samplePose(a, frame), x, y, facing, opts);
   }
 
-  // Just the head, centred on (x, y), `size` world pixels across. For stock icons.
+  // Just the head and hair, centred on (x, y), `size` world pixels across.
+  // For stock icons.
   drawHead(dest, ch, altIndex, x, y, size, face = 'neutral') {
+    const key = ch.id + '|' + altIndex + '|' + face;
+    let c = this.heads.get(key);
+    if (!c) {
+      const N = 24;
+      c = document.createElement('canvas'); c.width = N; c.height = N;
+      const cx = c.getContext('2d');
+      const neck = [11, 20];   // where the neck point goes on the icon
+      for (const part of ['head_' + face, 'hair']) {
+        const s = this.sprite(ch, altIndex, false, part, 0);
+        cx.drawImage(s.canvas, neck[0] - s.R, neck[1] - s.R);
+      }
+      this.outline(cx, N, ch.outline, null);
+      this.heads.set(key, c);
+    }
+    const w = size * 1.45;
     dest.save();
-    dest.translate(x, y);
-    dest.scale(size / 10, size / 10);
-    dest.translate(0.3, 0.9);
-    this.headShape(dest, face, this.colors(ch, altIndex, false));
+    dest.imageSmoothingEnabled = false;
+    dest.drawImage(c, x - w / 2, y - w * 0.52, w, w);
     dest.restore();
   }
 }
