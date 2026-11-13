@@ -362,6 +362,8 @@ export class Renderer {
       const j = jointAt(solve(ch.skeleton, samplePose(a, fr)), tr.part);
       pts.push([toPx(f.x + f.facing * j[0]) - camX, toPx(f.y + j[1]) - camY]);
     }
+    // straight trails are flattened to one height: a clean horizontal streak
+    if (tr.straight) for (const pt of pts) pt[1] = pts[0][1];
     const ctx = this.ctx, width = tr.width || 5, n = pts.length - 1;
     const colors = ch.trailColors || ['#ff9a3c', '#ffe14a', '#ffffff'];
     const fade = f.stateFrame > tr.to ? Math.max(0, 1 - (f.stateFrame - tr.to) / LEN) : 1;

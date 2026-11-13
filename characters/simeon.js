@@ -199,7 +199,10 @@ const BLUFF_HOLD = { torso: -4, head: -6, armF: [70, 95], armB: [-30, 70], legF:
 const JS_GATHER = { hip: [0, 3], torso: 8, armF: [40, 100], armB: [30, 105], legF: [30, -55], legB: [10, -45], ...FISTS };
 const JS_SET = { hip: [0, 4], torso: 4, head: -10, armF: [150, 70], armB: [140, 80], legF: [30, -60], legB: [12, -50], ...FISTS };
 const JS_RELEASE = { hip: [0, -2], torso: -4, head: -12, armF: [150, 5], armB: [120, 40], legF: [6, -4], legB: [-6, -4], footF: 20, footB: 20, handF: 'open', handB: 'open', face: 'smile' };
-const BAIR_KICK = { rot: 72, torso: 6, head: -30, legF: [-6, -8], legB: [-16, -2], armF: [60, 70], armB: [40, 80], footF: -60, footB: -60, ...FISTS, face: 'yell' };
+// back air: knees pulled in to the chest, then both legs shot straight out
+// behind with the body laid flat (feet back, head forward)
+const BAIR_TUCK = { rot: 90, torso: 0, head: -70, legF: [178, -176], legB: [172, -172], armF: [40, 120], armB: [15, 125], footF: -90, footB: -90, ...FISTS };
+const BAIR_KICK = { rot: 90, torso: 0, head: -70, legF: [4, -2], legB: [-4, -2], armF: [40, 120], armB: [15, 125], footF: -90, footB: -90, ...FISTS, face: 'yell' };
 const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
 const UAIR_TUCK = { torso: 12, head: 10, legF: [70, -100], legB: [55, -95], armF: [30, 80], armB: [10, 85], ...FISTS };
 
@@ -440,12 +443,14 @@ const animations = {
     [8, { torso: 38, head: 15, armF: [25, 5], armB: [-20, 50], legF: [10, -20], legB: [-25, -40], ...FISTS }],
     [9, AIR],
   ]),
-  // Back air: dropkick, body level with both legs thrust out behind.
+  // Back air: knees in, then both legs blast straight out behind him with his
+  // body flat, like a horizontal double kick.
   bair: anim(false, [
-    [6, { rot: 30, torso: 10, legF: [40, -90], legB: [30, -100], armF: [40, 60], armB: [30, 70], ...FISTS }],
+    [4, { rot: 30, torso: 8, legF: [60, -100], legB: [50, -105], armF: [40, 80], armB: [30, 90], ...FISTS }],
+    [2, BAIR_TUCK],
     [4, BAIR_KICK], [3, BAIR_KICK],
-    [8, { rot: 40, torso: 10, legF: [20, -60], legB: [10, -70], armF: [40, 60], armB: [30, 70] }],
-    [8, AIR],
+    [7, { rot: 45, torso: 6, legF: [30, -50], legB: [20, -60], armF: [40, 60], armB: [30, 70] }],
+    [6, AIR],
   ]),
   // Up air: a full backflip with one leg extended, so the foot sweeps from
   // in front, over the head, to behind. rot runs from 0 to -360.
@@ -488,7 +493,8 @@ const animations = {
 //                          off: [x, y] px, lag (fixed hitlag frames), lagMult (percent of normal hitlag)
 //                  listed first = wins when several overlap, so put sweet spots first
 //   landLag      aerials: landing lag if he lands during frames autoCancel[0] .. autoCancel[1]-1
-//   trail        swipe arc drawn behind a body part while the move is out:
+//   trail        swipe arc drawn behind a body part while the move is out
+//                  (straight: true flattens it into a horizontal streak):
 //                  { part, from, to } (frames), so the hitbox is easy to see
 //   next         combo link: pressing attack from frame `from` starts `move`
 //   intangible   cannot be hit during frames 1..intangible
@@ -585,9 +591,10 @@ const moves = {
     hit(10, 12, 'fistF', 15, 10, 361, 25, 92),
     hit(10, 12, 'elbowF', 11, 9, 361, 25, 92),
   ] },
-  bair: { faf: 22, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 4, to: 8 }, hitboxes: [
-    ...hits(6, 7, LEG_B, 10.5, 361, 12, 106, BACK),
-    ...hits(8, 10, LEG_B, 7, 361, 12, 100, BACK),
+  // Both legs out behind: big hitboxes along both legs, strong clean hit.
+  bair: { faf: 22, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 3, to: 9, width: 7, straight: true }, hitboxes: [
+    ...hits(6, 8, [['toeB', 8], ['toeF', 8], ['shinB', 7], ['kneeB', 6]], 12, 361, 15, 105, BACK),
+    ...hits(9, 11, [['toeB', 7], ['toeF', 7], ['shinB', 6], ['kneeB', 5]], 8, 361, 15, 100, BACK),
   ] },
   // A tight arc around his upper body: from close in front, over his head, to behind.
   uair: { faf: 20, landLag: 4, autoCancel: [3, 14], trail: { part: 'toeF', from: 3, to: 9 }, hitboxes:
