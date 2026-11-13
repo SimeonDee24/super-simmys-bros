@@ -28,7 +28,8 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     hitlag: 0, hitstun: 0, intangible: 0, tumbling: 0,
     // Shield and dodges
     shieldHp: CONFIG.SHIELD_MAX, shieldStun: 0, airDodged: 0, dodgeDir: 0, mash: 0,
-    parryTick: -1, shieldHitTick: -1, breakTick: -1, kbAngle: 0, kbSpeed: 0, gv: 0,
+    parryTick: -1, shieldHitTick: -1, breakTick: -1,
+    counterDmg: 0, counterTick: -1,   // counter specials kbAngle: 0, kbSpeed: 0, gv: 0,
     hitX: 0, hitY: 0, lastHitTick: -1, lastHitDmg: 0,
     koX: 0, koY: 0,         // where the last KO happened (pixels), for the blast effect
     invuln: 0,
@@ -105,7 +106,7 @@ export function startMove(f, name, air) {
   f.move = name;
   f.moveAir = air ? 1 : 0;
   f.hitGroups = 0;
-  f.buf &= ~BTN.ATTACK;
+  f.buf &= ~(BTN.ATTACK | BTN.SPECIAL);
   const mv = getCharacter(f.charId).moves[name];
   if (mv.intangible) f.intangible = mv.intangible;
   setState(f, 'attack', name);
@@ -113,7 +114,24 @@ export function startMove(f, name, air) {
 
 // Ground attack button: no direction = jab, up = up tilt, down = down tilt,
 // sideways = forward tilt.
+// Special button (K). Each direction maps to a move name in the character's
+// `specials` table; a direction with no special yet does nothing.
+function trySpecial(c, air) {
+  if (!(c.pressed & BTN.SPECIAL)) return false;
+  const f = c.f, sp = c.ch.specials || {};
+  let slot = 'neutral';
+  if (c.input & BTN.UP) slot = 'up';
+  else if (c.input & BTN.DOWN) slot = 'down';
+  else if (c.dir) slot = 'side';
+  const name = sp[slot];
+  if (!name) return false;
+  if (slot === 'side' && c.dir) f.facing = c.dir;
+  startMove(f, name, air);
+  return true;
+}
+
 function tryGroundAttack(c) {
+  if (trySpecial(c, false)) return true;
   if (!(c.pressed & BTN.ATTACK)) return false;
   const f = c.f;
   if (c.input & BTN.UP) startMove(f, 'utilt', false);
@@ -125,6 +143,7 @@ function tryGroundAttack(c) {
 
 // Air attack button: direction relative to facing picks the aerial.
 function tryAerial(c) {
+  if (trySpecial(c, true)) return true;
   if (!(c.pressed & BTN.ATTACK)) return false;
   const f = c.f;
   let name = 'nair';
@@ -154,6 +173,7 @@ function airMotion(c) {
 
 // Attack while dashing or running.
 function tryDashAttack(c) {
+  if (trySpecial(c, false)) return true;
   if (!(c.pressed & BTN.ATTACK)) return false;
   startMove(c.f, 'dashAttack', false);
   c.f.vx = c.f.facing * c.ch.moves.dashAttack.slide.speed;
@@ -630,7 +650,7 @@ export function updateFighter(match, f, input) {
   // As in Smash Ultimate, a buffered button that is still being held stays
   // buffered for as long as it is held, so pressing jump early during an
   // aerial and keeping it down jumps on the very first frame possible.
-  const BUFFERED = BTN.JUMP | BTN.ATTACK;
+  const BUFFERED = BTN.JUMP | BTN.ATTACK | BTN.SPECIAL;
   if (pressed & BUFFERED) { f.buf |= pressed & BUFFERED; f.bufTimer = CONFIG.BUFFER_FRAMES; }
   else if (f.buf & input) { f.buf &= input; f.bufTimer = CONFIG.BUFFER_FRAMES; }
   else if (f.bufTimer > 0 && --f.bufTimer === 0) f.buf = 0;

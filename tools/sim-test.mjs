@@ -371,4 +371,39 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (let i = 0; i < 12; i++) step(s, [0, 0]);
   check('ledge roll pressed the moment he grabs the ledge still comes out', f.state === 'ledgeRoll', f.state);
 }
+// Bluff (down special counter)
+{
+  const near = () => { const s = createMatch(setup); s.fighters[1].x = s.fighters[0].x + 16 * FX; s.fighters[1].facing = -1; return s; };
+  // forward tilt (7%) into Bluff: no damage taken, counter deals 8.4%
+  let s = near(); let [a, v] = s.fighters;
+  step(s, [0, BTN.SPECIAL | BTN.DOWN]);
+  for (let i = 0; i < 4; i++) step(s, [0, 0]);
+  step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
+  let countered = false;
+  for (let i = 0; i < 40; i++) { step(s, [0, 0]); if (v.move === 'bluffHit') countered = true; }
+  check('Bluff catches a hit: no damage, counters for 1.2x', countered && v.percent === 0 && a.percent === 84, `simeon ${v.percent / 10}%, attacker ${a.percent / 10}%`);
+  // a weak hit still gets at least 8%
+  s = near(); [a, v] = s.fighters;
+  step(s, [0, BTN.SPECIAL | BTN.DOWN]);
+  for (let i = 0; i < 6; i++) step(s, [0, 0]);
+  step(s, [BTN.ATTACK, 0]);   // jab, 2.2%
+  for (let i = 0; i < 40; i++) step(s, [0, 0]);
+  check('Bluff counter deals at least 8%', a.percent === 80, `${a.percent / 10}%`);
+  // whiffed Bluff is punishable
+  s = near(); [a, v] = s.fighters;
+  step(s, [0, BTN.SPECIAL | BTN.DOWN]);
+  for (let i = 0; i < 30; i++) step(s, [0, 0]);
+  step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
+  for (let i = 0; i < 10; i++) step(s, [0, 0]);
+  check('after the counter window ends, Bluff can be hit', v.percent === 70 && a.percent === 0);
+  // works in the air
+  s = near(); [a, v] = s.fighters;
+  for (const f of [a, v]) { f.y -= 50 * FX; f.grounded = 0; f.ground = -1; f.state = 'air'; f.vy = 0; }
+  step(s, [0, BTN.SPECIAL | BTN.DOWN]);
+  for (let i = 0; i < 4; i++) { step(s, [0, 0]); a.vy = 0; v.vy = 0; }
+  step(s, [BTN.ATTACK, 0]);
+  countered = false;
+  for (let i = 0; i < 30; i++) { step(s, [0, 0]); a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; if (v.move === 'bluffHit') countered = true; }
+  check('Bluff works in the air', countered && v.percent === 0 && a.percent > 0);
+}
 process.exit(fails ? 1 : 0);

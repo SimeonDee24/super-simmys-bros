@@ -116,6 +116,7 @@ export class Renderer {
     }
 
     for (const f of state.fighters) this.drawTrail(f, getCharacter(f.charId), camX, camY);
+    for (const f of state.fighters) this.drawCard(state, f, getCharacter(f.charId), camX, camY);
     this.drawEffects(state, camX, camY);
     for (const f of state.fighters) if (f.state === 'dead') this.drawKoBlast(f);
     if (opts.showBoxes) this.drawBoxes(state, stage, camX, camY);
@@ -224,13 +225,23 @@ export class Renderer {
       if (f.state === 'shieldBreak' && was.state !== 'shieldBreak' && was.state !== undefined) {
         this.effects.push({ type: 'break', x: toPx(f.x), y: toPx(f.y) - 22, tick: state.tick, slot: f.slot });
       }
-      this.seen[i] = { fastFall: f.fastFall, lastHitTick: f.lastHitTick, parryTick: f.parryTick, state: f.state };
+      if (f.counterTick >= 0 && f.counterTick !== was.counterTick && was.counterTick !== undefined) {
+        this.effects.push({ type: 'counter', x: toPx(f.x), y: toPx(f.y) - 24, tick: state.tick });
+      }
+      this.seen[i] = { fastFall: f.fastFall, lastHitTick: f.lastHitTick, parryTick: f.parryTick, state: f.state, counterTick: f.counterTick };
     });
-    this.effects = this.effects.filter((e) => state.tick >= e.tick && state.tick - e.tick < (e.type === 'break' ? 30 : e.type === 'parry' ? 22 : 14));
+    this.effects = this.effects.filter((e) => state.tick >= e.tick && state.tick - e.tick < (e.type === 'break' ? 30 : e.type === 'parry' || e.type === 'counter' ? 22 : 14));
     for (const e of this.effects) {
       const age = state.tick - e.tick;
       const x = e.x - camX, y = e.y - camY;
       if (e.type === 'spark') { this.drawSpark(x, y, age, e.size, e.seed); continue; }
+      if (e.type === 'counter') {
+        // red-and-white burst and a flash: the bluff worked
+        this.drawRing(x, y, 8 + age * 3, age & 2 ? '#ffffff' : '#ff4a5a', 1 - age / 22);
+        this.drawRing(x, y, 4 + age * 2, '#ffe14a', 1 - age / 16);
+        if (age < 2) { ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(0, 0, W, H); }
+        continue;
+      }
       if (e.type === 'parry') { this.drawRing(x, y, 6 + age * 2, age < 6 ? '#ffffff' : '#9fe9ff', 1 - age / 22); continue; }
       if (e.type === 'break') {
         for (let k = 0; k < 10; k++) {
@@ -256,6 +267,30 @@ export class Renderer {
       ctx.fillRect(x - (d >> 1), y, (d >> 1) * 2 + 1, 1);
       ctx.fillRect(x, y - (d >> 1), 1, (d >> 1) * 2 + 1);
     }
+  }
+
+  // A playing card in his hand, for moves that set `card` (Bluff). Small while
+  // bluffing; big and swung round when the counter fires. Plain design: white
+  // card, red border, one red diamond.
+  drawCard(state, f, ch, camX, camY) {
+    if (f.state !== 'attack' || !f.move) return;
+    const cd = ch.moves[f.move].card;
+    if (!cd || f.stateFrame < cd.from || f.stateFrame > cd.to) return;
+    const a = ch.animations[f.anim];
+    const hand = jointAt(solve(ch.skeleton, samplePose(a, f.animFrame)), 'fistF');
+    const big = cd.size === 'big';
+    const w = big ? 11 : 5, h = big ? 15 : 7;
+    const x = toPx(f.x + f.facing * hand[0]) - camX + (big ? f.facing * 4 : f.facing) - (w >> 1);
+    const y = toPx(f.y + hand[1]) - camY - h + (big ? 4 : 2);
+    const ctx = this.ctx;
+    // glint every few frames while bluffing, so it reads as "try me"
+    const glint = !big && ((f.stateFrame >> 2) % 4 === 0);
+    ctx.fillStyle = '#100d16'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+    ctx.fillStyle = glint ? '#fffbe0' : '#f8f6ee'; ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = '#d2343c';
+    ctx.fillRect(x, y, w, 1); ctx.fillRect(x, y + h - 1, w, 1); ctx.fillRect(x, y, 1, h); ctx.fillRect(x + w - 1, y, 1, h);
+    const cx = x + (w >> 1), cy = y + (h >> 1), r = big ? 3 : 1;
+    for (let dy = -r; dy <= r; dy++) { const hw = r - Math.abs(dy); ctx.fillRect(cx - hw, cy + dy, hw * 2 + 1, 1); }
   }
 
   // Swipe arc: a bright ribbon following a fist or foot through the last few

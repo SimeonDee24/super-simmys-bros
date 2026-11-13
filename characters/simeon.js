@@ -192,6 +192,8 @@ const GUA_BACK = { rot: -30, hip: [-2, 17], torso: 0, legF: [100, -110], legB: [
 const LEDGE_KICK = { hip: [-1, 6], torso: -10, head: -4, legF: [88, -4], legB: [40, -100], armF: [-40, 40], armB: [30, 50], footF: 30, ...FISTS, face: 'yell' };
 // roll: curled up low with knees to chest and arms wrapped round them
 const ROLL_BALL = { hip: [0, 12], torso: 62, head: 40, armF: [60, 110], armB: [40, 115], legF: [100, -150], legB: [90, -145], footF: 40, footB: 40, ...FISTS };
+// bluff: card held up in front of his face, other hand on his hip
+const BLUFF_HOLD = { torso: -4, head: -6, armF: [70, 95], armB: [-30, 70], legF: [8, -6], legB: [-8, -4], face: 'smile' };
 const BAIR_KICK = { rot: 72, torso: 6, head: -30, legF: [-6, -8], legB: [-16, -2], armF: [60, 70], armB: [40, 80], footF: -60, footB: -60, ...FISTS, face: 'yell' };
 const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
 const UAIR_TUCK = { torso: 12, head: 10, legF: [70, -100], legB: [55, -95], armF: [30, 80], armB: [10, 85], ...FISTS };
@@ -293,6 +295,24 @@ const animations = {
     [18, { hip: [-1, 2], torso: -10, head: -20, armF: [10, 20], armB: [-5, 15], legF: [10, -15], legB: [-5, -10], face: 'hurt' }],
     [18, { hip: [1, 2], torso: 12, head: 20, armF: [5, 15], armB: [-10, 20], legF: [5, -10], legB: [-10, -15], face: 'hurt' }],
   ], { ease: true }),
+
+  // --- Specials ---
+  // Bluff: holds up a playing card with a smirk, daring them to hit him.
+  bluff: anim(false, [
+    [4, { torso: 4, armF: [40, 80], armB: [-10, 40], ...FISTS }],
+    [26, BLUFF_HOLD],
+    [8, BLUFF_HOLD],
+    [8, { torso: 2, armF: [30, 60], armB: [-10, 30] }],
+    [4, STAND],
+  ]),
+  // Bluff caught a hit: whips the card round in a big flip.
+  bluffHit: anim(false, [
+    [2, { torso: -12, armF: [-60, 70], armB: [40, 40], legF: [20, -20], legB: [-15, -10], face: 'yell' }],
+    [2, { hip: [2, 1], torso: 14, armF: [60, 20], armB: [-30, 50], legF: [35, -20], legB: [-25, -10], face: 'yell' }],
+    [6, { hip: [3, 1], torso: 22, armF: [100, 0], armB: [-40, 60], legF: [40, -25], legB: [-30, -10], face: 'yell' }],
+    [10, { torso: 10, armF: [70, 30], armB: [-20, 40], legF: [25, -20], legB: [-15, -10], face: 'smile' }],
+    [6, STAND],
+  ]),
 
   // --- Knockdown and getting up ---
   lie: anim(false, [[3, { ...LIE, hip: [-8, 19] }], [1, LIE]]),
@@ -456,6 +476,8 @@ const animations = {
 //                  { part, from, to } (frames), so the hitbox is easy to see
 //   next         combo link: pressing attack from frame `from` starts `move`
 //   intangible   cannot be hit during frames 1..intangible
+//   counter      counter window: see engine/combat.js (Bluff uses it)
+//   card         draw a playing card in his hand between these frames (render only)
 //   fromLedge    started from the ledge: climbs up over `rise` frames first
 //   slide        ground move that slides: starting speed and friction
 //   endsCrouched stay crouching afterwards if down is held
@@ -515,6 +537,16 @@ const moves = {
   ledgeAttack: { faf: 40, fromLedge: { rise: 16 }, intangible: 20, trail: { part: 'toeF', from: 19, to: 23 }, hitboxes:
     hits(21, 23, [['toeF', 6], ['shinF', 5], ['kneeF', 5]], 9, 361, 90, 20) },
 
+  // --- Specials ---
+  // Down special: Bluff (counter). If he is hit on frames 5-26 he takes no
+  // damage and flips the card back at them for 1.2x the damage (at least 8%).
+  bluff: { faf: 46, counter: { window: [5, 26], mult: 120, min: 80, then: 'bluffHit', freeze: 10, attackerExtra: 8, intangible: 12 },
+    card: { from: 3, to: 34, size: 'small' }, hitboxes: [] },
+  bluffHit: { faf: 30, card: { from: 0, to: 14, size: 'big' }, trail: { part: 'fistF', from: 2, to: 8, width: 7 }, hitboxes: [
+    hit(4, 7, 'fistF', 13, 0, 361, 60, 70, { counterDamage: true }),
+    hit(4, 7, 'chest', 10, 0, 361, 60, 70, { counterDamage: true, off: [10, -4] }),
+  ] },
+
   // --- Aerials ---
   nair: { faf: 27, landLag: 4, autoCancel: [3, 26], hitboxes: [
     ...hits(3, 5, [['toeF', 6], ['shinF', 5], ['hip', 6]], 8, 361, 20, 100),
@@ -557,4 +589,6 @@ export const SIMEON = {
   animations,
   defaultFace: 'smile',
   moves,
+  // Which move each special input uses. Missing slots do nothing yet.
+  specials: { down: 'bluff' },
 };

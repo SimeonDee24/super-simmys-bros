@@ -163,6 +163,31 @@ function applyParry(state, att, vic, hb) {
   setState(vic, 'idle', 'idle');
 }
 
+// --- Counter specials ---
+// A move with `counter: { window: [a, b], mult, min, then }` catches any hit
+// that lands on frames a..b: no damage, both freeze, and the defender
+// switches into the `then` move, whose `counterDamage` hitboxes deal the
+// caught attack's damage x mult% (at least `min`).
+function inCounter(f) {
+  if (f.state !== 'attack' || !f.move) return null;
+  const c = getCharacter(f.charId).moves[f.move].counter;
+  return c && f.stateFrame >= c.window[0] && f.stateFrame <= c.window[1] ? c : null;
+}
+
+function applyCounter(state, att, vic, hb, ctr) {
+  att.hitGroups |= 1 << (hb.group || 0);
+  vic.counterDmg = Math.max(ctr.min, Math.trunc((hb.damage * ctr.mult) / 100));
+  vic.counterTick = state.tick;
+  vic.facing = att.x >= vic.x ? 1 : -1;
+  const air = !vic.grounded;
+  vic.move = ctr.then; vic.moveAir = air ? 1 : 0; vic.hitGroups = 0;
+  setState(vic, 'attack', ctr.then);
+  vic.intangible = ctr.intangible || 10;
+  // freeze both; the attacker stays frozen long enough for the counter to land
+  vic.hitlag = ctr.freeze;
+  att.hitlag = ctr.freeze + ctr.attackerExtra;
+}
+
 // Called once per tick after everyone has moved. All hits are found first,
 // then applied, so two attacks landing on the same frame trade.
 export function resolveHits(state) {
@@ -173,6 +198,7 @@ export function resolveHits(state) {
     if (!boxes.length) continue;
     for (const vic of state.fighters) {
       if (vic === att || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state]) continue;
+      const ctr = inCounter(vic);
       const vch = getCharacter(vic.charId);
       const hurt = hurtboxes(vch.skeleton, fighterSolve(vic, vch), vic.facing);
       const shielding = SHIELDING[vic.state];
@@ -204,11 +230,13 @@ export function resolveHits(state) {
           }
         }
       }
-      if (found) hits.push([att, vic, found]);
+      if (found) { if (ctr && !found.shield) found.counter = ctr; hits.push([att, vic, found]); }
     }
   }
   for (const [att, vic, hit] of hits) {
-    if (hit.parry) applyParry(state, att, vic, hit.def);
+    if (hit.def.counterDamage) hit.def = { ...hit.def, damage: att.counterDmg };
+    if (hit.counter) applyCounter(state, att, vic, hit.def, hit.counter);
+    else if (hit.parry) applyParry(state, att, vic, hit.def);
     else if (hit.shield) applyShieldHit(state, att, vic, hit.def);
     else applyHit(state, att, vic, hit);
   }
