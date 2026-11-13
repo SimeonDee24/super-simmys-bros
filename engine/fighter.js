@@ -20,7 +20,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     anim: 'idle', animFrame: 0,
     grounded: 1, ground: spawn.ground || 0,
     jumpsLeft: st.airJumps, fastFall: 0, landLag: 0,
-    ledge: -1, ledgeCd: 0, ledgeQueue: 0,  // ledge being held, and frames until one can be grabbed again
+    ledge: -1, ledgeCd: 0, ledgeQueue: 0, ledgeGrabs: 0,  // ledge being held, and frames until one can be grabbed again
     wallSide: 0,            // -1 / 1 while touching a wall in the air (for wall jumps)
     prevIn: 0, tapDir: 0, tapTimer: 0,
     buf: 0, bufTimer: 0, dashBuf: 0, dashBufTimer: 0, // input buffer
@@ -89,6 +89,7 @@ export function land(f, groundIndex, st) {
   }
   f.airDodged = 0;
   f.intangible = 0;
+  f.ledgeGrabs = 0;
   if (f.tumbling || (f.state === 'hitstun' && f.anim === 'tumble')) {
     // Hit the floor while tumbling: knocked down.
     f.tumbling = 0;

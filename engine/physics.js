@@ -72,6 +72,9 @@ function tryLedgeGrab(f, stage, st) {
     if (Math.abs(handY - l.y * FX) > CONFIG.LEDGE_REACH_Y * FX) continue;
     f.ledge = i;
     f.ledgeQueue = 0;
+    const li = CONFIG.LEDGE_INTANGIBLE;
+    f.intangible = Math.max(f.intangible, f.ledgeGrabs < li.length ? li[f.ledgeGrabs] : 0);
+    f.ledgeGrabs++;
     f.tumbling = 0;
     f.airDodged = 0;
     f.x = l.x * FX + l.dir * st.ecbHalfW;

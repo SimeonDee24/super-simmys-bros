@@ -563,4 +563,22 @@ for (const hold of [0, 30]) {
   for (let i = 0; i < 30 && !s.projectiles.length; i++) { step(s, [0, 0]); if (a.grounded && a.move === 'jumpShot') landedMid = true; }
   check(`Jump Shot is not cancelled by landing${hold ? ' while charging' : ''}`, landedMid && s.projectiles.length === 1 && a.grounded === 1);
 }
+// Ledge intangibility, smaller on each regrab without landing
+{
+  const { CONFIG } = await import('../config/config.js');
+  const s = createMatch(setup); const [f, v] = s.fighters;
+  const grab = () => { for (let i = 0; i < 300 && f.state !== 'ledge'; i++) step(s, [f.grounded ? BTN.LEFT : BTN.RIGHT, 0]); return f.intangible; };
+  const first = grab();
+  // a forward tilt from the stage while he is intangible on the ledge does nothing
+  v.x = 112 * FX; v.facing = -1; v.y = 170 * FX;
+  step(s, [0, BTN.ATTACK | BTN.LEFT]); for (let i = 0; i < 12; i++) step(s, [0, 0]);
+  const safe = f.percent === 0;
+  for (let i = 0; i < 30; i++) step(s, [0, 0]);
+  step(s, [BTN.DOWN, 0]); for (let i = 0; i < 3; i++) step(s, [0, 0]);   // let go
+  step(s, [BTN.JUMP | BTN.LEFT, 0]);                                       // double jump away and back
+  for (let i = 0; i < 12; i++) step(s, [BTN.LEFT, 0]);
+  let second = -1;
+  for (let i = 0; i < 200 && second < 0; i++) { step(s, [BTN.RIGHT, 0]); if (f.state === 'ledge') second = f.intangible; if (f.grounded) break; }
+  check('grabbing the ledge gives intangibility, less on a regrab', first >= CONFIG.LEDGE_INTANGIBLE[0] - 1 && safe && second > 0 && second < first, `first ${first}, regrab ${second}`);
+}
 process.exit(fails ? 1 : 0);

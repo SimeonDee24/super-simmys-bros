@@ -103,6 +103,7 @@ export function applyHit(state, att, vic, hit, proj = null) {
   vic.fastFall = 0;
   vic.tumbling = 0;
   vic.airDodged = 0;
+  vic.ledgeGrabs = 0;
   vic.shieldStun = 0;
   vic.ledge = -1;
   vic.move = '';

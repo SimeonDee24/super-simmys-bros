@@ -100,7 +100,7 @@ export class Renderer {
       // the fighter who got hit shakes during hitlag
       const shake = f.hitlag > 0 && f.state === 'hitstun' ? ((f.hitlag & 1) ? 1 : -1) : 0;
       // dodging: a pale shimmer while he cannot be hit
-      const dodging = f.intangible > 0 && (f.state === 'roll' || f.state === 'spotdodge' || f.state === 'airdodge' || f.state === 'ledgeRoll');
+      const dodging = f.intangible > 0 && (f.state === 'roll' || f.state === 'spotdodge' || f.state === 'airdodge' || f.state === 'ledgeRoll' || f.state === 'ledge' || f.state === 'ledgeGetup');
       const tint = blink ? '#ffffff' : dodging && (state.tick & 2) ? '#d8f4ff' : null;
       // directional air dodge: fading afterimages trailing behind him
       if (f.state === 'airdodge' && f.dodgeDir && (f.vx || f.vy)) {

@@ -78,7 +78,10 @@ export const CONFIG = {
   LEDGE_REACH_X: 20,        // px outside the ledge where it can be grabbed
   LEDGE_INSIDE_X: 2,        // px past the ledge (over the stage) that still grab
   LEDGE_REACH_Y: 18,        // px above/below the ledge the hands can be
-  LEDGE_REGRAB_FRAMES: 30,  // frames after letting go before regrabbing
+  LEDGE_REGRAB_FRAMES: 30,
+  // Grabbing a ledge makes you intangible for a moment, like Smash. Each
+  // regrab without touching the stage (or being hit) gives less.
+  LEDGE_INTANGIBLE: [60, 35, 12],  // 1st, 2nd, 3rd grab; after that, none  // frames after letting go before regrabbing
 
   // --- Match rules ---
   DEFAULT_STOCKS: 3,
