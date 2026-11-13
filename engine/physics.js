@@ -13,8 +13,16 @@ export function moveFighter(f, stage, st) {
   if (f.grounded) {
     f.x += f.vx;
     const g = solids[f.ground];
-    // Walked or slid off the edge.
-    if (f.x < g.x * FX || f.x > (g.x + g.w) * FX) { f.vy = 0; enterAir(f, 'fall'); }
+    const gl = g.x * FX, gr = (g.x + g.w) * FX;
+    if (f.state === 'attack') {
+      // Ground attacks stop at the edge instead of sliding off.
+      if (f.x < gl) { f.x = gl; f.vx = 0; } else if (f.x > gr) { f.x = gr; f.vx = 0; }
+    } else if (f.x < gl || f.x > gr) {
+      // Walked, slid or was knocked off the edge.
+      f.vy = 0;
+      if (f.state === 'hitstun') { f.grounded = 0; f.ground = -1; }
+      else enterAir(f, 'fall');
+    }
     return;
   }
 

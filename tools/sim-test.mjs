@@ -104,6 +104,48 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (let i = 0; i < 600; i++) step(s2, [BTN.LEFT, 0]);
   check('last stock lost = out of the match', g.state === 'out' && g.stocks === 0, g.state);
 }
+// Attacks
+{
+  const { knockback } = await import('../engine/combat.js');
+  const kb = knockback(1105, 105, 98, 12, 106) / 1000;
+  check('knockback formula matches a hand calculation', Math.abs(kb - 134.6) < 0.5, kb.toFixed(1));
+  const near = () => { const s = createMatch(setup); s.fighters[1].x = s.fighters[0].x + 16 * FX; return s; };
+  // forward tilt
+  let s = near(); let [a, v] = s.fighters;
+  step(s, [BTN.ATTACK, 0]);
+  let firstHit = -1;
+  for (let i = 0; i < 60; i++) { step(s, [0, 0]); if (firstHit < 0 && v.percent > 0) firstHit = a.stateFrame; }
+  check('forward tilt hits for 7% on frame 5', v.percent === 70 && firstHit === 5, `${v.percent / 10}% on frame ${firstHit}`);
+  check('both fighters recover afterwards', a.state === 'idle' && v.state === 'idle' && v.x > a.x + 16 * FX);
+  // up tilt launches upward
+  s = near(); [a, v] = s.fighters;
+  step(s, [BTN.ATTACK | BTN.UP, 0]);
+  let lifted = false;
+  for (let i = 0; i < 40; i++) { step(s, [BTN.UP, 0]); if (!v.grounded) lifted = true; }
+  check('up tilt pops the opponent into the air', a.move === '' && v.percent === 55 && lifted);
+  // an aerial with landing lag, and an auto-cancelled one
+  s = createMatch(setup); a = s.fighters[0];
+  step(s, [BTN.JUMP, 0]);
+  for (let i = 0; i < 3; i++) step(s, [0, 0]); // short hop
+  step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
+  let lag = -1;
+  for (let i = 0; i < 80 && lag < 0; i++) { step(s, [0, 0]); if (a.state === 'land') lag = a.landLag; }
+  check('landing during forward air gives its landing lag', lag === 17, 'lag ' + lag);
+  s = createMatch(setup); a = s.fighters[0];
+  for (let i = 0; i < 4; i++) step(s, [BTN.JUMP, 0]);
+  step(s, [BTN.JUMP | BTN.ATTACK | BTN.UP, 0]);
+  lag = -1;
+  for (let i = 0; i < 80 && lag < 0; i++) { step(s, [BTN.JUMP, 0]); if (a.state === 'land') lag = a.landLag; }
+  check('up air finished before landing auto-cancels', lag === 2, 'lag ' + lag);
+  // high percent back air sends far enough to KO
+  s = near(); [a, v] = s.fighters;
+  v.percent = 1500; a.facing = -1; a.x = 360 * FX; v.x = 376 * FX;
+  a.y -= 10 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; // just off the ground
+  step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
+  let ko = false;
+  for (let i = 0; i < 200; i++) { step(s, [0, 0]); if (v.state === 'dead') ko = true; }
+  check('back air at 150% near the edge KOs', ko, 'victim stocks ' + v.stocks);
+}
 // Every stage loads and has the pieces the engine needs.
 {
   const { STAGES } = await import('../stages/index.js');

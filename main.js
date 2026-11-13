@@ -70,7 +70,7 @@ function render() {
     const f = match.state.fighters[0];
     opts.debugLines = [
       'TICK ' + match.state.tick + '  HASH ' + hashState(match.state) + '  FPS ' + fps,
-      'P1 ' + f.state + ' ' + f.stateFrame + '  VX ' + f.vx + ' VY ' + f.vy,
+      'P1 ' + (f.move || f.state) + ' ' + f.stateFrame + '  VX ' + f.vx + ' VY ' + f.vy,
     ];
   }
   renderer.drawMatch(match.state, opts);
@@ -88,9 +88,10 @@ function render() {
       '       TOWARD STAGE = GET UP, SPACE = JUMP, S = DROP',
       '',
       'F1  DEBUG INFO AND STATE HASH',
-      'F2  HURTBOXES AND LEDGE BOXES',
+      'F2  HITBOXES (RED), HURTBOXES (YELLOW), LEDGE BOXES',
       '',
-      'ATTACKS, SHIELD AND GRABS ARRIVE IN THE NEXT MILESTONES',
+      'ATTACK  J    ON THE GROUND: W = UP TILT, S = DOWN TILT, ELSE FORWARD TILT',
+      '             IN THE AIR: NEUTRAL, FORWARD, BACK, W = UP, S = DOWN AIR',
     ]);
   }
 }

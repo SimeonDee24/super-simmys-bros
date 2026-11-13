@@ -3,7 +3,7 @@
 // ledge, hitstun...) without changing how the table is driven.
 import { BTN } from './input.js';
 import { CONFIG } from '../config/config.js';
-import { FX, approach, clamp } from './fixed.js';
+import { FX, approach, clamp, sinDeg, cosDeg, mulTrig } from './fixed.js';
 import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 
@@ -21,6 +21,11 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     wallSide: 0,            // -1 / 1 while touching a wall in the air (for wall jumps)
     prevIn: 0, tapDir: 0, tapTimer: 0,
     percent: 0, stocks, falls: 0,
+    // Attacks
+    move: '', moveAir: 0, hitGroups: 0,
+    // Being hit
+    hitlag: 0, hitstun: 0, kbAngle: 0, kbSpeed: 0, gv: 0,
+    hitX: 0, hitY: 0, lastHitTick: -1, lastHitDmg: 0,
     koX: 0, koY: 0,         // where the last KO happened (pixels), for the blast effect
     invuln: 0,
   };
@@ -47,10 +52,66 @@ export function land(f, groundIndex, st) {
   f.grounded = 1;
   f.ground = groundIndex;
   f.landLag = f.fastFall ? st.hardLandLag : st.softLandLag;
+  if (f.state === 'attack') {
+    // Landing during an aerial: its own landing lag, unless inside an auto-cancel window.
+    const mv = getCharacter(f.charId).moves[f.move];
+    if (f.stateFrame >= mv.autoCancel[0] && f.stateFrame < mv.autoCancel[1]) f.landLag = mv.landLag;
+  } else if (f.state === 'hitstun') {
+    f.landLag = CONFIG.HITSTUN_LAND_LAG; // knockdown and teching arrive with milestone 3
+  }
+  f.move = '';
+  f.hitstun = 0;
   f.fastFall = 0;
   f.jumpsLeft = st.airJumps;
   f.wallSide = 0;
   setState(f, 'land', 'land');
+}
+
+export function startMove(f, name, air) {
+  f.move = name;
+  f.moveAir = air ? 1 : 0;
+  f.hitGroups = 0;
+  setState(f, 'attack', name);
+}
+
+// Ground attack button: up = up tilt, down = down tilt, sideways = forward tilt.
+// (No direction also gives forward tilt until the jab is added.)
+function tryGroundAttack(c) {
+  if (!(c.pressed & BTN.ATTACK)) return false;
+  const f = c.f;
+  if (c.input & BTN.UP) startMove(f, 'utilt', false);
+  else if (c.input & BTN.DOWN) startMove(f, 'dtilt', false);
+  else { if (c.dir) f.facing = c.dir; startMove(f, 'ftilt', false); }
+  return true;
+}
+
+// Air attack button: direction relative to facing picks the aerial.
+function tryAerial(c) {
+  if (!(c.pressed & BTN.ATTACK)) return false;
+  const f = c.f;
+  let name = 'nair';
+  if (c.input & BTN.UP) name = 'uair';
+  else if (c.input & BTN.DOWN) name = 'dair';
+  else if (c.dir === f.facing) name = 'fair';
+  else if (c.dir === -f.facing) name = 'bair';
+  startMove(f, name, true);
+  return true;
+}
+
+// Shared air movement: drift, fast fall, gravity.
+function airMotion(c) {
+  const { f, st } = c;
+  if (c.dir) {
+    const target = c.dir * st.airSpeed;
+    const slower = c.dir > 0 ? f.vx < target : f.vx > target;
+    f.vx = approach(f.vx, target, slower ? st.airAccel : st.airFriction);
+  } else {
+    f.vx = approach(f.vx, 0, st.airFriction);
+  }
+  // Fast fall: tap down at or after the peak
+  if ((c.pressed & BTN.DOWN) && f.vy >= 0 && !f.fastFall) f.fastFall = 1;
+  if (f.fastFall) f.vy = st.fastFallSpeed;
+  else f.vy = Math.min(f.vy + st.gravity, st.fallSpeed);
 }
 
 function tryJump(c) {
@@ -73,7 +134,7 @@ const STATES = {
   idle(c) {
     const { f, st } = c;
     f.vx = approach(f.vx, 0, st.traction);
-    if (tryJump(c) || toCrouch(c)) return;
+    if (tryGroundAttack(c) || tryJump(c) || toCrouch(c)) return;
     if (c.dir) {
       f.facing = c.dir;
       if (c.dashInput) startDash(c, c.dir); else setState(f, 'walk', 'walk');
@@ -82,7 +143,7 @@ const STATES = {
 
   walk(c) {
     const { f, st } = c;
-    if (tryJump(c) || toCrouch(c)) return;
+    if (tryGroundAttack(c) || tryJump(c) || toCrouch(c)) return;
     if (!c.dir) { setState(f, 'idle', 'idle'); return; }
     if (c.dashInput) { startDash(c, c.dir); return; }
     f.facing = c.dir;
@@ -114,7 +175,7 @@ const STATES = {
   brake(c) {
     const { f, st } = c;
     f.vx = approach(f.vx, 0, st.traction);
-    if (tryJump(c)) return;
+    if (tryGroundAttack(c) || tryJump(c)) return;
     if (c.dashInput) { startDash(c, c.dashInput); return; }
     if (f.stateFrame >= st.brakeFrames) setState(f, 'idle', 'idle');
   },
@@ -133,7 +194,7 @@ const STATES = {
   crouch(c) {
     const { f, st } = c;
     f.vx = approach(f.vx, 0, st.traction);
-    if (tryJump(c)) return;
+    if (tryGroundAttack(c) || tryJump(c)) return;
     if (!(c.input & BTN.DOWN)) setState(f, 'idle', 'idle');
     else if (c.dir) { f.facing = c.dir; setState(f, 'crawl', 'crawl'); }
   },
@@ -141,7 +202,7 @@ const STATES = {
   // Walking while crouched.
   crawl(c) {
     const { f, st } = c;
-    if (tryJump(c)) return;
+    if (tryGroundAttack(c) || tryJump(c)) return;
     if (!(c.input & BTN.DOWN)) { setState(f, c.dir ? 'walk' : 'idle', c.dir ? 'walk' : 'idle'); return; }
     if (!c.dir) { setState(f, 'crouch', 'crouch'); f.animFrame = 99; return; } // stay down, skip the crouch-down blend
     f.facing = c.dir;
@@ -202,18 +263,9 @@ const STATES = {
       if (c.dir) f.vx = c.dir * st.doubleJumpH;
       f.anim = 'djump'; f.animFrame = 0;
     }
-    // Air drift
-    if (c.dir) {
-      const target = c.dir * st.airSpeed;
-      const slower = c.dir > 0 ? f.vx < target : f.vx > target;
-      f.vx = approach(f.vx, target, slower ? st.airAccel : st.airFriction);
-    } else {
-      f.vx = approach(f.vx, 0, st.airFriction);
-    }
-    // Fast fall: tap down at or after the peak
-    if ((c.pressed & BTN.DOWN) && f.vy >= 0 && !f.fastFall) f.fastFall = 1;
-    if (f.fastFall) f.vy = st.fastFallSpeed;
-    else f.vy = Math.min(f.vy + st.gravity, st.fallSpeed);
+    const attacked = tryAerial(c);
+    airMotion(c);
+    if (attacked) return;
 
     if (!(f.anim === 'djump' && f.animFrame < st.doubleJumpAnimFrames)) {
       setAnim(f, f.vy < 0 ? 'jump' : 'fall');
@@ -256,11 +308,46 @@ const STATES = {
     }
   },
 
+  // Any attack. Ground moves slide to a stop; aerials keep normal air control.
+  // On frame `faf` (first actionable frame) the fighter can act again.
+  attack(c) {
+    const { f, st } = c;
+    const mv = c.ch.moves[f.move];
+    if (f.moveAir) airMotion(c);
+    else f.vx = approach(f.vx, 0, st.traction);
+    if (f.stateFrame < mv.faf) return;
+    f.move = '';
+    if (f.moveAir) { setState(f, 'air', f.vy < 0 ? 'jump' : 'fall'); return; }
+    if (mv.endsCrouched && (c.input & BTN.DOWN)) { setState(f, 'crouch', 'crouch'); f.animFrame = 99; }
+    else setState(f, 'idle', 'idle');
+    STATES[f.state](c); // act on this same frame
+  },
+
+  // Launched or flinching. Knockback speed decays every frame; in the air,
+  // gravity builds up separately on top of it.
+  hitstun(c) {
+    const { f, st } = c;
+    f.kbSpeed = Math.max(0, f.kbSpeed - CONFIG.KB_DECAY - (f.grounded ? st.traction : 0));
+    const kbx = mulTrig(f.kbSpeed, cosDeg(f.kbAngle));
+    const kby = -mulTrig(f.kbSpeed, sinDeg(f.kbAngle));
+    if (f.grounded) { f.vx = kbx; f.vy = 0; }
+    else {
+      f.gv = Math.min(f.gv + st.gravity, st.fallSpeed);
+      f.vx = kbx;
+      f.vy = kby + f.gv;
+    }
+    if (f.stateFrame >= f.hitstun) {
+      f.hitstun = 0;
+      if (f.grounded) setState(f, 'idle', 'idle');
+      else setState(f, 'air', 'fall');
+    }
+  },
+
   land(c) {
     const { f, st } = c;
     f.vx = approach(f.vx, 0, st.traction);
     if (f.stateFrame >= f.landLag) {
-      if (tryJump(c)) return;
+      if (tryGroundAttack(c) || tryJump(c)) return;
       setState(f, 'idle', 'idle');
     }
   },
@@ -269,7 +356,8 @@ const STATES = {
 // Advance one fighter by one tick using only its previous state and this
 // frame's input bitmask.
 export function updateFighter(match, f, input) {
-  const st = getCharacter(f.charId).stats;
+  const ch = getCharacter(f.charId);
+  const st = ch.stats;
   const pressed = input & ~f.prevIn;
   let dir = 0;
   if (input & BTN.LEFT) dir -= 1;
@@ -286,6 +374,6 @@ export function updateFighter(match, f, input) {
   f.animFrame++;
   if (f.invuln > 0) f.invuln--;
   if (f.ledgeCd > 0) f.ledgeCd--;
-  STATES[f.state]({ match, f, st, input, pressed, dir, tap, dashInput });
+  STATES[f.state]({ match, f, ch, st, input, pressed, dir, tap, dashInput });
   f.prevIn = input;
 }

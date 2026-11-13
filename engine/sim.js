@@ -8,6 +8,7 @@ import { getStage } from '../stages/index.js';
 import { getCharacter } from '../characters/index.js';
 import { newFighter, updateFighter } from './fighter.js';
 import { moveFighter, checkBlastZones } from './physics.js';
+import { resolveHits } from './combat.js';
 
 // setup = { stageId, players: [{ charId, alt }, { charId, alt }], stocks, seed }
 export function createMatch(setup) {
@@ -26,10 +27,14 @@ export function step(state, inputs) {
   for (let i = 0; i < state.fighters.length; i++) {
     const f = state.fighters[i];
     const st = getCharacter(f.charId).stats;
+    // Hitlag: both fighters freeze for a few frames when a hit lands.
+    // Inputs pressed during the freeze still count on the first frame after it.
+    if (f.hitlag > 0) { f.hitlag--; continue; }
     updateFighter(state, f, inputs[i] | 0);
     moveFighter(f, stage, st);
     checkBlastZones(f, stage);
   }
+  resolveHits(state);
   state.tick++;
   return state;
 }

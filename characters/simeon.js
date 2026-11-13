@@ -153,6 +153,17 @@ const RUN_B = { hip: [1, 1], torso: 20, head: 8, armF: [-10, 80], armB: [10, 85]
 const RUN_C = { hip: [1, 2], torso: 20, head: 8, armF: [50, 85], armB: [-55, 75], legF: [-35, -65], legB: [55, -25], footF: 40, handF: 'fist', handB: 'fist' };
 const RUN_D = { hip: [1, 1], torso: 20, head: 8, armF: [10, 85], armB: [-10, 80], legF: [25, -100], legB: [12, -20], footF: 30, handF: 'fist', handB: 'fist' };
 
+// Shared bits of attack poses.
+const FISTS = { handF: 'fist', handB: 'fist' };
+const STAND = { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6, -2] };
+const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: [-14, -18], footF: 25, footB: 35 };
+const SPIN_A = { torso: 0, armF: [95, 0], armB: [-95, 0], legF: [4, -4], legB: [-4, -4], footF: 60, footB: 60, ...FISTS, face: 'yell' };
+const SPIN_B = { torso: 0, armF: [-95, 0], armB: [95, 0], legF: [-4, -4], legB: [4, -4], footF: 60, footB: 60, ...FISTS, face: 'yell' };
+const FTILT_KICK = { hip: [-1, 0], torso: -14, legF: [92, -2], legB: [-6, -4], armF: [-45, 25], armB: [45, 35], footF: 30, ...FISTS, face: 'yell' };
+const DTILT_LOW = { hip: [-1, 9], torso: 24, head: 8, legF: [62, -112], legB: [50, -108], armF: [10, 50], armB: [-10, 40] };
+const DTILT_SWEEP = { hip: [-2, 12], torso: 10, legF: [76, -4], legB: [60, -124], armF: [-30, 30], armB: [-50, 20], footF: 20, face: 'yell' };
+const BAIR_KICK = { torso: 32, head: 10, legF: [-60, -20], legB: [-88, -2], armF: [70, 20], armB: [60, 30], footB: -30, face: 'yell' };
+
 const animations = {
   idle: anim(true, [
     [34, { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6, -2], face: 'smile' }],
@@ -199,10 +210,120 @@ const animations = {
     [7, { hip: [0, 6], torso: 24, armF: [20, 40], armB: [5, 40], legF: [50, -95], legB: [32, -82] }],
     [1, { torso: 3, armF: [6, 12], armB: [-6, 10], legF: [6, -6], legB: [-5, -4] }],
   ]),
+  // --- Being hit ---
+  hurt: anim(true, [
+    [6, { torso: -22, head: -18, armF: [110, 30], armB: [-120, -20], legF: [35, -40], legB: [-25, -30], footF: 20, footB: 30, face: 'hurt' }],
+    [6, { torso: -28, head: -22, armF: [125, 40], armB: [-105, -10], legF: [45, -50], legB: [-15, -40], footF: 20, footB: 30, face: 'hurt' }],
+  ]),
+  tumble: anim(true, [
+    [7, { hip: [0, -3], torso: -50, head: -30, armF: [150, 20], armB: [-150, -10], legF: [70, -50], legB: [10, -60], footF: 30, footB: 40, face: 'hurt' }],
+    [7, { hip: [0, -3], torso: -70, head: -40, armF: [120, 40], armB: [-120, -30], legF: [95, -70], legB: [35, -40], footF: 30, footB: 40, face: 'hurt' }],
+  ]),
+
+  // --- Attacks. A pose is fully reached at the frame equal to the sum of
+  // the frame counts before it, so line that up with the move's active frames.
+  // Repeating a pose holds it. ---
+  ftilt: anim(false, [
+    [5, { torso: -2, legF: [35, -70], armF: [-25, 35], armB: [30, 45], ...FISTS }],
+    [3, FTILT_KICK], [3, FTILT_KICK],
+    [8, { torso: -6, legF: [45, -55], armF: [-25, 35], armB: [30, 45] }],
+    [6, STAND],
+  ]),
+  utilt: anim(false, [
+    [5, { torso: 6, armF: [60, 70], armB: [-20, 40], ...FISTS }],
+    [6, { hip: [0, -1], torso: -4, armF: [125, 25], armB: [-30, 30], ...FISTS, face: 'yell' }],
+    [6, { hip: [0, -1], torso: -10, head: -10, armF: [195, 10], armB: [-40, 30], ...FISTS, face: 'yell' }],
+    [12, STAND],
+  ]),
+  dtilt: anim(false, [
+    [5, DTILT_LOW],
+    [3, DTILT_SWEEP], [4, DTILT_SWEEP],
+    [14, DTILT_LOW],
+    [1, DTILT_LOW],
+  ]),
+  nair: anim(false, [
+    [3, { torso: -6, legF: [45, -60], legB: [-10, -50], armF: [30, 60], armB: [-30, 50], ...FISTS }],
+    [20, { torso: -12, legF: [72, -4], legB: [-25, -70], armF: [-40, 40], armB: [50, 40], footF: 20, ...FISTS, face: 'yell' }],
+    [10, { torso: -8, legF: [60, -20], legB: [-20, -60], armF: [-30, 40], armB: [40, 40], footF: 20 }],
+    [12, AIR],
+  ]),
+  fair: anim(false, [
+    [8, { torso: -10, armF: [150, 30], armB: [-40, 50], legF: [20, -30], legB: [-10, -30], ...FISTS }],
+    [8, { torso: -18, armF: [205, 15], armB: [-50, 60], legF: [25, -40], legB: [-15, -35], ...FISTS }],
+    [2, { torso: 10, armF: [125, 5], armB: [-40, 60], legF: [20, -30], legB: [-15, -35], ...FISTS, face: 'yell' }],
+    [2, { torso: 28, armF: [70, 5], armB: [-30, 60], legF: [10, -20], legB: [-25, -40], ...FISTS, face: 'yell' }],
+    [10, { torso: 40, head: 15, armF: [25, 5], armB: [-20, 50], legF: [10, -20], legB: [-25, -40], ...FISTS }],
+    [29, AIR],
+  ]),
+  bair: anim(false, [
+    [6, { torso: 10, legF: [10, -60], legB: [-10, -70], armF: [40, 40], armB: [30, 50] }],
+    [4, BAIR_KICK], [3, BAIR_KICK],
+    [9, { torso: 15, legF: [-20, -40], legB: [-30, -50], armF: [40, 40], armB: [30, 50] }],
+    [11, AIR],
+  ]),
+  uair: anim(false, [
+    [4, { torso: -10, legF: [70, -20], legB: [20, -60], armF: [-30, 30], armB: [-50, 20] }],
+    [4, { hip: [0, -1], torso: -35, head: -20, legF: [125, -5], legB: [40, -70], armF: [-60, 20], armB: [-80, 10], footF: -60, face: 'yell' }],
+    [10, { hip: [0, -1], torso: -55, head: -30, legF: [185, -5], legB: [60, -80], armF: [-70, 20], armB: [-90, 10], footF: -120, face: 'yell' }],
+    [13, { torso: -20, legF: [60, -40], legB: [10, -50] }],
+    [1, AIR],
+  ]),
+  dair: anim(false, [
+    [4, { torso: 0, armF: [40, 60], armB: [-40, 50], legF: [6, -8], legB: [-6, -8], footF: 60, footB: 60, ...FISTS }],
+    [4, SPIN_A], [4, SPIN_B], [4, SPIN_A], [4, SPIN_B], [4, SPIN_A], [4, SPIN_B],
+    [8, AIR],
+  ]),
+
   land: anim(false, [
     [2, { hip: [0, 5], torso: 14, armF: [25, 30], armB: [-30, 20], legF: [45, -85], legB: [28, -75] }],
     [4, { hip: [0, 1], torso: 4, armF: [8, 14], armB: [-8, 10], legF: [14, -22], legB: [-2, -18] }],
   ]),
+};
+
+// ---------------------------------------------------------------------------
+// Moves. Frame data follows a mid-weight all-rounder.
+//   faf          first frame he can act again
+//   hitboxes     hit(firstFrame, lastFrame, bodyPart, radiusPx, damage%, angle, baseKB, KBgrowth, extras)
+//                  bodyPart: handF/B, elbowF/B, footF/B, kneeF/B, hip, neck (the hitbox follows it)
+//                  angle: 0 = straight forward, 90 = up, 270 = down (spike), 361 = automatic
+//                  extras: dir: -1 (launch backward), group (each group hits once per use),
+//                          off: [x, y] px, lag (fixed hitlag frames)
+//                  listed first = wins when several overlap, so put sweet spots first
+//   landLag      aerials: landing lag if he lands during frames autoCancel[0] .. autoCancel[1]-1
+//   endsCrouched stay crouching afterwards if down is held
+// ---------------------------------------------------------------------------
+const hit = (from, to, at, r, damage, angle, bkb, kbg, extra = {}) => ({
+  frames: [from, to], at, r, damage: Math.round(damage * 10), angle, bkb, kbg, ...extra,
+});
+const BACK = { dir: -1 };
+const spin = (frame, group) => hit(frame, frame + 1, 'hip', 11, 1.4, 85, 20, 10, { group, off: [0, -8], lag: 2 });
+
+const moves = {
+  // --- Tilts ---
+  ftilt: { faf: 26, hitboxes: [hit(5, 7, 'footF', 5, 7, 361, 8, 100), hit(5, 7, 'kneeF', 4, 7, 361, 8, 100)] },
+  utilt: { faf: 30, hitboxes: [hit(5, 11, 'handF', 6, 5.5, 96, 26, 130), hit(5, 11, 'elbowF', 4, 5.5, 96, 26, 130)] },
+  dtilt: { faf: 28, endsCrouched: true, hitboxes: [hit(5, 7, 'kneeF', 4, 7, 80, 30, 80), hit(5, 7, 'footF', 5, 5, 80, 30, 80)] },
+
+  // --- Aerials ---
+  nair: { faf: 46, landLag: 6, autoCancel: [3, 39], hitboxes: [
+    hit(3, 5, 'footF', 5, 8, 361, 20, 100), hit(3, 5, 'hip', 5, 8, 361, 20, 100),
+    hit(6, 24, 'footF', 5, 5, 361, 10, 100), hit(6, 24, 'hip', 5, 5, 361, 10, 100),
+  ] },
+  fair: { faf: 60, landLag: 17, autoCancel: [3, 43], hitboxes: [
+    hit(17, 20, 'handF', 6, 14, 270, 20, 80),            // sweet spot: spike
+    hit(16, 16, 'handF', 6, 12, 361, 30, 87),
+    hit(16, 20, 'elbowF', 4, 12, 361, 30, 87),
+    hit(21, 21, 'handF', 6, 10, 361, 30, 87),
+  ] },
+  bair: { faf: 34, landLag: 6, autoCancel: [6, 19], hitboxes: [
+    hit(6, 7, 'footB', 5, 10.5, 361, 12, 106, BACK), hit(6, 7, 'kneeB', 4, 10.5, 361, 12, 106, BACK),
+    hit(8, 10, 'footB', 5, 7, 361, 12, 100, BACK), hit(8, 10, 'kneeB', 4, 7, 361, 12, 100, BACK),
+  ] },
+  uair: { faf: 32, landLag: 6, autoCancel: [4, 18], hitboxes: [hit(4, 8, 'footF', 5, 7, 75, 9, 135), hit(4, 8, 'kneeF', 4, 7, 75, 9, 135)] },
+  dair: { faf: 38, landLag: 15, autoCancel: [5, 33], hitboxes: [
+    spin(5, 0), spin(9, 1), spin(13, 2), spin(17, 3), spin(21, 4),
+    hit(25, 26, 'hip', 12, 5.5, 60, 40, 110, { group: 5, off: [0, -8] }),
+  ] },
 };
 
 export const SIMEON = {
@@ -216,5 +337,5 @@ export const SIMEON = {
   outline,
   animations,
   defaultFace: 'smile',
-  // moves: {}  <- milestone 2 adds attacks here (frame data + hitboxes per frame)
+  moves,
 };

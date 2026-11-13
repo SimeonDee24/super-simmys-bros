@@ -4,6 +4,7 @@ import { CONFIG } from '../config/config.js';
 import { GAME_VERSION } from '../config/version.js';
 import { FX, toPx } from '../engine/fixed.js';
 import { samplePose, solve, hurtboxes } from '../engine/skeleton.js';
+import { activeHitboxes } from '../engine/combat.js';
 import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { DollRenderer } from './doll.js';
@@ -96,7 +97,9 @@ export class Renderer {
       const ch = getCharacter(f.charId);
       if (f.state === 'respawn') this.drawRespawnPlatform(toPx(f.x) - camX, toPx(f.y) - camY, f.slot);
       const blink = f.invuln > 0 && (state.tick >> 2) & 1;
-      this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, toPx(f.x) - camX, toPx(f.y) - camY, f.facing,
+      // the fighter who got hit shakes during hitlag
+      const shake = f.hitlag > 0 && f.state === 'hitstun' ? ((f.hitlag & 1) ? 1 : -1) : 0;
+      this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, toPx(f.x) - camX + shake, toPx(f.y) - camY, f.facing,
         blink ? { flash: '#ffffff' } : undefined);
     }
 
@@ -166,12 +169,16 @@ export class Renderer {
       if (f.fastFall && !was.fastFall) {
         this.effects.push({ type: 'fastfall', x: toPx(f.x), y: toPx(f.y) - 24, tick: state.tick });
       }
-      this.seen[i] = { fastFall: f.fastFall };
+      if (f.lastHitTick >= 0 && f.lastHitTick !== was.lastHitTick && was.lastHitTick !== undefined) {
+        this.effects.push({ type: 'spark', x: f.hitX, y: f.hitY, tick: state.tick, size: Math.min(14, 5 + (f.lastHitDmg / 14 | 0)), seed: f.lastHitTick });
+      }
+      this.seen[i] = { fastFall: f.fastFall, lastHitTick: f.lastHitTick };
     });
     this.effects = this.effects.filter((e) => state.tick >= e.tick && state.tick - e.tick < 14);
     for (const e of this.effects) {
       const age = state.tick - e.tick;
       const x = e.x - camX, y = e.y - camY;
+      if (e.type === 'spark') { this.drawSpark(x, y, age, e.size, e.seed); continue; }
       // four-point twinkle: grows fast, then shrinks
       const len = age < 3 ? 3 + age * 2 : Math.max(1, 8 - ((age - 3) * 2) / 3 | 0);
       ctx.fillStyle = '#5fc8ff';
@@ -184,6 +191,30 @@ export class Renderer {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(x - (d >> 1), y, (d >> 1) * 2 + 1, 1);
       ctx.fillRect(x, y - (d >> 1), 1, (d >> 1) * 2 + 1);
+    }
+  }
+
+  // Hit spark: a jagged burst that is bigger for stronger hits.
+  drawSpark(x, y, age, size, seed) {
+    const ctx = this.ctx;
+    if (age > 9) return;
+    const grow = age < 3 ? (age + 1) / 3 : 1, fade = age > 5 ? (10 - age) / 5 : 1;
+    const spikes = 8;
+    for (let i = 0; i < spikes; i++) {
+      const ang = (i / spikes) * Math.PI * 2 + (seed % 7) * 0.3;
+      const len = size * grow * (i & 1 ? 1 : 0.55);
+      const inner = age > 3 ? len * (1 - fade) : 0;
+      const cs = Math.cos(ang), sn = Math.sin(ang);
+      for (let d = inner; d <= len; d++) {
+        const t = Math.max(1, Math.round((1 - d / (len + 1)) * 3 * fade));
+        ctx.fillStyle = d < len * 0.5 ? '#ffffff' : (i & 1 ? '#ffe14a' : '#ff9a3c');
+        ctx.fillRect(Math.round(x + cs * d - t / 2), Math.round(y + sn * d - t / 2), t, t);
+      }
+    }
+    if (age < 4) {
+      const r = Math.round(size * 0.45 * grow);
+      ctx.fillStyle = '#ffffff';
+      for (let dy = -r; dy <= r; dy++) { const h = Math.floor(Math.sqrt(r * r - dy * dy)); ctx.fillRect(x - h, y + dy, h * 2 + 1, 1); }
     }
   }
 
@@ -214,6 +245,9 @@ export class Renderer {
           f.invuln > 0 ? '#5a8cff' : '#ffe14a');
       }
       rect(toPx(f.x - st.ecbHalfW) - camX, toPx(f.y - st.ecbHeight) - camY, toPx(f.x + st.ecbHalfW) - camX, toPx(f.y) - camY, '#ffffff');
+      for (const b of activeHitboxes(f, ch, true)) {
+        rect(toPx(b.x1) - camX, toPx(b.y1) - camY, toPx(b.x2) - camX + 1, toPx(b.y2) - camY + 1, '#ff2a2a');
+      }
     }
   }
 
@@ -230,7 +264,10 @@ export class Renderer {
       ctx.fillStyle = PLAYER_COLORS[i];
       ctx.fillRect(cx - 38, y - 3, 76, 2);
       drawText(ctx, 'P' + (i + 1) + ' ' + ch.name, cx, y + 2, PLAYER_COLORS[i], 1, 'center', '#000000');
-      drawText(ctx, f.percent + '%', cx, y + 10, '#ffffff', 2, 'center', '#000000');
+      // percent shifts from white through yellow and orange to red as it climbs
+      const p = f.percent / 10;
+      const pc = p < 30 ? '#ffffff' : p < 60 ? '#ffe9a0' : p < 90 ? '#ffc04a' : p < 120 ? '#ff8a3c' : '#ff4a3a';
+      drawText(ctx, p.toFixed(1) + '%', cx, y + 10, pc, 2, 'center', '#000000');
       for (let s = 0; s < f.stocks; s++) {
         ctx.fillStyle = '#000000'; ctx.fillRect(cx - 35 + s * 6, y + 19, 5, 5);
         ctx.fillStyle = PLAYER_COLORS[i]; ctx.fillRect(cx - 34 + s * 6, y + 20, 3, 3);

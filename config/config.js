@@ -18,6 +18,18 @@ export const CONFIG = {
   // --- Defence (used from milestone 3) ---
   PARRY_WINDOW: 5,          // frames after releasing shield that still parry
 
+  // --- Hits and knockback ---
+  // launch speed (px/frame) = knockback * KB_SPEED_NUM / KB_SPEED_DEN / 256
+  KB_SPEED_NUM: 1344, KB_SPEED_DEN: 100000,   // = 0.0525 px per knockback unit
+  KB_DECAY: 23,             // launch speed lost per frame (1/256 px) = 0.09 px
+  HITSTUN_NUM: 4, HITSTUN_DEN: 10000,         // hitstun frames = knockback * 0.4
+  HITLAG_BASE: 5,           // freeze frames on any hit...
+  HITLAG_PER_DMG: 65,       // ...plus 0.65 frames per 1% damage
+  HITLAG_MAX: 20,
+  TUMBLE_KB: 80000,         // knockback (thousandths) at which the victim tumbles
+  SAKURAI: { lowKb: 60000, highKb: 88000, ground: 38, air: 45 },
+  HITSTUN_LAND_LAG: 8,      // landing lag when hitting the floor during hitstun
+
   // --- Ledges ---
   LEDGE_REACH_X: 16,        // px outside the ledge where it can be grabbed
   LEDGE_INSIDE_X: 2,        // px past the ledge (over the stage) that still grab
