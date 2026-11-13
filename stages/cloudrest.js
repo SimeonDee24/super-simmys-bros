@@ -85,28 +85,28 @@ export const CLOUDREST = {
   id: 'cloudrest',
   name: 'CLOUDREST TERRACE',
 
-  // Solid rectangles. solids[0] is the main platform (280px wide); its sides
+  // Solid rectangles. solids[0] is the main platform (340px wide); its sides
   // are the walls used for wall jumps. The others are the stepped underside.
   solids: [
-    { x: 100, y: 170, w: 280, h: 44 },
-    { x: 128, y: 214, w: 224, h: 14 },
-    { x: 160, y: 228, w: 160, h: 12 },
+    { x: 70, y: 170, w: 340, h: 44 },
+    { x: 100, y: 214, w: 280, h: 14 },
+    { x: 136, y: 228, w: 208, h: 12 },
   ],
 
   // Grabbable ledges. dir = which way is off-stage, solid = platform it belongs to.
   ledges: [
-    { x: 100, y: 170, dir: -1, solid: 0 },
-    { x: 380, y: 170, dir: 1, solid: 0 },
+    { x: 70, y: 170, dir: -1, solid: 0 },
+    { x: 410, y: 170, dir: 1, solid: 0 },
   ],
 
   spawns: [
-    { x: 190, y: 170, facing: 1, ground: 0 },
-    { x: 290, y: 170, facing: -1, ground: 0 },
+    { x: 175, y: 170, facing: 1, ground: 0 },
+    { x: 305, y: 170, facing: -1, ground: 0 },
   ],
   respawn: { x: 240, y: 90 },
 
   // Just beyond the screen edges; the top one is higher.
-  blast: { left: -60, right: 540, top: -110, bottom: 325 },
+  blast: { left: -170, right: 650, top: -230, bottom: 345 },
 
   // --- Art (drawn by render/background.js) ---
   background: {

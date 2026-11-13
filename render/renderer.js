@@ -14,6 +14,14 @@ import { drawText } from './font.js';
 const W = CONFIG.SCREEN_W, H = CONFIG.SCREEN_H;
 const PLAYER_COLORS = ['#ff5a5a', '#5aa2ff'];
 
+// Hard-edged filled circle (render only).
+function disc(ctx, cx, cy, r) {
+  for (let dy = -r; dy <= r; dy++) {
+    const half = Math.floor(Math.sqrt(r * r - dy * dy));
+    ctx.fillRect(Math.round(cx) - half, Math.round(cy) + dy, half * 2 + 1, 1);
+  }
+}
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -121,6 +129,7 @@ export class Renderer {
     for (const p of state.projectiles || []) this.drawProjectile(p, camX, camY);
     for (const f of state.fighters) this.drawChargeMeter(state, f, getCharacter(f.charId), camX, camY);
     this.drawEffects(state, camX, camY);
+    for (const f of state.fighters) this.drawOffscreen(state, f, camX, camY);
     for (const f of state.fighters) if (f.state === 'dead') this.drawKoBlast(f);
     if (opts.showBoxes) this.drawBoxes(state, stage, camX, camY);
     this.drawHud(state);
@@ -128,6 +137,37 @@ export class Renderer {
       let y = 4;
       for (const line of opts.debugLines) { drawText(ctx, line, 4, y, '#ffffff', 1, 'left', '#000000'); y += 7; }
     }
+  }
+
+  // Off-screen bubble: when a fighter leaves the screen, a ringed bubble at
+  // the nearest edge shows them shrunk to half size, with a pointer toward
+  // where they really are.
+  drawOffscreen(state, f, camX, camY) {
+    if (f.state === 'dead' || f.state === 'out' || f.state === 'respawn') return;
+    const sx = toPx(f.x) - camX, sy = toPx(f.y) - camY;
+    const top = sy - 44;
+    if (sx > -8 && sx < W + 8 && sy > 0 && top < H) return;   // still (partly) visible
+    const R = 17, cx = Math.max(R + 3, Math.min(W - R - 3, sx)), cy = Math.max(R + 3, Math.min(H - R - 30, sy - 22));
+    const ctx = this.ctx, col = PLAYER_COLORS[f.slot];
+    if (!this.mini) { this.mini = document.createElement('canvas'); this.mini.width = 72; this.mini.height = 72; }
+    const m = this.mini, mc = m.getContext('2d');
+    mc.clearRect(0, 0, 72, 72);
+    this.doll.drawAnim(mc, getCharacter(f.charId), f.alt, f.anim, f.animFrame, 36, 60, f.facing);
+    // pointer toward the fighter
+    const ang = Math.atan2(sy - 22 - cy, sx - cx);
+    ctx.fillStyle = col;
+    for (let d = 0; d < 7; d++) {
+      const w = 7 - d, px = cx + Math.cos(ang) * (R + 2 + d), py = cy + Math.sin(ang) * (R + 2 + d);
+      ctx.fillRect(Math.round(px - w / 2), Math.round(py - w / 2), w, w);
+    }
+    ctx.fillStyle = '#100d16'; disc(ctx, cx, cy, R + 2);
+    ctx.fillStyle = col; disc(ctx, cx, cy, R + 1);
+    ctx.fillStyle = '#2a2638'; disc(ctx, cx, cy, R - 1);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx + 0.5, cy + 0.5, R - 1, 0, Math.PI * 2); ctx.clip();
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(m, 0, 0, 72, 72, Math.round(cx - 18), Math.round(cy - 20), 36, 36);
+    ctx.restore();
   }
 
   // Shield bubble: player-coloured, shrinks with shield health, flashes when hit.

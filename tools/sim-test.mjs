@@ -72,10 +72,10 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
 // Wall contact under the ledge is detected (needed for wall jumps later).
 {
   const s = createMatch(setup); const f = s.fighters[0];
-  f.x = 93 * FX; f.vx = 2 * FX; f.y = 236 * FX; f.grounded = 0; f.ground = -1; f.state = 'air';
+  f.x = 63 * FX; f.vx = 2 * FX; f.y = 236 * FX; f.grounded = 0; f.ground = -1; f.state = 'air';
   let touched = false;
   for (let i = 0; i < 5; i++) { step(s, [BTN.RIGHT, 0]); if (f.wallSide === 1) touched = true; }
-  check('stage wall blocks and reports contact', touched && f.x <= (100 - 5) * FX);
+  check('stage wall blocks and reports contact', touched && f.x <= (70 - 5) * FX);
 }
 // Ledge: run off the left edge, drift back, grab, then get up onto the stage.
 {
@@ -86,7 +86,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (let i = 0; i < 12; i++) step(s, [0, 0]);
   check('keeps hanging with no input', f.state === 'ledge');
   for (let i = 0; i < 40; i++) step(s, [BTN.RIGHT, 0]);
-  check('toward stage gets up onto the stage', f.grounded === 1 && f.y === 170 * FX && f.x > 100 * FX, 'x ' + (f.x / FX));
+  check('toward stage gets up onto the stage', f.grounded === 1 && f.y === 170 * FX && f.x > 70 * FX, 'x ' + (f.x / FX));
   // ledge jump and drop
   const s2 = createMatch(setup); const g = s2.fighters[0];
   for (let i = 0; i < 200 && g.state !== 'ledge'; i++) step(s2, [g.grounded ? BTN.LEFT : BTN.RIGHT, 0]);
@@ -235,7 +235,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   }
   // high percent back air sends far enough to KO
   s = near(); [a, v] = s.fighters;
-  v.percent = 1500; a.facing = -1; a.x = 360 * FX; v.x = 376 * FX;
+  v.percent = 1500; a.facing = -1; a.x = 390 * FX; v.x = 406 * FX;
   // both in the air (the kicks need time: it lands before kick 3 from a tiny hop)
   for (const f of [a, v]) { f.y -= 30 * FX; f.grounded = 0; f.ground = -1; f.state = 'air'; f.vy = 0; }
   step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
@@ -266,11 +266,11 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   const s = createMatch(setup); const [f, v] = s.fighters;
   for (let i = 0; i < 200 && f.state !== 'ledge'; i++) step(s, [f.grounded ? BTN.LEFT : BTN.RIGHT, 0]);
   for (let i = 0; i < 10; i++) step(s, [0, 0]);
-  v.x = 125 * FX; v.facing = -1;
+  v.x = 95 * FX; v.facing = -1;
   step(s, [BTN.ATTACK, 0]);
   check('ledge attack starts from the ledge and is intangible', f.move === 'ledgeAttack' && f.intangible > 0);
   for (let i = 0; i < 60; i++) step(s, [0, 0]);
-  check('ledge attack climbs onto the stage and hits for 9%', f.state === 'idle' && f.grounded && f.y === 170 * FX && f.x > 100 * FX && v.percent === 90, `${v.percent / 10}% x ${f.x / FX}`);
+  check('ledge attack climbs onto the stage and hits for 9%', f.state === 'idle' && f.grounded && f.y === 170 * FX && f.x > 70 * FX && v.percent === 90, `${v.percent / 10}% x ${f.x / FX}`);
 }
 // Knocked-down opponents lie on the floor and can be hit by jab and tilts
 {
@@ -394,7 +394,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   step(s, [BTN.SHIELD, 0]);
   const intang = [];
   for (let i = 0; i < 40; i++) { step(s, [0, 0]); if (f.state === 'ledgeRoll') intang.push(f.intangible); }
-  check('U on the ledge rolls onto the stage, away from the edge, mostly intangible', f.state === 'idle' && f.grounded && f.y === 170 * FX && f.x > 130 * FX && intang.slice(0, 20).every((v) => v), `x ${(f.x / FX).toFixed(0)}`);
+  check('U on the ledge rolls onto the stage, away from the edge, mostly intangible', f.state === 'idle' && f.grounded && f.y === 170 * FX && f.x > 100 * FX && intang.slice(0, 20).every((v) => v), `x ${(f.x / FX).toFixed(0)}`);
 }
 {
   const s = createMatch(setup); const f = s.fighters[0];
@@ -528,14 +528,14 @@ for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BT
   // back throw kills at high percent near the edge
   const { CpuController } = await import('../engine/cpu.js');
   const backThrowKO = (pct) => {
-    const s = near(); const [a, v] = s.fighters; a.x = 116 * FX; a.facing = 1; v.x = 132 * FX; v.facing = -1; v.percent = pct * 10;
+    const s = near(); const [a, v] = s.fighters; a.x = 86 * FX; a.facing = 1; v.x = 102 * FX; v.facing = -1; v.percent = pct * 10;
     step(s, [BTN.GRAB, 0]); for (let i = 0; i < 10 && a.state !== 'holding'; i++) step(s, [0, 0]);
     step(s, [BTN.LEFT, 0]);
     const d = new CpuController('dummy', 3);   // the victim tries to recover
     for (let i = 0; i < 400; i++) { step(s, [0, d.sample(s, 1)]); if (v.state === 'dead') return true; }
     return false;
   };
-  check('back throw near the edge: survivable at 90%, KOs at 150%', !backThrowKO(90) && backThrowKO(150));
+  check('back throw near the edge: survivable at 120%, KOs at 180%', !backThrowKO(120) && backThrowKO(180));
   // mashing breaks free sooner
   const escape = (mash) => { const s = near(); grabbed(s); let t = 0; for (; t < 300 && s.fighters[1].state === 'grabbed'; t++) step(s, [0, mash && (t & 1) ? BTN.ATTACK : 0]); return t; };
   const slow = escape(false), fast = escape(true);
@@ -560,9 +560,9 @@ for (const [label, hold, wait] of [['rising and drifting', BTN.RIGHT, 6], ['fall
   let s = createMatch(setup); let [a, v] = s.fighters;
   for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [80, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
   check('running into a standing opponent pushes them instead of passing through', v.x > a.x && v.x - a.x >= 5 * FX && v.x > 300 * FX);
-  s = createMatch(setup); [a, v] = s.fighters; v.x = 360 * FX;
-  for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [150, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
-  check('nobody gets pushed off the edge', v.grounded === 1 && v.x <= 380 * FX && v.state !== 'dead');
+  s = createMatch(setup); [a, v] = s.fighters; v.x = 390 * FX;
+  for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [190, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
+  check('nobody gets pushed off the edge', v.grounded === 1 && v.x <= 410 * FX && v.state !== 'dead');
   s = createMatch(setup); [a, v] = s.fighters; a.x = 230 * FX; v.x = 244 * FX;
   for (let i = 0; i < 3; i++) step(s, [BTN.SHIELD, 0]); step(s, [BTN.SHIELD | BTN.RIGHT, 0]); for (let i = 0; i < 35; i++) step(s, [BTN.SHIELD, 0]);
   check('rolling still goes through them', a.x > v.x);
