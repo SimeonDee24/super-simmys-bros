@@ -538,4 +538,19 @@ for (const [label, hold, wait] of [['rising and drifting', BTN.RIGHT, 6], ['fall
   step(s, [BTN.JUMP | BTN.RIGHT, 0]); for (let i = 0; i < 40; i++) step(s, [BTN.JUMP | BTN.RIGHT, 0]);
   check('jumping over them still works', a.x > v.x);
 }
+// Grabbing someone you are pressed right up against (used to miss)
+for (const [label, runFrames] of [['running into them', 40], ['already pushing them', 60]]) {
+  const s = createMatch(setup); const [a, v] = s.fighters;
+  for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [runFrames, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
+  step(s, [BTN.RIGHT | BTN.GRAB, 0]);
+  let caught = false;
+  for (let i = 0; i < 14; i++) { step(s, [BTN.RIGHT, 0]); if (a.state === 'holding') caught = true; }
+  check(`dash grab works when ${label}`, caught);
+}
+{
+  const s = createMatch(setup); const [a, v] = s.fighters; v.x = a.x + 6 * FX;
+  step(s, [BTN.GRAB, 0]); let caught = false;
+  for (let i = 0; i < 10; i++) { step(s, [0, 0]); if (a.state === 'holding') caught = true; }
+  check('standing grab works on someone right up against you', caught);
+}
 process.exit(fails ? 1 : 0);

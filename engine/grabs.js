@@ -25,18 +25,23 @@ export function resolveGrabs(state) {
     const ch = getCharacter(att.charId);
     const gb = ch.moves[att.move].grab;
     if (!gb || att.stateFrame < gb.frames[0] || att.stateFrame > gb.frames[1]) continue;
-    const j = jointAt(fighterSolve(att, ch), gb.at);
-    const cx = att.x + att.facing * (j[0] + (gb.off ? gb.off[0] * FX : 0));
-    const cy = att.y + j[1] + (gb.off ? gb.off[1] * FX : 0);
-    const r = gb.r * FX;
+    const solved = fighterSolve(att, ch);
+    const circles = gb.boxes.map((b) => {
+      const j = jointAt(solved, b.at);
+      return [att.x + att.facing * (j[0] + (b.off ? b.off[0] * FX : 0)), att.y + j[1] + (b.off ? b.off[1] * FX : 0), b.r * FX];
+    });
     for (const vic of state.fighters) {
       if (vic === att || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state] || NOT_GRABBABLE[vic.state]) continue;
       const vch = getCharacter(vic.charId);
       let touch = false;
-      for (const h of hurtboxes(vch.skeleton, fighterSolve(vic, vch), vic.facing)) {
-        const hx1 = vic.x + h[0], hy1 = vic.y + h[1], hx2 = vic.x + h[2], hy2 = vic.y + h[3];
-        const nx = cx < hx1 ? hx1 : cx > hx2 ? hx2 : cx, ny = cy < hy1 ? hy1 : cy > hy2 ? hy2 : cy;
-        if ((cx - nx) * (cx - nx) + (cy - ny) * (cy - ny) <= r * r) { touch = true; break; }
+      const hurt = hurtboxes(vch.skeleton, fighterSolve(vic, vch), vic.facing);
+      for (const [cx, cy, r] of circles) {
+        for (const h of hurt) {
+          const hx1 = vic.x + h[0], hy1 = vic.y + h[1], hx2 = vic.x + h[2], hy2 = vic.y + h[3];
+          const nx = cx < hx1 ? hx1 : cx > hx2 ? hx2 : cx, ny = cy < hy1 ? hy1 : cy > hy2 ? hy2 : cy;
+          if ((cx - nx) * (cx - nx) + (cy - ny) * (cy - ny) <= r * r) { touch = true; break; }
+        }
+        if (touch) break;
       }
       if (!touch) continue;
       // Caught.

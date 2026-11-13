@@ -79,12 +79,15 @@ export const SHARED_ANIMS = {
   ]),
 };
 
-// Grab boxes: `grab: { frames, at, r, off }` — touching the opponent's body
-// on those frames grabs them (grabs go straight through shields).
+// Grab boxes: `grab: { frames, boxes }` — any box touching the opponent's
+// body on those frames grabs them (grabs go straight through shields). Each
+// grab has a reaching box at the hands and a close box in front of the chest,
+// so someone pressed right up against you still gets grabbed.
+const CLOSE = { at: 'chest', r: 8, off: [6, 0] };
 export const SHARED_MOVES = {
-  grab:      { faf: 34, grab: { frames: [6, 7], at: 'handF', r: 7, off: [2, 0] }, hitboxes: [] },
-  dashGrab:  { faf: 42, slide: { speed: 0, friction: 46 }, grab: { frames: [9, 10], at: 'handF', r: 8, off: [3, 0] }, hitboxes: [] },
-  pivotGrab: { faf: 38, grab: { frames: [10, 11], at: 'handF', r: 8, off: [6, 0] }, hitboxes: [] },
+  grab:      { faf: 34, grab: { frames: [6, 7], boxes: [{ at: 'handF', r: 7, off: [2, 0] }, CLOSE] }, hitboxes: [] },
+  dashGrab:  { faf: 42, slide: { speed: 0, friction: 46 }, grab: { frames: [9, 10], boxes: [{ at: 'handF', r: 8, off: [3, 0] }, CLOSE] }, hitboxes: [] },
+  pivotGrab: { faf: 38, grab: { frames: [10, 11], boxes: [{ at: 'handF', r: 8, off: [6, 0] }, CLOSE] }, hitboxes: [] },
 };
 
 // Throws. `path` = where the held opponent is, relative to the thrower's
