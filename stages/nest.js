@@ -275,8 +275,9 @@ export const NEST = {
   ],
   respawn: { x: 240, y: 90 },
 
-  // Just beyond the screen edges; the top one is higher.
-  blast: { left: -170, right: 650, top: -230, bottom: 345 },
+  // Well past the screen edges; the bottom one leaves room to fall off
+  // screen for a moment and still recover.
+  blast: { left: -170, right: 650, top: -230, bottom: 430 },
 
   // --- Art (composited by render/background.js) ---
   background: {

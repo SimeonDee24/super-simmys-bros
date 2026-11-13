@@ -578,6 +578,32 @@ for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['
   // same seed and inputs always give the same result
   check('fast break misfire is deterministic', fb(0, misSeed, 0).dist === mis.dist);
 }
+// Charging Fast Break in the air: no drifting
+{
+  const s = createMatch(setup); const a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  a.y -= 100 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.vx = 0; a.vy = 0;
+  step(s, [BTN.SPECIAL | BTN.RIGHT, 0]);
+  const x0 = a.x;
+  for (let i = 0; i < 12; i++) step(s, [BTN.SPECIAL | BTN.LEFT, 0]);
+  check('charging fast break in the air: holding a direction does not drift', a.move === 'fastBreak' && Math.abs(a.x - x0) < FX, `moved ${((a.x - x0) / FX).toFixed(1)}px`);
+}
+// Falling below the screen is not an instant KO: there is time to recover
+{
+  const s = createMatch(setup); const a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  a.x = 30 * FX; a.y = 300 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.vy = 0; a.jumpsLeft = 1;
+  let frames = 0;
+  while (a.state !== 'dead' && frames < 300) { step(s, [0, 0]); frames++; }
+  check('falling from the bottom of the screen takes a while to KO', frames >= 40, frames + ' frames');
+  const r = createMatch(setup); const b = r.fighters[0]; r.fighters[1].x = 900 * FX;
+  b.x = 30 * FX; b.y = 330 * FX; b.grounded = 0; b.ground = -1; b.state = 'air'; b.vy = 0; b.jumpsLeft = 1;
+  let saved = false;
+  for (let i = 0; i < 260 && b.state !== 'dead' && !saved; i++) {
+    const toward = b.x < 58 * FX ? BTN.RIGHT : 0;   // drift toward the ledge, not under the stage
+    const inp = i === 2 ? BTN.JUMP | toward : i === 30 ? BTN.SPECIAL | BTN.UP : toward;
+    step(r, [inp, 0]); saved = b.state === 'ledge' || b.grounded === 1;
+  }
+  check('from below the screen, double jump + rotor cap gets back', saved, b.state + ' y ' + (b.y / FX).toFixed(0));
+}
 // Rotor Cap (up special): flies up, steerable, hits above, then helpless
 {
   let s = createMatch(setup); let [a, v] = s.fighters; v.x = 900 * FX;

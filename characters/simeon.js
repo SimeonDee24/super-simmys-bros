@@ -741,7 +741,7 @@ const moves = {
   // Side special: Fast Break. Hold the button to charge (up to a second),
   // let go to launch head first. Damage 6% to 21% and distance grow with the
   // charge. One time in ten it misfires instead: see fastBreakMisfire.
-  fastBreak: { faf: 62, landLag: 16, landContinue: true, float: { gravity: 20, fall: 25 },
+  fastBreak: { faf: 62, landLag: 16, landContinue: true, noDrift: true, float: { gravity: 20, fall: 25 },
     charge: { at: 14, max: 60 },
     rocket: { frame: 16, frames: 30, speed: [px(2.0), px(4.2)], lift: px(1.0), gravity: 30, drag: 12,
       misfire: { chance: 10, move: 'fastBreakMisfire' } },
@@ -752,7 +752,7 @@ const moves = {
       hit(16, 46, 'chest', 6, 6, 361, 20, 80, { chargeScale: [60, 210] }),
     ] },
   // The misfire: ignores the charge, flies much further and faster, 25%.
-  fastBreakMisfire: { faf: 70, landLag: 22, burst: true, float: { gravity: 20, fall: 25 },
+  fastBreakMisfire: { faf: 70, landLag: 22, burst: true, noDrift: true, float: { gravity: 20, fall: 25 },
     charge: { at: 14, max: 60 },
     rocket: { frame: 16, frames: 36, speed: [px(5.0), px(5.0)], lift: px(1.3), gravity: 22, drag: 10 },
     ledgeGrab: { from: 34 },

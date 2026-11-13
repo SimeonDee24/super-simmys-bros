@@ -550,7 +550,9 @@ const STATES = {
     } else if (f.moveAir) {
       // floating moves (counters) stop the fall when they start
       if (mv.float && f.stateFrame <= 1 && f.vy > 0) f.vy = 0;
-      airMotion(c, mv.float);
+      // noDrift moves (charging Fast Break) ignore left and right: he just
+      // slows to a stop in the air
+      airMotion(mv.noDrift ? { ...c, dir: 0 } : c, mv.float);
     } else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
     if (mv.spawn && f.stateFrame === mv.spawn.frame) spawnProjectile(c.match, f, mv);
     // combo link (jab 1 -> 2 -> 3)

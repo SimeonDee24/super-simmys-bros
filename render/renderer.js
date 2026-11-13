@@ -121,7 +121,7 @@ export class Renderer {
   // the camera limits, which sit a little inside the blast zones.
   updateCamera(state, stage) {
     const c = CONFIG.CAMERA, b = stage.blast;
-    const bx0 = b.left + 20, bx1 = b.right - 20, by0 = b.top + 30, by1 = Math.min(b.bottom - 10, 335);
+    const bx0 = b.left + 20, bx1 = b.right - 20, by0 = b.top + 30, by1 = Math.min(b.bottom - 10, 335);   // the camera stops above the bottom blast zone, so you can fall off screen and come back
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, any = false;
     for (const f of state.fighters) {
       if (f.state === 'dead' || f.state === 'out') continue;
