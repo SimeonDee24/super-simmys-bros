@@ -532,11 +532,10 @@ const STATES = {
     const r = st.roll;
     f.intangible = within(f.stateFrame, r.intangible) ? 1 : 0;
     f.vx = f.stateFrame >= r.move[0] && f.stateFrame <= r.move[1] ? f.dodgeDir * r.speed : 0;
-    if (f.stateFrame >= r.faf) {
-      if (f.dodgeDir === f.facing) f.facing = -f.facing; // a forward roll ends facing back
-      f.vx = 0;
-      setState(f, 'idle', 'idle');
-    }
+    // A forward roll ends facing back the way he came. He turns around in the
+    // middle, while curled up, so there is no visible snap.
+    if (f.stateFrame === r.turnAt && f.dodgeDir === f.facing) f.facing = -f.facing;
+    if (f.stateFrame >= r.faf) { f.vx = 0; setState(f, 'idle', 'idle'); }
   },
   spotdodge(c) {
     const { f, st } = c;

@@ -51,7 +51,7 @@ const stats = {
 
   // Shield and dodges. intangible = [first, last] frame he cannot be hit.
   shieldY: 22,             // shield bubble centre, px above the feet
-  roll: { intangible: [4, 15], faf: 31, move: [3, 18], speed: px(2.2) },
+  roll: { intangible: [4, 15], faf: 31, move: [3, 18], speed: px(2.2), turnAt: 11 },
   spotDodge: { intangible: [3, 17], faf: 27 },
   airDodge: { intangible: [3, 29], faf: 42 },                       // neutral
   airDodgeDir: { intangible: [3, 19], faf: 48, speed: px(3.4), glide: 18 }, // with a direction
@@ -187,6 +187,8 @@ const GUA_FRONT = { rot: -30, hip: [-2, 17], torso: 0, legF: [62, -4], legB: [10
 const GUA_BACK = { rot: -30, hip: [-2, 17], torso: 0, legF: [100, -110], legB: [-128, -4], armF: [-40, 30], armB: [-60, 20], footB: -40, ...FISTS, face: 'yell' };
 // ledge attack: a low kick out onto the stage from a crouch
 const LEDGE_KICK = { hip: [-1, 6], torso: -10, head: -4, legF: [88, -4], legB: [40, -100], armF: [-40, 40], armB: [30, 50], footF: 30, ...FISTS, face: 'yell' };
+// roll: curled up low with knees to chest and arms wrapped round them
+const ROLL_BALL = { hip: [0, 12], torso: 62, head: 40, armF: [60, 110], armB: [40, 115], legF: [100, -150], legB: [90, -145], footF: 40, footB: 40, ...FISTS };
 const BAIR_KICK = { rot: 72, torso: 6, head: -30, legF: [-6, -8], legB: [-16, -2], armF: [60, 70], armB: [40, 80], footF: -60, footB: -60, ...FISTS, face: 'yell' };
 const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
 const UAIR_TUCK = { torso: 12, head: 10, legF: [70, -100], legB: [55, -95], armF: [30, 80], armB: [10, 85], ...FISTS };
@@ -252,13 +254,15 @@ const animations = {
     [3, { hip: [0, 2], torso: 8, armF: [70, 100], armB: [50, 110], legF: [20, -30], legB: [-10, -25], ...FISTS }],
     [1, { hip: [0, 3], torso: 10, head: 6, armF: [75, 105], armB: [55, 110], legF: [24, -38], legB: [-6, -30], ...FISTS }],
   ]),
+  // Roll: drops into a tight low ball and scoots along the floor (no
+  // somersault), so it reads the same rolling either way. A forward roll
+  // turns him around while he is balled up (see engine/fighter.js).
   roll: anim(false, [
     [3, { hip: [0, 5], torso: 30, head: 20, armF: [40, 80], armB: [20, 80], legF: [60, -110], legB: [40, -100], ...FISTS }],
-    [5, { rot: 90, hip: [0, 13], torso: 30, head: 30, armF: [60, 100], armB: [40, 100], legF: [85, -135], legB: [75, -130], ...FISTS }],
-    [3, { rot: 200, hip: [0, 21], torso: 30, head: 30, armF: [60, 100], armB: [40, 100], legF: [85, -135], legB: [75, -130], ...FISTS }],
-    [2, { rot: 265, hip: [0, 20], torso: 30, head: 30, armF: [60, 100], armB: [40, 100], legF: [85, -135], legB: [75, -130], ...FISTS }],
-    [5, { rot: 330, hip: [0, 13], torso: 30, head: 30, armF: [60, 100], armB: [40, 100], legF: [85, -135], legB: [75, -130], ...FISTS }],
-    [7, { rot: 360, hip: [0, 6], torso: 22, armF: [30, 60], armB: [10, 60], legF: [50, -95], legB: [35, -85] }],
+    [4, ROLL_BALL],
+    [6, { ...ROLL_BALL, hip: [1, 11] }],
+    [6, ROLL_BALL],
+    [6, { hip: [0, 6], torso: 24, head: 10, armF: [30, 60], armB: [10, 60], legF: [50, -95], legB: [35, -85] }],
     [6, STAND],
   ]),
   spotDodge: anim(false, [
