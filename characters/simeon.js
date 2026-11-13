@@ -12,7 +12,7 @@ const stats = {
 
   // Ground
   walkSpeed: px(2.0),
-  walkAccel: px(0.25),
+  walkAccel: px(0.45),
   crawlSpeed: px(0.9),     // walking while crouched
   dashSpeed: px(3.1),      // initial dash burst
   dashFrames: 11,          // length of the initial dash

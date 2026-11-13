@@ -137,6 +137,20 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   lag = -1;
   for (let i = 0; i < 80 && lag < 0; i++) { step(s, [BTN.JUMP, 0]); if (a.state === 'land') lag = a.landLag; }
   check('up air finished before landing auto-cancels', lag === 2, 'lag ' + lag);
+  // buffering: double-tap and a jump pressed during a tilt's last frames come out at once
+  s = createMatch(setup); a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  step(s, [BTN.ATTACK, 0]);
+  for (let i = 0; i < 13; i++) step(s, [0, 0]);
+  for (const m of [BTN.RIGHT, 0, 0, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT]) step(s, [m, 0]);
+  check('double-tap during a tilt dashes on the first free frame', a.state === 'dash' && a.stateFrame <= 2, a.state + ' ' + a.stateFrame);
+  s = createMatch(setup); a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  step(s, [BTN.ATTACK, 0]);
+  for (let i = 0; i < 15; i++) step(s, [0, 0]);
+  step(s, [BTN.JUMP, 0]);
+  for (let i = 0; i < 6; i++) step(s, [0, 0]);
+  check('jump pressed late in a tilt is buffered', a.state === 'jumpsquat' || a.state === 'air', a.state);
+  for (let i = 0; i < 12; i++) step(s, [0, 0]);
+  check('a buffered jump does not also spend the double jump', a.jumpsLeft === 1);
   // dash attack out of a run
   s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 70 * FX;
   for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [6, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);

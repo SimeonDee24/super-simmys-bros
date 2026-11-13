@@ -20,6 +20,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     ledge: -1, ledgeCd: 0,  // ledge being held, and frames until one can be grabbed again
     wallSide: 0,            // -1 / 1 while touching a wall in the air (for wall jumps)
     prevIn: 0, tapDir: 0, tapTimer: 0,
+    buf: 0, bufTimer: 0, dashBuf: 0, dashBufTimer: 0, // input buffer
     percent: 0, stocks, falls: 0,
     // Attacks
     move: '', moveAir: 0, hitGroups: 0,
@@ -71,6 +72,7 @@ export function startMove(f, name, air) {
   f.move = name;
   f.moveAir = air ? 1 : 0;
   f.hitGroups = 0;
+  f.buf &= ~BTN.ATTACK;
   setState(f, 'attack', name);
 }
 
@@ -123,7 +125,7 @@ function tryDashAttack(c) {
 }
 
 function tryJump(c) {
-  if (c.pressed & BTN.JUMP) { setState(c.f, 'jumpsquat', 'jumpsquat'); return true; }
+  if (c.pressed & BTN.JUMP) { c.f.buf &= ~BTN.JUMP; setState(c.f, 'jumpsquat', 'jumpsquat'); return true; }
   return false;
 }
 function startDash(c, d) {
@@ -131,6 +133,7 @@ function startDash(c, d) {
   f.facing = d;
   f.vx = d * c.st.dashSpeed;
   f.tapTimer = 0;
+  f.dashBuf = 0; f.dashBufTimer = 0;
   setState(f, 'dash', 'run');
 }
 function toCrouch(c) {
@@ -246,7 +249,7 @@ const STATES = {
       f.invuln = CONFIG.RESPAWN_INVULN;
       f.jumpsLeft = st.airJumps;
       f.vx = 0;
-      if (c.pressed & BTN.JUMP) { f.vy = -st.jumpVel; enterAir(f, 'jump'); }
+      if (c.pressed & BTN.JUMP) { f.buf &= ~BTN.JUMP; f.vy = -st.jumpVel; enterAir(f, 'jump'); }
       else { f.vy = 0; enterAir(f, 'fall'); }
     }
   },
@@ -265,6 +268,7 @@ const STATES = {
     const { f, st } = c;
     // Double jump
     if ((c.pressed & BTN.JUMP) && f.jumpsLeft > 0) {
+      f.buf &= ~BTN.JUMP;
       f.jumpsLeft--;
       f.vy = -st.doubleJumpVel;
       f.fastFall = 0;
@@ -287,6 +291,7 @@ const STATES = {
     const { f, st } = c;
     if (f.stateFrame < st.ledgeMinHang) return;
     if (c.pressed & BTN.JUMP) {
+      f.buf &= ~BTN.JUMP;
       f.ledge = -1; f.ledgeCd = CONFIG.LEDGE_REGRAB_FRAMES;
       f.vy = -st.ledgeJumpVel; f.vx = f.facing * st.ledgeJumpH;
       enterAir(f, 'jump');
@@ -374,14 +379,24 @@ export function updateFighter(match, f, input) {
   // Double-tap detection for dashing.
   let tap = 0;
   if (pressed & BTN.LEFT) tap = -1; else if (pressed & BTN.RIGHT) tap = 1;
-  const dashInput = tap !== 0 && tap === f.tapDir && f.tapTimer > 0 ? tap : 0;
+  let dashInput = tap !== 0 && tap === f.tapDir && f.tapTimer > 0 ? tap : 0;
   if (tap) { f.tapDir = tap; f.tapTimer = CONFIG.DOUBLE_TAP_WINDOW; }
   else if (f.tapTimer > 0) f.tapTimer--;
+
+  // Input buffer. Jump and attack presses, and double-tap dashes, are
+  // remembered for a few frames so that pressing slightly early (during the
+  // end of an attack, a landing, hitlag...) still works the moment it can.
+  const BUFFERED = BTN.JUMP | BTN.ATTACK;
+  if (pressed & BUFFERED) { f.buf |= pressed & BUFFERED; f.bufTimer = CONFIG.BUFFER_FRAMES; }
+  else if (f.bufTimer > 0 && --f.bufTimer === 0) f.buf = 0;
+  if (dashInput) { f.dashBuf = dashInput; f.dashBufTimer = CONFIG.BUFFER_FRAMES; }
+  else if (f.dashBufTimer > 0 && --f.dashBufTimer === 0) f.dashBuf = 0;
+  if (!dashInput && f.dashBuf && dir === f.dashBuf) dashInput = f.dashBuf; // still holding that way
 
   f.stateFrame++;
   f.animFrame++;
   if (f.invuln > 0) f.invuln--;
   if (f.ledgeCd > 0) f.ledgeCd--;
-  STATES[f.state]({ match, f, ch, st, input, pressed, dir, tap, dashInput });
+  STATES[f.state]({ match, f, ch, st, input, pressed: pressed | f.buf, dir, tap, dashInput });
   f.prevIn = input;
 }

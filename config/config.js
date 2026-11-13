@@ -14,6 +14,8 @@ export const CONFIG = {
 
   // --- Input feel ---
   DOUBLE_TAP_WINDOW: 12,    // frames allowed between two taps to dash
+  BUFFER_FRAMES: 9,         // a jump, attack or dash pressed up to this many frames
+                            // too early still comes out on the first possible frame
 
   // --- Defence (used from milestone 3) ---
   PARRY_WINDOW: 5,          // frames after releasing shield that still parry
