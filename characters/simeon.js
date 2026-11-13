@@ -479,7 +479,7 @@ const animations = {
     [2, FAIR_CHARGE],
     [2, { ...FAIR_CHARGE, rot: -19, torso: -17, armF: [285, 50] }],   // shudder while charging
     [1, FAIR_CHARGE],
-    [1, { rot: -2, torso: -2, armF: [210, -8], armB: [60, 30], legF: [55, -75], legB: [-20, -30], ...FISTS, face: 'yell' }],
+    [1, { rot: -14, torso: -12, head: -10, armF: [205, 35], armB: [105, 10], legF: [55, -75], legB: [-20, -30], ...FISTS, face: 'yell' }],
     [2, { rot: 14, torso: 18, armF: [120, -8], armB: [-40, 50], legF: [30, -80], legB: [-5, -70], ...FISTS, face: 'yell' }],
     [8, { rot: 28, torso: 30, head: 12, armF: [65, -20], armB: [-40, 70], legF: [40, -110], legB: [15, -105], ...FISTS, face: 'yell' }],
     [12, { rot: 22, torso: 30, head: 14, armF: [45, -18], armB: [-30, 70], legF: [45, -115], legB: [20, -110], ...FISTS }],
