@@ -361,7 +361,7 @@ const STATES = {
     if (f.stateFrame < mv.faf) return;
     f.move = '';
     f.ledge = -1;
-    if (f.moveAir) { setState(f, 'air', f.vy < 0 ? 'jump' : 'fall'); return; }
+    if (f.moveAir) { setState(f, 'air', f.vy < 0 ? 'jump' : 'fall'); STATES.air(c); return; } // act on this same frame
     if (mv.endsCrouched && (c.input & BTN.DOWN)) { setState(f, 'crouch', 'crouch'); f.animFrame = 99; }
     else setState(f, 'idle', 'idle');
     STATES[f.state](c); // act on this same frame
@@ -452,8 +452,12 @@ export function updateFighter(match, f, input) {
   // Input buffer. Jump and attack presses, and double-tap dashes, are
   // remembered for a few frames so that pressing slightly early (during the
   // end of an attack, a landing, hitlag...) still works the moment it can.
+  // As in Smash Ultimate, a buffered button that is still being held stays
+  // buffered for as long as it is held, so pressing jump early during an
+  // aerial and keeping it down jumps on the very first frame possible.
   const BUFFERED = BTN.JUMP | BTN.ATTACK;
   if (pressed & BUFFERED) { f.buf |= pressed & BUFFERED; f.bufTimer = CONFIG.BUFFER_FRAMES; }
+  else if (f.buf & input) { f.buf &= input; f.bufTimer = CONFIG.BUFFER_FRAMES; }
   else if (f.bufTimer > 0 && --f.bufTimer === 0) f.buf = 0;
   if (dashInput) { f.dashBuf = dashInput; f.dashBufTimer = CONFIG.BUFFER_FRAMES; }
   else if (f.dashBufTimer > 0 && --f.dashBufTimer === 0) f.dashBuf = 0;

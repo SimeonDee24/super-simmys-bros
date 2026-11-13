@@ -256,4 +256,16 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
     check(`${name} hits a knocked-down opponent`, v.percent > 0, `${v.percent / 10}%`);
   }
 }
+// Jumping out of aerials: pressing jump early and holding it jumps on the first free frame
+{
+  for (const [name, dirBtn] of [['nair', 0], ['bair', BTN.LEFT], ['uair', BTN.UP]]) {
+    const s = createMatch(setup); const a = s.fighters[0];
+    a.y -= 120 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.facing = 1;
+    step(s, [BTN.ATTACK | dirBtn, 0]);
+    const faf = (await import('../characters/index.js')).getCharacter('simeon').moves[name].faf;
+    let jumped = -1;
+    for (let f = 1; f < 70 && jumped < 0; f++) { a.vy = 0; step(s, [f >= 4 ? BTN.JUMP : 0, 0]); if (a.jumpsLeft === 0) jumped = f; }
+    check(`${name}: jump held early comes out on the first free frame`, jumped === faf, `frame ${jumped}, free on ${faf}`);
+  }
+}
 process.exit(fails ? 1 : 0);

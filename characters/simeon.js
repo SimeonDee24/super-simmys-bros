@@ -462,28 +462,28 @@ const moves = {
     hits(21, 23, [['toeF', 6], ['shinF', 5], ['kneeF', 5]], 9, 361, 90, 20) },
 
   // --- Aerials ---
-  nair: { faf: 30, landLag: 4, autoCancel: [3, 26], hitboxes: [
+  nair: { faf: 27, landLag: 4, autoCancel: [3, 26], hitboxes: [
     ...hits(3, 5, [['toeF', 6], ['shinF', 5], ['hip', 6]], 8, 361, 20, 100),
     ...hits(6, 24, [['toeF', 5], ['shinF', 5], ['hip', 6]], 5, 361, 10, 100),
   ] },
   // Kick timed like Inkling's: strongest right at the start, at the foot.
   // Both legs out in front: a big hitbox at the feet (strongest) and one
   // along the shins, timed like Inkling's.
-  fair: { faf: 34, landLag: 8, autoCancel: [3, 28], trail: { part: 'toeF', from: 9, to: 13 }, hitboxes: [
+  fair: { faf: 31, landLag: 8, autoCancel: [3, 28], trail: { part: 'toeF', from: 9, to: 13 }, hitboxes: [
     hit(10, 11, 'toeF', 7, 12, 361, 30, 98, { off: [-1, 0] }),
     ...hits(10, 11, [['shinF', 6], ['kneeF', 5]], 10, 361, 25, 95),
     ...hits(12, 15, [['toeF', 6], ['shinF', 5], ['kneeF', 5]], 8, 361, 20, 90),
   ] },
-  bair: { faf: 24, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 4, to: 8 }, hitboxes: [
+  bair: { faf: 22, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 4, to: 8 }, hitboxes: [
     ...hits(6, 7, LEG_B, 10.5, 361, 12, 106, BACK),
     ...hits(8, 10, LEG_B, 7, 361, 12, 100, BACK),
   ] },
   // A tight arc around his upper body: from close in front, over his head, to behind.
-  uair: { faf: 22, landLag: 4, autoCancel: [3, 14], trail: { part: 'toeF', from: 3, to: 9 }, hitboxes:
+  uair: { faf: 20, landLag: 4, autoCancel: [3, 14], trail: { part: 'toeF', from: 3, to: 9 }, hitboxes:
     hits(3, 8, [['kneeF', 4], ['shinF', 4], ['toeF', 3]], 7, 80, 40, 120) },
   // Stomp: both feet spike on frames 16-18 (sweet spot), then a weaker
   // sideways hit on 19-21.
-  dair: { faf: 40, landLag: 12, autoCancel: [3, 34], trail: { part: 'footF', from: 15, to: 19 }, hitboxes: [
+  dair: { faf: 37, landLag: 12, autoCancel: [3, 34], trail: { part: 'footF', from: 15, to: 19 }, hitboxes: [
     ...hits(16, 18, [['footF', 5], ['footB', 5], ['shinF', 4], ['shinB', 4]], 14, 270, 20, 80),
     ...hits(19, 21, [['footF', 5], ['footB', 5], ['shinF', 4], ['shinB', 4]], 10, 361, 20, 100),
   ] },
