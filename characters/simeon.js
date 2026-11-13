@@ -108,7 +108,8 @@ const parts = {
   hand_fist: { pivot: [1, 0], px: ['kkkl', 'kkkl', 'Kkk.'] },
   upperLeg: { pivot: [1, 0], px: ['Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjji', 'Jjj.'] },
   lowerLeg: { pivot: [1, 0], px: ['Jji', 'Jji', 'Jji', 'Jji', 'Jji', 'Jji', 'Jji', 'Jji', 'Jji', 'Jjj'] },
-  foot: { pivot: [1, 1], px: ['www...', 'wwwww.', 'WwwwwW'] },
+  // g = sneaker accent (heel tab and side stripe); white on most palettes
+  foot: { pivot: [1, 1], px: ['gww...', 'wwgww.', 'WwwwwW'] },
 };
 
 // ---------------------------------------------------------------------------
@@ -118,18 +119,18 @@ const parts = {
 const BASE_COLORS = {
   k: '#ecba8e', K: '#c98f68', l: '#f8d5ae',   // skin
   h: '#231813', H: '#42302a',                 // hair
-  w: '#f6f6f2', W: '#bfc5d0',                 // sneakers
+  w: '#f6f6f2', W: '#bfc5d0', g: '#f6f6f2',   // sneakers (g = accent)
   c: '#dfe4ee',                               // chain
   e: '#1b1310', m: '#ffffff', r: '#8c3a36',   // eyes, teeth, mouth
 };
-const alt = (name, shirt, jeans) => ({
+const alt = (name, shirt, jeans, extra = {}) => ({
   name,
-  colors: { ...BASE_COLORS, t: shirt[0], T: shirt[1], u: shirt[2], j: jeans[0], J: jeans[1], i: jeans[2] },
+  colors: { ...BASE_COLORS, t: shirt[0], T: shirt[1], u: shirt[2], j: jeans[0], J: jeans[1], i: jeans[2], ...extra },
 });
 const BLUE_JEANS = ['#3f6fb8', '#2c5190', '#5b8cd4'];
 const DARK_JEANS = ['#2c2f44', '#1d1f30', '#3e425c'];
 const palettes = [
-  alt('Classic', ['#2d2d37', '#1d1d26', '#41414e'], BLUE_JEANS),
+  alt('Classic', ['#2d2d37', '#1d1d26', '#41414e'], BLUE_JEANS, { g: '#2fa35a' }), // white sneakers with green accents
   alt('Red',     ['#cc363c', '#962330', '#e8625b'], DARK_JEANS),
   alt('White',   ['#eceef2', '#b9bfcc', '#ffffff'], BLUE_JEANS),
   alt('Forest',  ['#3f8f55', '#2b6a41', '#5fb873'], ['#b89f72', '#8d7752', '#d3bd91']),

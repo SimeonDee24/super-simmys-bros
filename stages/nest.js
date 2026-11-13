@@ -22,7 +22,7 @@ const C = {
   floor: '#dcd9cf', floorLight: '#f3f0e8', floorSeam: '#b3afa4',
   steel: '#b9c0c6', steelDark: '#6c757d',
   counter: '#f0eadd', chair: '#c79a63', chairDark: '#8a6238', screen: '#9fd8f5', laptop: '#3a4048',
-  signBlue: '#2f5fa8', panel: '#e2a83a', panelLight: '#f5cd6b', panelShade: '#b9831f',
+  signBlue: '#2f5fa8', bannerBlue: '#0c2a66', bannerGold: '#f0bf4c', panel: '#e2a83a', panelLight: '#f5cd6b', panelShade: '#b9831f',
 };
 
 // Far side of the atrium: stacked floors with slatted timber walls.
@@ -126,6 +126,14 @@ function drawWalkway(ctx, stage, t) {
   ctx.fillStyle = C.steelDark; ctx.fillRect(L + 58, 22, 1, 4); ctx.fillRect(L + 75, 22, 1, 4);
   ctx.fillStyle = C.signBlue; ctx.fillRect(L + 54, 26, 26, 13);
   ctx.fillStyle = '#ffffff'; ctx.fillRect(L + 57, 29, 14, 1); ctx.fillRect(L + 57, 32, 18, 1); ctx.fillRect(L + 57, 35, 9, 1);
+
+  // hanging school banner: plain lettering in blue and gold
+  ctx.fillStyle = C.steelDark; ctx.fillRect(L + 118, 22, 1, 3); ctx.fillRect(L + 138, 22, 1, 3);
+  ctx.fillStyle = C.bannerGold; ctx.fillRect(L + 115, 25, 27, 2);
+  ctx.fillStyle = C.bannerBlue; ctx.fillRect(L + 116, 27, 25, 24);
+  ctx.fillStyle = C.bannerBlue; ctx.fillRect(L + 120, 51, 17, 2); ctx.fillRect(L + 124, 53, 9, 2);
+  ctx.fillStyle = C.bannerGold; ctx.fillRect(L + 118, 44, 21, 1);
+  t.drawText(ctx, 'UBC', L + 129, 33, '#ffffff', 2, 'center');
 
   // angled yellow panels under the ceiling
   for (const px0 of [R - 96, R - 58]) {

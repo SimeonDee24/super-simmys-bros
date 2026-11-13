@@ -93,6 +93,7 @@ export function checkBlastZones(f, stage) {
   if (f.x < b.left * FX || f.x > b.right * FX || f.y < b.top * FX || f.y > b.bottom * FX) {
     f.falls++;
     f.stocks--;
+    f.percent = 0; // damage resets with every stock
     f.koX = Math.max(0, Math.min(CONFIG.SCREEN_W, f.x >> 8));
     f.koY = Math.max(0, Math.min(CONFIG.SCREEN_H, f.y >> 8));
     f.vx = 0; f.vy = 0;
