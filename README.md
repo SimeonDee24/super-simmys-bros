@@ -4,7 +4,7 @@ A 2D pixel-art platform fighter that runs in the browser. Plain HTML, CSS and
 JavaScript modules: no build step, no frameworks, no asset files.
 
 **Current version:** see `config/version.js` (shown on the title screen).
-**Status:** Milestone 1 of 5 — engine, stage and Simeon's movement.
+**Status:** in progress: movement, normals, shield and dodges, Bluff, and a CPU opponent (training dummy or fighter, picked with W / S on stage select).
 
 ## Play it locally
 
@@ -74,7 +74,7 @@ No Node? Edit the version by hand in **both** `config/version.js` and
 | `ui/` | Settings (localStorage), update check; menus arrive in milestone 5 |
 | `audio/` | Sound effects (stub until milestone 5) |
 | `net/` | Online play (stub: version handshake only) |
-| `tools/` | `release.mjs`, `sim-test.mjs` (headless checks), `pose-sheet.html` (art preview) |
+| `tools/` | `release.mjs`, `sim-test.mjs` and `cpu-test.mjs` (headless checks), `pose-sheet.html` (art preview) |
 
 **Add a character:** copy `characters/simeon.js`, change the data, and add it
 to `characters/index.js`. **Add a stage:** same idea in `stages/`.

@@ -1,9 +1,10 @@
 {
-  "version": "0.8.0",
+  "version": "0.9.0",
   "modules": [
     "config/config.js",
     "config/version.js",
     "engine/combat.js",
+    "engine/cpu.js",
     "engine/fighter.js",
     "engine/fixed.js",
     "engine/input.js",

@@ -8,6 +8,7 @@ const DEFAULTS = {
   volume: 0.6,
   showBoxes: false,   // hurtbox / hitbox / ledge-box display
   showDebug: false,   // tick, state hash, fighter state
+  cpuLevel: 'fighter', // P2 CPU: 'dummy' (training) or 'fighter'
 };
 
 export function loadSettings() {

@@ -445,7 +445,7 @@ export class Renderer {
 
   // Stage select: the highlighted stage fills the screen, with a row of tiles.
   // tiles = [{ stage } | { random: true }], returns nothing; layout is in stageTileRect().
-  drawStageSelect(tiles, index) {
+  drawStageSelect(tiles, index, cpuText) {
     const ctx = this.ctx;
     this.time++;
     const sel = tiles[index];
@@ -461,6 +461,11 @@ export class Renderer {
     drawText(ctx, 'STAGE SELECT', 8, 6, '#ffe14a', 2, 'left', '#000000');
     drawText(ctx, 'A / D  CHOOSE     J OR ENTER  START     ESC  BACK', W - 8, 9, '#ffffff', 1, 'right');
     drawText(ctx, sel.stage ? sel.stage.name : 'RANDOM', W / 2, H - 80, '#ffffff', 2, 'center', '#000000');
+    if (cpuText) {
+      ctx.fillStyle = 'rgba(8,8,24,0.82)'; ctx.fillRect(W / 2 - 92, 28, 184, 15);
+      drawText(ctx, '< ' + cpuText + ' >', W / 2, 31, '#5aa2ff', 1, 'center', '#000000');
+      drawText(ctx, 'W / S  CHANGE CPU', W / 2, 46, '#ffffff', 1, 'center', '#000000');
+    }
     tiles.forEach((t, i) => {
       const r = this.stageTileRect(i, tiles.length);
       ctx.fillStyle = i === index ? '#ffe14a' : '#2b2a4a';

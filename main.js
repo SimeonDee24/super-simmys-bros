@@ -3,8 +3,9 @@
 // from recorded input bitmasks. Rendering happens separately, once per
 // browser frame.
 import { CONFIG } from './config/config.js';
-import { Keyboard, KeyboardSource, IdleSource, InputRecorder } from './engine/input.js';
+import { Keyboard, KeyboardSource, InputRecorder } from './engine/input.js';
 import { createMatch, step, hashState } from './engine/sim.js';
+import { CpuController, CPU_ORDER, cpuLabel } from './engine/cpu.js';
 import { STAGES } from './stages/index.js';
 import { CHARACTERS } from './characters/index.js';
 import { Renderer } from './render/renderer.js';
@@ -36,7 +37,7 @@ function startMatch(stage = STAGES[0]) {
   });
   match = {
     state,
-    sources: [new KeyboardSource(keyboard, settings.bindings), new IdleSource()],
+    sources: [new KeyboardSource(keyboard, settings.bindings), new CpuController(settings.cpuLevel, CONFIG.DEFAULT_SEED ^ 0x2c9)],
     recorder: new InputRecorder(),
     endTimer: 0,
   };
@@ -64,7 +65,7 @@ function render() {
     renderer.drawTitle(STAGES[0], { charId: CHARACTERS[0].id, updateMessage });
     return;
   }
-  if (screen === 'stageSelect') { renderer.drawStageSelect(stageTiles, stageIndex); return; }
+  if (screen === 'stageSelect') { renderer.drawStageSelect(stageTiles, stageIndex, 'P2 CPU: ' + cpuLabel(settings.cpuLevel)); return; }
   const opts = { showBoxes: settings.showBoxes };
   if (settings.showDebug) {
     const f = match.state.fighters[0];
@@ -114,6 +115,11 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') stageIndex = (stageIndex + n - 1) % n;
     else if (e.code === 'KeyD' || e.code === 'ArrowRight') stageIndex = (stageIndex + 1) % n;
     else if (e.code === 'KeyJ' || e.code === 'Enter' || e.code === 'Space') chooseStage(stageIndex);
+    else if (e.code === 'KeyW' || e.code === 'KeyS' || e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+      const i = CPU_ORDER.indexOf(settings.cpuLevel);
+      settings.cpuLevel = CPU_ORDER[(i + (e.code === 'KeyW' || e.code === 'ArrowUp' ? CPU_ORDER.length - 1 : 1)) % CPU_ORDER.length];
+      saveSettings(settings);
+    }
     else if (e.code === 'Escape') screen = 'title';
     return;
   }
