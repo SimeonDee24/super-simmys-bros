@@ -129,147 +129,29 @@ const LAYER_BUILDERS = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// Platform art styles. Each draws the stage's solids (and anything attached
-// to them) into a canvas that moves with the camera.
-// ---------------------------------------------------------------------------
-const PLATFORM_STYLES = {
-  // A balcony on a glass-and-timber building.
-  balcony(ctx, stage) {
-    const a = stage.art, rnd = rng32(a.seed);
-    const [main, tier2, tier3] = stage.solids;
-    const fx = a.facade.x, fw = a.facade.w, ftop = a.facade.top;
-    const deckY = main.y;
+const TOOLS = { rng32, disc, drawText };
+const MARGIN_X = (LAYER_W - W) / 2, MARGIN_Y = 10;
 
-    // --- Lower floor, behind and below the balcony ---
-    ctx.fillStyle = a.lowerWall;
-    ctx.fillRect(fx, deckY + 10, fw, LAYER_H);
-    ctx.fillStyle = a.concreteDark;
-    for (let y = deckY + 60; y < LAYER_H; y += 9) ctx.fillRect(fx, y, fw, 1);
-    ctx.fillStyle = a.lowerWindow;
-    ctx.fillRect(fx + 8, deckY + 76, fw - 16, 20);
-    ctx.fillStyle = a.concreteDark;
-    for (let x = fx + 8; x < fx + fw - 8; x += 19) ctx.fillRect(x, deckY + 76, 1, 20);
-    ctx.fillStyle = a.concreteShade; ctx.fillRect(fx, deckY + 10, 2, LAYER_H);
-    ctx.fillStyle = a.concreteDark; ctx.fillRect(fx + fw - 2, deckY + 10, 2, LAYER_H);
-
-    // --- Upper floor: glass curtain wall ---
-    const gh = deckY - ftop;
-    for (let y = 0; y < gh; y++) {
-      ctx.fillStyle = a.glass[Math.min(2, Math.floor((y / gh) * 3))];
-      ctx.fillRect(fx, ftop + y, fw, 1);
-    }
-    // soft diagonal reflections
-    ctx.fillStyle = a.glassLine;
-    ctx.globalAlpha = 0.35;
-    for (let i = 0; i < 9; i++) {
-      const sx = fx + 10 + Math.floor(rnd() * (fw - 40)), len = 18 + Math.floor(rnd() * 40), wdt = 2 + Math.floor(rnd() * 4);
-      for (let k = 0; k < len; k++) {
-        const x = sx + (k >> 1), y = deckY - 6 - k;
-        if (y > ftop + 12 && x + wdt < fx + fw) ctx.fillRect(x, y, wdt, 1);
-      }
-    }
-    ctx.globalAlpha = 1;
-    // warm ceiling lights seen through the glass
-    ctx.fillStyle = '#ffe9b0';
-    ctx.globalAlpha = 0.55;
-    for (let x = fx + 14; x < fx + fw - 10; x += 20) ctx.fillRect(x, ftop + 15, 6, 1);
-    ctx.globalAlpha = 1;
-    // mullions
-    ctx.fillStyle = a.mullion;
-    for (let x = fx; x <= fx + fw; x += 20) ctx.fillRect(Math.min(x, fx + fw - 1), ftop, 1, gh);
-    ctx.fillRect(fx, ftop + 46, fw, 1);
-    ctx.fillRect(fx, deckY - 30, fw, 1);
-    // timber columns in front of the glass
-    for (let x = fx + 2; x <= fx + fw - 6; x += 60) {
-      ctx.fillStyle = a.wood; ctx.fillRect(x, ftop, 5, gh);
-      ctx.fillStyle = a.woodLight; ctx.fillRect(x, ftop, 1, gh);
-      ctx.fillStyle = a.woodShade; ctx.fillRect(x + 4, ftop, 1, gh);
-    }
-    // header band with the sign
-    ctx.fillStyle = a.metal; ctx.fillRect(fx, ftop, fw, 11);
-    ctx.fillStyle = a.metalLight; ctx.fillRect(fx, ftop + 10, fw, 1);
-    drawText(ctx, a.sign, fx + (fw >> 1), ftop + 3, a.signColor, 1, 'center');
-
-    // --- Roof canopy with a timber underside ---
-    const cx0 = fx - 16, cw = fw + 32;
-    ctx.fillStyle = a.metal; ctx.fillRect(cx0, ftop - 10, cw, 4);
-    ctx.fillStyle = a.metalLight; ctx.fillRect(cx0, ftop - 10, cw, 1);
-    ctx.fillStyle = a.wood; ctx.fillRect(cx0 + 2, ftop - 6, cw - 4, 6);
-    ctx.fillStyle = a.woodShade; ctx.fillRect(cx0 + 2, ftop - 2, cw - 4, 2);
-    for (let x = cx0 + 8; x < cx0 + cw - 4; x += 9) ctx.fillRect(x, ftop - 6, 1, 4);
-    // rooftop garden peeking over the canopy
-    for (let x = fx + 10; x < fx + fw - 10; x += 4 + Math.floor(rnd() * 5)) {
-      const h = 2 + Math.floor(rnd() * 5);
-      ctx.fillStyle = rnd() < 0.5 ? a.plant : a.plantDark;
-      ctx.fillRect(x, ftop - 10 - h, 3, h);
-    }
-
-    // --- Glass railings on the parts of the balcony beyond the wall ---
-    for (const [x0, x1] of [[main.x, fx], [fx + fw, main.x + main.w]]) {
-      ctx.fillStyle = a.railGlass; ctx.fillRect(x0, deckY - 14, x1 - x0, 14);
-      ctx.fillStyle = a.rail; ctx.fillRect(x0, deckY - 15, x1 - x0, 1);
-      ctx.fillStyle = a.mullion;
-      ctx.fillRect(x0, deckY - 15, 1, 15); ctx.fillRect(x1 - 1, deckY - 15, 1, 15);
-    }
-
-    // --- Planter boxes against the wall ---
-    for (const px0 of [fx + 12, fx + fw - 46]) {
-      for (let x = px0 + 1; x < px0 + 33; x += 3) {
-        const h = 5 + Math.floor(rnd() * 8);
-        ctx.fillStyle = a.plantDark; disc(ctx, x + 1, deckY - 9 - h + 3, 3);
-        ctx.fillStyle = a.plant; disc(ctx, x, deckY - 10 - h + 3, 2);
-        ctx.fillStyle = a.plantLight; ctx.fillRect(x - 1, deckY - 12 - h + 3, 2, 1);
-      }
-      ctx.fillStyle = a.wood; ctx.fillRect(px0, deckY - 9, 34, 9);
-      ctx.fillStyle = a.woodLight; ctx.fillRect(px0, deckY - 9, 34, 1);
-      ctx.fillStyle = a.woodShade; ctx.fillRect(px0, deckY - 5, 34, 1); ctx.fillRect(px0, deckY - 1, 34, 1);
-    }
-
-    // --- Stepped timber underside (solids 2 and 3) ---
-    for (const s of [tier3, tier2]) {
-      ctx.fillStyle = a.wood; ctx.fillRect(s.x, s.y, s.w, s.h);
-      ctx.fillStyle = a.woodShade;
-      ctx.fillRect(s.x, s.y, s.w, 2);
-      ctx.fillRect(s.x, s.y + s.h - 2, s.w, 2);
-      for (let x = s.x + 7; x < s.x + s.w; x += 8) ctx.fillRect(x, s.y + 2, 1, s.h - 4);
-      ctx.fillStyle = a.woodLight; ctx.fillRect(s.x, s.y + 2, 1, s.h - 4);
-    }
-
-    // --- Balcony slab (solid 1): concrete edge with a timber deck on top ---
-    ctx.fillStyle = a.concrete; ctx.fillRect(main.x, main.y, main.w, main.h);
-    ctx.fillStyle = a.concreteShade;
-    for (let y = main.y + 14; y < main.y + main.h; y += 10) ctx.fillRect(main.x, y, main.w, 1);
-    for (let i = 0; i < 40; i++) {
-      ctx.fillStyle = rnd() < 0.5 ? a.concreteLight : a.concreteShade;
-      ctx.fillRect(main.x + 3 + Math.floor(rnd() * (main.w - 10)), main.y + 7 + Math.floor(rnd() * (main.h - 10)), 2 + Math.floor(rnd() * 4), 1);
-    }
-    ctx.fillStyle = a.concreteLight; ctx.fillRect(main.x, main.y, 2, main.h);
-    ctx.fillStyle = a.concreteDark; ctx.fillRect(main.x + main.w - 2, main.y, 2, main.h);
-    ctx.fillRect(main.x, main.y + main.h - 2, main.w, 2);
-    // deck boards
-    ctx.fillStyle = a.deck; ctx.fillRect(main.x, main.y, main.w, 5);
-    ctx.fillStyle = a.deckLight; ctx.fillRect(main.x, main.y, main.w, 1);
-    ctx.fillStyle = a.deckSeam; ctx.fillRect(main.x, main.y + 4, main.w, 1);
-    for (let x = main.x + 13; x < main.x + main.w; x += 14) ctx.fillRect(x, main.y + 1, 1, 3);
-    // steel edge caps
-    for (const ex of [main.x, main.x + main.w - 3]) {
-      ctx.fillStyle = a.metal; ctx.fillRect(ex, main.y, 3, 6);
-      ctx.fillStyle = a.metalLight; ctx.fillRect(ex, main.y, 3, 1);
-    }
-  },
+// A stage-specific painting: the stage file supplies draw(ctx, tools, stage),
+// working in screen coordinates. It does not tile, so it is drawn once with a
+// margin on every side for the camera pan.
+LAYER_BUILDERS.custom = (l, stage) => {
+  const c = makeCanvas(LAYER_W, LAYER_H + MARGIN_Y * 2), ctx = c.getContext('2d');
+  ctx.translate(MARGIN_X, MARGIN_Y);
+  l.draw(ctx, TOOLS, stage);
+  return c;
 };
 
 export class Background {
   constructor(stage) {
     this.stage = stage;
     this.sky = this.buildSky(stage.background);
-    this.layers = stage.background.layers.map((l) => ({ def: l, canvas: (LAYER_BUILDERS[l.type] || LAYER_BUILDERS.clouds)(l) }));
+    this.layers = stage.background.layers.map((l) => ({ def: l, canvas: (LAYER_BUILDERS[l.type] || LAYER_BUILDERS.clouds)(l, stage) }));
     this.platform = makeCanvas(W, LAYER_H + 60);
     this.platformOffY = 60; // room above the screen for tall art
     const pctx = this.platform.getContext('2d');
     pctx.translate(0, this.platformOffY);
-    PLATFORM_STYLES[stage.art.style](pctx, stage);
+    stage.art.draw(pctx, stage, TOOLS); // the stage paints its own platform
   }
 
   buildSky(bg) {
@@ -302,6 +184,10 @@ export class Background {
 
   drawLayer(ctx, l, time, camX, camY) {
     const d = l.def;
+    if (d.type === 'custom') {
+      ctx.drawImage(l.canvas, -MARGIN_X - Math.round(camX * d.parallax), -MARGIN_Y - Math.round(camY * d.parallax));
+      return;
+    }
     const off = Math.floor((time * (d.speed || 0)) / 60 + camX * d.parallax);
     const x = -(((off % LAYER_W) + LAYER_W) % LAYER_W);
     const y = -Math.round(camY * d.parallax);

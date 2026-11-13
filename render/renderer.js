@@ -22,6 +22,8 @@ export class Renderer {
     this.bg = null;
     this.cam = { x: 0, y: 0 };
     this.time = 0;
+    this.effects = [];      // short-lived visual effects (render only)
+    this.seen = [];         // last drawn flags per fighter, to spot changes
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -66,11 +68,42 @@ export class Renderer {
         blink ? { flash: '#ffffff' } : undefined);
     }
 
+    this.drawEffects(state, camX, camY);
     if (opts.showBoxes) this.drawBoxes(state, stage, camX, camY);
     this.drawHud(state);
     if (opts.debugLines) {
       let y = 4;
       for (const line of opts.debugLines) { drawText(ctx, line, 4, y, '#ffffff', 1, 'left', '#000000'); y += 7; }
+    }
+  }
+
+  // Effects are spawned by watching the state change between drawn frames and
+  // aged by the simulation tick, so they freeze correctly while paused.
+  drawEffects(state, camX, camY) {
+    const ctx = this.ctx;
+    state.fighters.forEach((f, i) => {
+      const was = this.seen[i] || {};
+      if (f.fastFall && !was.fastFall) {
+        this.effects.push({ type: 'fastfall', x: toPx(f.x), y: toPx(f.y) - 24, tick: state.tick });
+      }
+      this.seen[i] = { fastFall: f.fastFall };
+    });
+    this.effects = this.effects.filter((e) => state.tick >= e.tick && state.tick - e.tick < 14);
+    for (const e of this.effects) {
+      const age = state.tick - e.tick;
+      const x = e.x - camX, y = e.y - camY;
+      // four-point twinkle: grows fast, then shrinks
+      const len = age < 3 ? 3 + age * 2 : Math.max(1, 8 - ((age - 3) * 2) / 3 | 0);
+      ctx.fillStyle = '#5fc8ff';
+      ctx.fillRect(x - len, y, len * 2 + 1, 1);
+      ctx.fillRect(x, y - len, 1, len * 2 + 1);
+      const d = Math.max(1, len >> 1);
+      ctx.fillStyle = '#bff0ff';
+      ctx.fillRect(x - d, y - 1, d * 2 + 1, 3);
+      ctx.fillRect(x - 1, y - d, 3, d * 2 + 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x - (d >> 1), y, (d >> 1) * 2 + 1, 1);
+      ctx.fillRect(x, y - (d >> 1), 1, (d >> 1) * 2 + 1);
     }
   }
 

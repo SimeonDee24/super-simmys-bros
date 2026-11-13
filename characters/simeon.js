@@ -25,18 +25,18 @@ const stats = {
 
   // Jumps
   jumpSquat: 3,            // frames on the ground before leaving it
-  jumpVel: px(4.05),       // full hop  (about 55 px high)
-  shortHopVel: px(3.06),   // short hop (about 31 px high)
-  doubleJumpVel: px(4.2),
+  jumpVel: px(4.45),       // full hop  (about 55 px high)
+  shortHopVel: px(3.37),   // short hop (about 31 px high)
+  doubleJumpVel: px(4.57),
   doubleJumpH: px(1.6),    // sideways speed when double jumping with a direction held
   doubleJumpAnimFrames: 18,
   jumpMaxH: px(2.9),       // sideways speed kept when jumping out of a run
   airJumps: 1,
 
   // Air
-  gravity: px(0.152),
-  fallSpeed: px(2.63),
-  fastFallSpeed: px(4.2),
+  gravity: px(0.18),
+  fallSpeed: px(3.2),
+  fastFallSpeed: px(4.9),
   airSpeed: px(2.7),
   airAccel: px(0.22),
   airFriction: px(0.026),
@@ -45,7 +45,7 @@ const stats = {
   ledgeHang: px(44),       // how far the feet hang below the ledge
   ledgeMinHang: 8,         // frames before a ledge option can be chosen
   ledgeGetupFrames: 22,
-  ledgeJumpVel: px(4.3),
+  ledgeJumpVel: px(4.68),
   ledgeJumpH: px(1.2),
 
   // Landing
