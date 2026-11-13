@@ -8,12 +8,14 @@
 //     (elbows bend with positive values, knees with negative values)
 //   torso / head angle 0 = upright, positive = leans forward
 //   foot angle is absolute (0 = flat on the ground)
+//   rot turns the WHOLE body around its middle (positive = forward roll,
+//     negative = backflip; -360 is one full backflip)
 import { FX, sinDeg, cosDeg, mulTrig } from './fixed.js';
 
-export const POSE_KEYS = ['hx', 'hy', 'torso', 'head', 'afu', 'afl', 'abu', 'abl', 'lfu', 'lfl', 'lbu', 'lbl', 'ff', 'fb'];
+export const POSE_KEYS = ['rot', 'hx', 'hy', 'torso', 'head', 'afu', 'afl', 'abu', 'abl', 'lfu', 'lfl', 'lbu', 'lbl', 'ff', 'fb'];
 
 const DEFAULT_POSE = {
-  hx: 0, hy: 0, torso: 0, head: 0,
+  rot: 0, hx: 0, hy: 0, torso: 0, head: 0,
   afu: 5, afl: 10, abu: -5, abl: 8,
   lfu: 4, lfl: -3, lbu: -5, lbl: -2,
   ff: 0, fb: 0,
@@ -29,6 +31,7 @@ export function pose(p = {}) {
   if (p.armB) { o.abu = p.armB[0]; o.abl = p.armB[1]; }
   if (p.legF) { o.lfu = p.legF[0]; o.lfl = p.legF[1]; }
   if (p.legB) { o.lbu = p.legB[0]; o.lbl = p.legB[1]; }
+  if (p.rot !== undefined) o.rot = p.rot;
   if (p.torso !== undefined) o.torso = p.torso;
   if (p.head !== undefined) o.head = p.head;
   if (p.footF !== undefined) o.ff = p.footF;
@@ -77,9 +80,19 @@ export function samplePose(a, frame) {
 // Returns joint positions (fixed-point, relative to the feet, facing right)
 // and the rotation of every part.
 export function solve(skel, p) {
-  const hipX = p.hx;
-  const hipY = -skel.hipY * FX + p.hy;
-  const st = sinDeg(p.torso), ct = cosDeg(p.torso);
+  let hipX = p.hx;
+  let hipY = -skel.hipY * FX + p.hy;
+  // Whole-body rotation: the hip swings around a point in the middle of the
+  // torso, and every part angle turns with it.
+  const r = p.rot || 0;
+  if (r) {
+    const piv = (skel.spinPivot || 8) * FX;
+    const cy = hipY - piv;
+    hipX -= mulTrig(piv, sinDeg(r));
+    hipY = cy + mulTrig(piv, cosDeg(r));
+  }
+  const torso = p.torso + r, head = p.head + r;
+  const st = sinDeg(torso), ct = cosDeg(torso);
   const tl = skel.torso * FX;
   const sl = (skel.torso - skel.shoulderDrop) * FX;
   const neck = [hipX + mulTrig(tl, st), hipY - mulTrig(tl, ct)];
@@ -92,17 +105,19 @@ export function solve(skel, p) {
     const ey = my + mulTrig(lowLen * FX, cosDeg(u + l));
     return { a: [x, y], b: [mx, my], c: [ex, ey], up: u, low: u + l };
   };
-  const so = skel.shoulderOff * FX, ho = skel.hipOff * FX;
+  const cr = cosDeg(r), sr = sinDeg(r);
+  const sox = mulTrig(skel.shoulderOff * FX, cr), soy = mulTrig(skel.shoulderOff * FX, sr);
+  const hox = mulTrig(skel.hipOff * FX, cr), hoy = mulTrig(skel.hipOff * FX, sr);
   return {
     hip: [hipX, hipY],
     neck,
-    torso: p.torso,
-    head: p.head,
-    armF: limb(shX + so, shY, skel.upperArm, skel.lowerArm, p.afu, p.afl),
-    armB: limb(shX - so, shY, skel.upperArm, skel.lowerArm, p.abu, p.abl),
-    legF: limb(hipX + ho, hipY, skel.upperLeg, skel.lowerLeg, p.lfu, p.lfl),
-    legB: limb(hipX - ho, hipY, skel.upperLeg, skel.lowerLeg, p.lbu, p.lbl),
-    footF: p.ff, footB: p.fb,
+    torso,
+    head,
+    armF: limb(shX + sox, shY + soy, skel.upperArm, skel.lowerArm, p.afu - r, p.afl),
+    armB: limb(shX - sox, shY - soy, skel.upperArm, skel.lowerArm, p.abu - r, p.abl),
+    legF: limb(hipX + hox, hipY + hoy, skel.upperLeg, skel.lowerLeg, p.lfu - r, p.lfl),
+    legB: limb(hipX - hox, hipY - hoy, skel.upperLeg, skel.lowerLeg, p.lbu - r, p.lbl),
+    footF: p.ff - r, footB: p.fb - r,
     handF: p.handF, handB: p.handB, face: p.face,
   };
 }

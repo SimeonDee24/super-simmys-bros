@@ -4,7 +4,7 @@ import { CONFIG } from '../config/config.js';
 import { GAME_VERSION } from '../config/version.js';
 import { FX, toPx } from '../engine/fixed.js';
 import { samplePose, solve, hurtboxes } from '../engine/skeleton.js';
-import { activeHitboxes } from '../engine/combat.js';
+import { activeHitboxes, jointAt } from '../engine/combat.js';
 import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { DollRenderer } from './doll.js';
@@ -103,6 +103,7 @@ export class Renderer {
         blink ? { flash: '#ffffff' } : undefined);
     }
 
+    for (const f of state.fighters) this.drawTrail(f, getCharacter(f.charId), camX, camY);
     this.drawEffects(state, camX, camY);
     for (const f of state.fighters) if (f.state === 'dead') this.drawKoBlast(f);
     if (opts.showBoxes) this.drawBoxes(state, stage, camX, camY);
@@ -192,6 +193,40 @@ export class Renderer {
       ctx.fillRect(x - (d >> 1), y, (d >> 1) * 2 + 1, 1);
       ctx.fillRect(x, y - (d >> 1), 1, (d >> 1) * 2 + 1);
     }
+  }
+
+  // Swipe arc: a bright ribbon following a fist or foot through the last few
+  // frames of an attack. Rebuilt from the animation every frame, so it needs
+  // no history and freezes correctly in hitlag and pause.
+  drawTrail(f, ch, camX, camY) {
+    if (f.state !== 'attack' || !f.move) return;
+    const tr = ch.moves[f.move].trail;
+    if (!tr) return;
+    const LEN = 6;
+    const newest = Math.min(f.stateFrame, tr.to), oldest = Math.max(tr.from, f.stateFrame - LEN);
+    if (newest <= oldest) return;
+    const a = ch.animations[f.anim];
+    const pts = [];
+    for (let fr = newest; fr >= oldest; fr--) {
+      const j = jointAt(solve(ch.skeleton, samplePose(a, fr)), tr.part);
+      pts.push([toPx(f.x + f.facing * j[0]) - camX, toPx(f.y + j[1]) - camY]);
+    }
+    const ctx = this.ctx, width = tr.width || 5, n = pts.length - 1;
+    const colors = ch.trailColors || ['#ff9a3c', '#ffe14a', '#ffffff'];
+    const fade = f.stateFrame > tr.to ? Math.max(0, 1 - (f.stateFrame - tr.to) / LEN) : 1;
+    colors.forEach((col, pass) => {
+      ctx.fillStyle = col;
+      for (let i = 0; i < n; i++) {
+        const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+        const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
+        for (let s = 0; s <= steps; s++) {
+          const u = (i + s / steps) / n;              // 0 at the limb, 1 at the tail
+          const w = Math.round((width * (1 - u) * fade + 1) * (1 - pass * 0.36));
+          if (w < 1) continue;
+          ctx.fillRect(Math.round(x0 + ((x1 - x0) * s) / steps - w / 2), Math.round(y0 + ((y1 - y0) * s) / steps - w / 2), w, w);
+        }
+      }
+    });
   }
 
   // Hit spark: a jagged burst that is bigger for stronger hits.

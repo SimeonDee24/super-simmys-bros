@@ -24,6 +24,8 @@ const JOINT = {
   hip: (s) => s.hip, neck: (s) => s.neck, chest: (s) => mid(s.hip, s.neck),
 };
 
+export const jointAt = (solved, name) => JOINT[name](solved);
+
 // Hitboxes that are out on this exact frame of the fighter's current move,
 // as circles in world fixed-point: { cx, cy, r, def }.
 export function activeHitboxes(f, ch, includeSpent = false) {

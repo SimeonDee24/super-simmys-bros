@@ -63,6 +63,7 @@ const stats = {
 //   feet 2 + lower leg 9 + upper leg 10 = hip at 21, torso 13, head 6, hair 2
 // ---------------------------------------------------------------------------
 const skeleton = {
+  spinPivot: 8,            // whole-body rotation turns around a point this far above the hip
   hipY: 21, torso: 13, shoulderDrop: 2, shoulderOff: 1, hipOff: 1,
   upperArm: 6, lowerArm: 5, upperLeg: 10, lowerLeg: 9,
   headRadius: 4, torsoRadius: 3, armRadius: 2, legRadius: 2,
@@ -164,7 +165,10 @@ const FTILT_KICK = { hip: [-1, 0], torso: -14, legF: [92, -2], legB: [-6, -4], a
 const DTILT_LOW = { hip: [-1, 9], torso: 24, head: 8, legF: [62, -112], legB: [50, -108], armF: [10, 50], armB: [-10, 40] };
 const DTILT_SWEEP = { hip: [-2, 12], torso: 10, legF: [76, -4], legB: [60, -124], armF: [-30, 30], armB: [-50, 20], footF: 20, face: 'yell' };
 const SLIDE = { hip: [-1, 11], torso: -38, head: -15, legF: [82, -2], legB: [65, -115], armF: [-60, 20], armB: [-80, 10], footF: 35, face: 'yell' };
-const BAIR_KICK = { torso: 38, head: 12, legF: [-78, -6], legB: [-90, -2], armF: [70, 20], armB: [60, 30], footB: -30, face: 'yell' };
+// body thrown level, both legs driven straight out behind
+const BAIR_KICK = { rot: 72, torso: 6, head: -30, legF: [-6, -8], legB: [-16, -2], armF: [60, 70], armB: [40, 80], footF: -60, footB: -60, ...FISTS, face: 'yell' };
+const UAIR_KICK = { torso: -8, head: -10, legF: [22, -4], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
+const UAIR_TUCK = { torso: 12, head: 10, legF: [70, -100], legB: [55, -95], armF: [30, 80], armB: [10, 85], ...FISTS };
 
 const animations = {
   idle: anim(true, [
@@ -271,22 +275,22 @@ const animations = {
     [8, { torso: 40, head: 15, armF: [30, 5], armB: [-20, 50], legF: [10, -20], legB: [-25, -40], ...FISTS }],
     [20, AIR],
   ]),
-  // Back air: both legs thrust out behind.
+  // Back air: dropkick, body level with both legs thrust out behind.
   bair: anim(false, [
-    [6, { torso: 10, legF: [10, -60], legB: [-10, -70], armF: [40, 40], armB: [30, 50] }],
+    [6, { rot: 30, torso: 10, legF: [40, -90], legB: [30, -100], armF: [40, 60], armB: [30, 70], ...FISTS }],
     [4, BAIR_KICK], [3, BAIR_KICK],
-    [8, { torso: 15, legF: [-20, -40], legB: [-30, -50], armF: [40, 40], armB: [30, 50] }],
+    [8, { rot: 40, torso: 10, legF: [20, -60], legB: [10, -70], armF: [40, 60], armB: [30, 70] }],
     [8, AIR],
   ]),
-  // Up air: flip kick, the leg sweeping from the front, overhead, to the back.
+  // Up air: a full backflip with one leg extended, so the foot sweeps from
+  // in front, over the head, to behind. rot runs from 0 to -360.
   uair: anim(false, [
-    [4, { torso: -10, legF: [80, -15], legB: [20, -60], armF: [-30, 30], armB: [-50, 20] }],
-    [2, { hip: [0, -1], torso: -30, head: -20, legF: [125, -5], legB: [40, -70], armF: [-60, 20], armB: [-80, 10], footF: -60, face: 'yell' }],
-    [2, { hip: [0, -1], torso: -45, head: -25, legF: [170, -5], legB: [50, -75], armF: [-65, 20], armB: [-85, 10], footF: -100, face: 'yell' }],
-    [6, { hip: [0, -1], torso: -60, head: -30, legF: [215, -5], legB: [60, -80], armF: [-70, 20], armB: [-90, 10], footF: -140, face: 'yell' }],
-    [8, { torso: -20, legF: [60, -40], legB: [10, -50] }],
-    [5, AIR],
-  ]),
+    [4, { ...UAIR_TUCK, rot: 0 }],
+    [4, { ...UAIR_KICK, rot: -60 }],
+    [9, { ...UAIR_KICK, rot: -185 }],
+    [7, { ...UAIR_TUCK, rot: -310 }],
+    [3, { ...AIR, rot: -360 }],
+  ], { ease: false }),
   // Down air: spinning with both arms out.
   dair: anim(false, [
     [4, { torso: 0, armF: [40, 60], armB: [-40, 50], legF: [6, -8], legB: [-6, -8], footF: 60, footB: 60, ...FISTS }],
@@ -312,6 +316,8 @@ const animations = {
 //                          off: [x, y] px, lag (fixed hitlag frames), lagMult (percent of normal hitlag)
 //                  listed first = wins when several overlap, so put sweet spots first
 //   landLag      aerials: landing lag if he lands during frames autoCancel[0] .. autoCancel[1]-1
+//   trail        swipe arc drawn behind a body part while the move is out:
+//                  { part, from, to } (frames), so the hitbox is easy to see
 //   slide        ground move that slides: starting speed and friction
 //   endsCrouched stay crouching afterwards if down is held
 // ---------------------------------------------------------------------------
@@ -329,12 +335,12 @@ const spin = (frame, group) => hit(frame, frame + 1, 'chest', 14, 1.4, 85, 20, 1
 
 const moves = {
   // --- Tilts ---
-  ftilt: { faf: 22, hitboxes: hits(5, 7, LEG_F, 7, 361, 8, 100) },
-  utilt: { faf: 25, hitboxes: [
+  ftilt: { faf: 22, trail: { part: 'toeF', from: 3, to: 7 }, hitboxes: hits(5, 7, LEG_F, 7, 361, 8, 100) },
+  utilt: { faf: 25, trail: { part: 'fistF', from: 4, to: 11 }, hitboxes: [
     ...hits(5, 11, [['fistF', 8], ['elbowF', 6]], 5.5, 96, 26, 130),
     hit(5, 8, 'chest', 6, 5.5, 96, 26, 130, { off: [5, 0] }),   // close to the body on the way up
   ] },
-  dtilt: { faf: 23, endsCrouched: true, hitboxes: [
+  dtilt: { faf: 23, endsCrouched: true, trail: { part: 'toeF', from: 4, to: 7 }, hitboxes: [
     hit(5, 7, 'kneeF', 5, 7, 80, 30, 80), hit(5, 7, 'shinF', 5, 7, 80, 30, 80), hit(5, 7, 'toeF', 6, 5, 80, 30, 80),
   ] },
   dashAttack: { faf: 33, slide: { speed: px(3.0), friction: px(0.07) }, hitboxes: [
@@ -347,17 +353,17 @@ const moves = {
     ...hits(3, 5, [['toeF', 6], ['shinF', 5], ['hip', 6]], 8, 361, 20, 100),
     ...hits(6, 24, [['toeF', 5], ['shinF', 5], ['hip', 6]], 5, 361, 10, 100),
   ] },
-  fair: { faf: 48, landLag: 12, autoCancel: [3, 36], hitboxes: [
+  fair: { faf: 48, landLag: 12, autoCancel: [3, 36], trail: { part: 'fistF', from: 15, to: 21 }, hitboxes: [
     hit(17, 20, 'fistF', 8, 14, 270, 20, 80),            // sweet spot: spike
     hit(16, 16, 'fistF', 8, 12, 361, 30, 87),
     hit(16, 20, 'elbowF', 6, 12, 361, 30, 87),
     hit(21, 21, 'fistF', 8, 10, 361, 30, 87),
   ] },
-  bair: { faf: 29, landLag: 5, autoCancel: [6, 17], hitboxes: [
+  bair: { faf: 29, landLag: 5, autoCancel: [6, 17], trail: { part: 'toeB', from: 4, to: 8 }, hitboxes: [
     ...hits(6, 7, LEG_B, 10.5, 361, 12, 106, BACK),
     ...hits(8, 10, LEG_B, 7, 361, 12, 100, BACK),
   ] },
-  uair: { faf: 27, landLag: 5, autoCancel: [4, 16], hitboxes: hits(4, 8, [['toeF', 7], ['shinF', 6], ['kneeF', 5]], 7, 75, 9, 135) },
+  uair: { faf: 27, landLag: 5, autoCancel: [4, 16], trail: { part: 'toeF', from: 3, to: 10 }, hitboxes: hits(4, 8, [['toeF', 7], ['shinF', 6], ['kneeF', 5]], 7, 75, 9, 135) },
   dair: { faf: 33, landLag: 10, autoCancel: [5, 29], hitboxes: [
     spin(5, 0), spin(9, 1), spin(13, 2), spin(17, 3), spin(21, 4),
     hit(25, 26, 'chest', 15, 5.5, 60, 40, 110, { group: 5, off: [0, -4] }),
