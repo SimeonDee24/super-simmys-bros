@@ -178,6 +178,11 @@ const DAIR_TUCK = { hip: [0, -4], torso: 10, head: 8, legF: [80, -135], legB: [7
 const DAIR_STOMP = { hip: [0, 2], torso: -4, head: 12, legF: [6, -2], legB: [-4, -2], armF: [150, 25], armB: [-145, -15], footF: 50, footB: 50, ...FISTS, face: 'yell' };
 const FTILT_KICK = { hip: [-1, 0], torso: -14, legF: [92, -2], legB: [-6, -4], armF: [-45, 25], armB: [45, 35], footF: 30, ...FISTS, face: 'yell' };
 const DTILT_LOW = { hip: [-1, 9], torso: 24, head: 8, legF: [62, -112], legB: [50, -108], armF: [10, 50], armB: [-10, 40] };
+// down tilt: a low karate floor sweep. Dropped onto one knee with a hand
+// down, the other leg sweeps a half circle along the floor from behind him,
+// under his body, round to the front.
+const SWEEP = { hip: [0, 13], torso: 34, head: 14, legB: [72, -152], armF: [30, 40], armB: [5, 15], footB: 20, handB: 'open', face: 'yell' };
+const sweep = (u, l, foot) => ({ ...SWEEP, legF: [u, l], footF: foot });
 const DTILT_SWEEP = { hip: [-2, 12], torso: 10, legF: [76, -4], legB: [60, -124], armF: [-30, 30], armB: [-50, 20], footF: 20, face: 'yell' };
 const SLIDE = { hip: [-1, 11], torso: -38, head: -15, legF: [82, -2], legB: [65, -115], armF: [-60, 20], armB: [-80, 10], footF: 35, face: 'yell' };
 // body thrown level, both legs driven straight out behind
@@ -409,9 +414,15 @@ const animations = {
   ]),
   // Down tilt: crouching leg sweep along the floor.
   dtilt: anim(false, [
-    [5, DTILT_LOW],
-    [3, DTILT_SWEEP], [3, DTILT_SWEEP],
-    [8, DTILT_LOW],
+    [3, DTILT_LOW],
+    // one key per frame so the foot stays on the floor the whole way round
+    [1, sweep(-72, -4, -90)],    // frame 3: leg straight out behind
+    [1, sweep(-46, -48, -90)],   // frame 4
+    [1, sweep(84, -150, 0)],     // frame 5: foot passing right under him
+    [1, sweep(110, -102, 60)],   // frame 6
+    [3, sweep(74, 0, 90)],       // frame 7: leg straight out in front
+    [5, sweep(74, 0, 90)],
+    [2, DTILT_LOW],
     [1, DTILT_LOW],
   ]),
   // Dash attack: two kicks while still travelling forward: a low kick with the
@@ -527,14 +538,16 @@ const moves = {
   jab3: { faf: 26, trail: { part: 'toeF', from: 2, to: 5 }, hitboxes: [...hits(3, 5, LEG_F, 4, 361, 35, 110), low(3, 5, 6, 4, 361, 35, 110, 14)] },
 
   // --- Tilts ---
-  ftilt: { faf: 22, trail: { part: 'toeF', from: 3, to: 7 }, hitboxes: [...hits(5, 7, LEG_F, 7, 361, 8, 100), low(5, 7, 7, 7, 361, 8, 100, 15)] },
-  utilt: { faf: 28, trail: { part: 'fistF', from: 4, to: 11 }, hitboxes: [
+  ftilt: { faf: 18, trail: { part: 'toeF', from: 3, to: 7 }, hitboxes: [...hits(5, 7, LEG_F, 7, 361, 8, 100), low(5, 7, 7, 7, 361, 8, 100, 15)] },
+  utilt: { faf: 23, trail: { part: 'fistF', from: 4, to: 11 }, hitboxes: [
     ...hits(5, 11, [['fistF', 8], ['elbowF', 6]], 5.5, 96, 62, 105),
     hit(5, 8, 'chest', 6, 5.5, 96, 62, 105, { off: [5, 0] }),   // close to the body on the way up
     low(5, 7, 7, 5.5, 96, 62, 105, 10),
   ] },
-  dtilt: { faf: 23, endsCrouched: true, trail: { part: 'toeF', from: 4, to: 7 }, hitboxes: [
-    hit(5, 7, 'kneeF', 5, 7, 80, 30, 80), hit(5, 7, 'shinF', 5, 7, 80, 30, 80), hit(5, 7, 'toeF', 6, 5, 80, 30, 80),
+  // Floor sweep: catches them behind first (frames 3-4), then in front (6-8).
+  dtilt: { faf: 17, endsCrouched: true, trail: { part: 'toeF', from: 3, to: 9, straight: true, width: 4 }, hitboxes: [
+    ...hits(3, 4, [['toeF', 6], ['shinF', 5]], 5, 80, 30, 70, { ...BACK, group: 0 }),
+    ...hits(6, 8, [['toeF', 6], ['shinF', 5], ['kneeF', 5]], 7, 80, 30, 80, { group: 1 }),
   ] },
   // Two hits, built like Joker's. Both hits always come out, whether or not
   // the first one connects.

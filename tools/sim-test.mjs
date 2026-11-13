@@ -139,7 +139,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   // buffering: double-tap and a jump pressed during a tilt's last frames come out at once
   s = createMatch(setup); a = s.fighters[0]; s.fighters[1].x = 900 * FX;
   step(s, [BTN.ATTACK | BTN.UP, 0]);
-  for (let i = 0; i < 19; i++) step(s, [0, 0]);
+  for (let i = 0; i < 14; i++) step(s, [0, 0]);
   for (const m of [BTN.RIGHT, 0, 0, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT]) step(s, [m, 0]);
   check('double-tap during a tilt dashes on the first free frame', a.state === 'dash' && a.stateFrame <= 2, a.state + ' ' + a.stateFrame);
   s = createMatch(setup); a = s.fighters[0]; s.fighters[1].x = 900 * FX;
