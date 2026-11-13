@@ -5,6 +5,7 @@ import { BTN } from './input.js';
 import { CONFIG } from '../config/config.js';
 import { FX, approach, clamp } from './fixed.js';
 import { getCharacter } from '../characters/index.js';
+import { getStage } from '../stages/index.js';
 
 export function newFighter(slot, charId, alt, spawn, stocks) {
   const st = getCharacter(charId).stats;
@@ -16,6 +17,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     anim: 'idle', animFrame: 0,
     grounded: 1, ground: spawn.ground || 0,
     jumpsLeft: st.airJumps, fastFall: 0, landLag: 0,
+    ledge: -1, ledgeCd: 0,  // ledge being held, and frames until one can be grabbed again
     wallSide: 0,            // -1 / 1 while touching a wall in the air (for wall jumps)
     prevIn: 0, tapDir: 0, tapTimer: 0,
     percent: 0, stocks, falls: 0,
@@ -172,6 +174,42 @@ const STATES = {
     }
   },
 
+  // Hanging from a ledge. Toward the stage (or up) = get up, jump = ledge jump,
+  // down or away = let go. (Ledge attack, roll, intangibility and trumping
+  // arrive with milestone 3.)
+  ledge(c) {
+    const { f, st } = c;
+    if (f.stateFrame < st.ledgeMinHang) return;
+    if (c.pressed & BTN.JUMP) {
+      f.ledge = -1; f.ledgeCd = CONFIG.LEDGE_REGRAB_FRAMES;
+      f.vy = -st.ledgeJumpVel; f.vx = f.facing * st.ledgeJumpH;
+      enterAir(f, 'jump');
+    } else if (c.dir === f.facing || (c.input & BTN.UP)) {
+      setState(f, 'ledgeGetup', 'ledgeGetup');
+    } else if ((c.input & BTN.DOWN) || c.dir === -f.facing) {
+      f.ledge = -1; f.ledgeCd = CONFIG.LEDGE_REGRAB_FRAMES;
+      enterAir(f, 'fall');
+    }
+  },
+
+  // Climb up: rise beside the wall, then step onto the stage.
+  ledgeGetup(c) {
+    const { f, st } = c;
+    const l = getStage(c.match.stageId).ledges[f.ledge];
+    const rise = st.ledgeGetupFrames - 7;
+    if (f.stateFrame <= rise) {
+      f.y = l.y * FX + Math.trunc((st.ledgeHang * (rise - f.stateFrame)) / rise);
+    } else {
+      f.y = l.y * FX;
+      f.x += f.facing * FX * 2;
+    }
+    if (f.stateFrame >= st.ledgeGetupFrames) {
+      f.grounded = 1; f.ground = l.solid; f.ledge = -1;
+      f.vx = 0; f.vy = 0;
+      setState(f, 'idle', 'idle');
+    }
+  },
+
   land(c) {
     const { f, st } = c;
     f.vx = approach(f.vx, 0, st.traction);
@@ -201,6 +239,7 @@ export function updateFighter(match, f, input) {
   f.stateFrame++;
   f.animFrame++;
   if (f.invuln > 0) f.invuln--;
+  if (f.ledgeCd > 0) f.ledgeCd--;
   STATES[f.state]({ match, f, st, input, pressed, dir, tap, dashInput });
   f.prevIn = input;
 }

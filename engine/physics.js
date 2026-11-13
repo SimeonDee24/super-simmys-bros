@@ -1,11 +1,14 @@
 // Movement and stage collision. All integer math.
 import { FX } from './fixed.js';
 import { enterAir, land, setState } from './fighter.js';
+import { BTN } from './input.js';
 import { CONFIG } from '../config/config.js';
 
 export function moveFighter(f, stage, st) {
   const solids = stage.solids;
   const hw = st.ecbHalfW, h = st.ecbHeight;
+
+  if (f.state === 'ledge' || f.state === 'ledgeGetup') return; // position is set by the state
 
   if (f.grounded) {
     f.x += f.vx;
@@ -45,6 +48,31 @@ export function moveFighter(f, stage, st) {
       f.vy = 0;
     }
   }
+
+  tryLedgeGrab(f, stage, st);
+}
+
+// Automatic ledge grab: while falling, if the hands are close to a ledge.
+// Holding down prevents it.
+function tryLedgeGrab(f, stage, st) {
+  if (f.state !== 'air' || f.vy < 0 || f.ledgeCd > 0 || (f.prevIn & BTN.DOWN)) return;
+  const handY = f.y - st.ledgeHang;
+  for (let i = 0; i < stage.ledges.length; i++) {
+    const l = stage.ledges[i];
+    const out = (f.x - l.x * FX) * l.dir; // distance outside the ledge
+    if (out < -CONFIG.LEDGE_INSIDE_X * FX || out > CONFIG.LEDGE_REACH_X * FX) continue;
+    if (Math.abs(handY - l.y * FX) > CONFIG.LEDGE_REACH_Y * FX) continue;
+    f.ledge = i;
+    f.x = l.x * FX + l.dir * st.ecbHalfW;
+    f.y = l.y * FX + st.ledgeHang;
+    f.vx = 0; f.vy = 0;
+    f.facing = -l.dir;
+    f.fastFall = 0;
+    f.jumpsLeft = st.airJumps;
+    f.wallSide = 0;
+    setState(f, 'ledge', 'ledge');
+    return;
+  }
 }
 
 // Milestone 1: crossing a blast zone just puts the fighter back on the
@@ -61,6 +89,7 @@ export function checkBlastZones(f, stage, st) {
     f.jumpsLeft = st.airJumps;
     f.invuln = CONFIG.RESPAWN_INVULN;
     f.grounded = 0; f.ground = -1;
+    f.ledge = -1; f.ledgeCd = 0;
     setState(f, 'air', 'fall');
   }
 }

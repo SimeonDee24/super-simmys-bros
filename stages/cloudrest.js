@@ -12,10 +12,10 @@ export const CLOUDREST = {
     { x: 160, y: 228, w: 160, h: 12 },
   ],
 
-  // Grabbable ledges (used from milestone 3). dir = which way is off-stage.
+  // Grabbable ledges. dir = which way is off-stage, solid = platform it belongs to.
   ledges: [
-    { x: 100, y: 170, dir: -1 },
-    { x: 380, y: 170, dir: 1 },
+    { x: 100, y: 170, dir: -1, solid: 0 },
+    { x: 380, y: 170, dir: 1, solid: 0 },
   ],
 
   spawns: [

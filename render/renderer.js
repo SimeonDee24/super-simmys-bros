@@ -87,8 +87,9 @@ export class Renderer {
     };
     for (const s of stage.solids) rect(s.x - camX, s.y - camY, s.x + s.w - camX, s.y + s.h - camY, '#ff8a3c');
     for (const l of stage.ledges) {
-      const x = l.dir < 0 ? l.x - 12 : l.x;
-      rect(x - camX, l.y - 6 - camY, x + 12 - camX, l.y + 10 - camY, '#40e0ff');
+      const a = l.dir < 0 ? l.x - CONFIG.LEDGE_REACH_X : l.x - CONFIG.LEDGE_INSIDE_X;
+      const b = a + CONFIG.LEDGE_REACH_X + CONFIG.LEDGE_INSIDE_X;
+      rect(a - camX, l.y - CONFIG.LEDGE_REACH_Y - camY, b - camX, l.y + CONFIG.LEDGE_REACH_Y - camY, '#40e0ff');
     }
     for (const f of state.fighters) {
       const ch = getCharacter(f.charId), st = ch.stats;
@@ -147,7 +148,7 @@ export class Renderer {
     drawText(ctx, title, W / 2, 50, '#ffe14a', 4, 'center', '#c2452d');
     if ((this.time >> 5) & 1) drawText(ctx, 'PRESS ANY KEY', W / 2, 96, '#ffffff', 2, 'center', '#1a1440');
     drawText(ctx, 'V' + GAME_VERSION, W - 4, H - 9, '#ffffff', 1, 'right', '#1a1440');
-    drawText(ctx, 'MILESTONE 1: MOVEMENT TEST', 4, H - 9, '#ffffff', 1, 'left', '#1a1440');
+    drawText(ctx, 'MOVEMENT TEST', 4, H - 9, '#ffffff', 1, 'left', '#1a1440');
     if (info.updateMessage) {
       ctx.fillStyle = 'rgba(10,10,24,0.8)';
       ctx.fillRect(0, 116, W, 15);

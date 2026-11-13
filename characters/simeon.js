@@ -13,9 +13,9 @@ const stats = {
   // Ground
   walkSpeed: px(2.0),
   walkAccel: px(0.25),
-  dashSpeed: px(3.4),      // initial dash burst
+  dashSpeed: px(3.1),      // initial dash burst
   dashFrames: 11,          // length of the initial dash
-  runSpeed: px(3.08),
+  runSpeed: px(2.8),
   runAccel: px(0.2),
   traction: px(0.18),      // ground friction
   brakeFrames: 10,         // skid length after letting go of run
@@ -25,21 +25,28 @@ const stats = {
 
   // Jumps
   jumpSquat: 3,            // frames on the ground before leaving it
-  jumpVel: px(4.42),       // full hop  (about 64 px high)
+  jumpVel: px(4.05),       // full hop  (about 55 px high)
   shortHopVel: px(3.06),   // short hop (about 31 px high)
-  doubleJumpVel: px(4.42),
+  doubleJumpVel: px(4.2),
   doubleJumpH: px(1.6),    // sideways speed when double jumping with a direction held
   doubleJumpAnimFrames: 18,
-  jumpMaxH: px(2.6),       // sideways speed kept when jumping out of a run
+  jumpMaxH: px(2.9),       // sideways speed kept when jumping out of a run
   airJumps: 1,
 
   // Air
   gravity: px(0.152),
   fallSpeed: px(2.63),
   fastFallSpeed: px(4.2),
-  airSpeed: px(2.11),
-  airAccel: px(0.14),
+  airSpeed: px(2.7),
+  airAccel: px(0.22),
   airFriction: px(0.026),
+
+  // Ledge
+  ledgeHang: px(44),       // how far the feet hang below the ledge
+  ledgeMinHang: 8,         // frames before a ledge option can be chosen
+  ledgeGetupFrames: 22,
+  ledgeJumpVel: px(4.3),
+  ledgeJumpH: px(1.2),
 
   // Landing
   softLandLag: 2,
@@ -150,7 +157,7 @@ const animations = {
     [34, { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6, -2], face: 'smile' }],
     [34, { hip: [0, 1], torso: 3, armF: [7, 16], armB: [-8, 12], legF: [18, -30], legB: [-4, -26], face: 'smile' }],
   ], { ease: true }),
-  walk: anim(true, [[8, WALK_A], [8, WALK_B], [8, WALK_C], [8, WALK_D]]),
+  walk: anim(true, [[5, WALK_A], [5, WALK_B], [5, WALK_C], [5, WALK_D]]),
   run: anim(true, [[5, RUN_A], [5, RUN_B], [5, RUN_C], [5, RUN_D]]),
   brake: anim(false, [
     [4, { hip: [-1, 2], torso: -6, armF: [30, 30], armB: [-30, 20], legF: [35, -8], legB: [-12, -30] }],
@@ -177,6 +184,16 @@ const animations = {
     [10, { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: [-14, -18], footF: 25, footB: 35 }],
     [10, { torso: 6, armF: [85, 25], armB: [-90, 20], legF: [22, -34], legB: [-10, -24], footF: 25, footB: 35 }],
   ], { ease: true }),
+  ledge: anim(true, [
+    [30, { torso: 4, armF: [163, 8], armB: [168, 6], legF: [10, -15], legB: [-2, -10], footF: 25, footB: 30 }],
+    [30, { torso: 6, armF: [163, 8], armB: [168, 6], legF: [14, -22], legB: [2, -16], footF: 25, footB: 30 }],
+  ], { ease: true }),
+  ledgeGetup: anim(false, [
+    [8, { torso: 4, armF: [163, 8], armB: [168, 6], legF: [10, -15], legB: [-2, -10], footF: 25 }],
+    [7, { torso: 30, armF: [60, 60], armB: [50, 70], legF: [70, -100], legB: [20, -40] }],
+    [7, { hip: [0, 6], torso: 24, armF: [20, 40], armB: [5, 40], legF: [50, -95], legB: [32, -82] }],
+    [1, { torso: 3, armF: [6, 12], armB: [-6, 10], legF: [6, -6], legB: [-5, -4] }],
+  ]),
   land: anim(false, [
     [2, { hip: [0, 5], torso: 14, armF: [25, 30], armB: [-30, 20], legF: [45, -85], legB: [28, -75] }],
     [4, { hip: [0, 1], torso: 4, armF: [8, 14], armB: [-8, 10], legF: [14, -22], legB: [-2, -18] }],

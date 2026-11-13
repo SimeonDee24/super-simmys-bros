@@ -43,7 +43,7 @@ function jumpHeight(holdFrames) {
   return { h: (y0 - top) / FX, air, left };
 }
 const full = jumpHeight(30), short = jumpHeight(2);
-check('full hop about 64px', Math.abs(full.h - 64) < 4, `${full.h.toFixed(1)}px, ${full.air} frames airborne`);
+check('full hop about 55px', Math.abs(full.h - 55) < 4, `${full.h.toFixed(1)}px, ${full.air} frames airborne`);
 check('short hop about 31px', Math.abs(short.h - 31) < 3, `${short.h.toFixed(1)}px, ${short.air} frames airborne`);
 check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + full.left);
 
@@ -70,9 +70,26 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
 // Wall contact under the ledge is detected (needed for wall jumps later).
 {
   const s = createMatch(setup); const f = s.fighters[0];
-  f.x = 90 * FX; f.y = 200 * FX; f.grounded = 0; f.ground = -1; f.state = 'air';
+  f.x = 93 * FX; f.vx = 2 * FX; f.y = 236 * FX; f.grounded = 0; f.ground = -1; f.state = 'air';
   let touched = false;
-  for (let i = 0; i < 10; i++) { step(s, [BTN.RIGHT, 0]); if (f.wallSide === 1) touched = true; }
+  for (let i = 0; i < 5; i++) { step(s, [BTN.RIGHT, 0]); if (f.wallSide === 1) touched = true; }
   check('stage wall blocks and reports contact', touched && f.x <= (100 - 5) * FX);
+}
+// Ledge: run off the left edge, drift back, grab, then get up onto the stage.
+{
+  const s = createMatch(setup); const f = s.fighters[0];
+  let grabbed = false;
+  for (let i = 0; i < 200 && !grabbed; i++) { step(s, [f.grounded ? BTN.LEFT : BTN.RIGHT, 0]); grabbed = f.state === 'ledge'; }
+  check('falling next to a ledge grabs it', grabbed, grabbed ? 'facing ' + f.facing : f.state);
+  for (let i = 0; i < 12; i++) step(s, [0, 0]);
+  check('keeps hanging with no input', f.state === 'ledge');
+  for (let i = 0; i < 40; i++) step(s, [BTN.RIGHT, 0]);
+  check('toward stage gets up onto the stage', f.grounded === 1 && f.y === 170 * FX && f.x > 100 * FX, 'x ' + (f.x / FX));
+  // ledge jump and drop
+  const s2 = createMatch(setup); const g = s2.fighters[0];
+  for (let i = 0; i < 200 && g.state !== 'ledge'; i++) step(s2, [g.grounded ? BTN.LEFT : BTN.RIGHT, 0]);
+  for (let i = 0; i < 10; i++) step(s2, [0, 0]);
+  step(s2, [BTN.DOWN, 0]);
+  check('down lets go of the ledge', g.state === 'air' && g.ledgeCd > 0);
 }
 process.exit(fails ? 1 : 0);
