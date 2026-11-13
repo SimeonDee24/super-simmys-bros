@@ -598,7 +598,7 @@ for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['
   b.x = 30 * FX; b.y = 330 * FX; b.grounded = 0; b.ground = -1; b.state = 'air'; b.vy = 0; b.jumpsLeft = 1;
   let saved = false;
   for (let i = 0; i < 260 && b.state !== 'dead' && !saved; i++) {
-    const toward = b.x < 58 * FX ? BTN.RIGHT : 0;   // drift toward the ledge, not under the stage
+    const toward = b.x < 52 * FX ? BTN.RIGHT : b.x > 60 * FX ? BTN.LEFT : 0;   // stay beside the ledge, not under the stage
     const inp = i === 2 ? BTN.JUMP | toward : i === 30 ? BTN.SPECIAL | BTN.UP : toward;
     step(r, [inp, 0]); saved = b.state === 'ledge' || b.grounded === 1;
   }
