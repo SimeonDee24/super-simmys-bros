@@ -354,4 +354,14 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (let i = 0; i < 20 && lagged < 0; i++) { step(s, [0, 0]); if (a.state === 'land') lagged = a.landLag; }
   check('landing during an air dodge has landing lag, and air dodge comes back', lagged === CONFIG.AIRDODGE_LAND_LAG && a.airDodged === 0, 'lag ' + lagged);
 }
+// Ledge roll
+{
+  const s = createMatch(setup); const f = s.fighters[0];
+  for (let i = 0; i < 200 && f.state !== 'ledge'; i++) step(s, [f.grounded ? BTN.LEFT : BTN.RIGHT, 0]);
+  for (let i = 0; i < 10; i++) step(s, [0, 0]);
+  step(s, [BTN.SHIELD, 0]);
+  const intang = [];
+  for (let i = 0; i < 40; i++) { step(s, [0, 0]); if (f.state === 'ledgeRoll') intang.push(f.intangible); }
+  check('U on the ledge rolls onto the stage, away from the edge, mostly intangible', f.state === 'idle' && f.grounded && f.y === 170 * FX && f.x > 130 * FX && intang.slice(0, 20).every((v) => v), `x ${(f.x / FX).toFixed(0)}`);
+}
 process.exit(fails ? 1 : 0);

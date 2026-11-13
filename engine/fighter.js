@@ -364,8 +364,8 @@ const STATES = {
   },
 
   // Hanging from a ledge. Toward the stage (or up) = get up, jump = ledge jump,
-  // down or away = let go, attack = ledge attack. (Ledge roll, intangibility
-  // and trumping arrive with milestone 3.)
+  // down or away = let go, attack = ledge attack, shield = ledge roll.
+  // (Ledge intangibility and trumping arrive with milestone 3.)
   ledge(c) {
     const { f, st } = c;
     if (f.stateFrame < st.ledgeMinHang) return;
@@ -376,6 +376,7 @@ const STATES = {
       startMove(f, 'ledgeAttack', false);
       return;
     }
+    if (c.pressed & BTN.SHIELD) { setState(f, 'ledgeRoll', 'ledgeRoll'); STATES.ledgeRoll(c); return; }
     if (c.pressed & BTN.JUMP) {
       f.buf &= ~BTN.JUMP;
       f.ledge = -1; f.ledgeCd = CONFIG.LEDGE_REGRAB_FRAMES;
@@ -403,6 +404,31 @@ const STATES = {
     if (f.stateFrame >= st.ledgeGetupFrames) {
       f.grounded = 1; f.ground = l.solid; f.ledge = -1;
       f.vx = 0; f.vy = 0;
+      setState(f, 'idle', 'idle');
+    }
+  },
+
+  // Ledge roll: pull up, then roll along the stage away from the edge.
+  // He cannot be hit for most of it.
+  ledgeRoll(c) {
+    const { f, st } = c;
+    const lr = st.ledgeRoll;
+    const l = getStage(c.match.stageId).ledges[f.ledge];
+    const g = getStage(c.match.stageId).solids[l.solid];
+    f.intangible = within(f.stateFrame, lr.intangible) ? 1 : 0;
+    f.vx = 0; f.vy = 0;
+    if (f.stateFrame <= lr.rise) {
+      f.y = l.y * FX + Math.trunc((st.ledgeHang * (lr.rise - f.stateFrame)) / lr.rise);
+    } else {
+      f.y = l.y * FX;
+      if (within(f.stateFrame, lr.roll)) {
+        f.x += f.facing * lr.speed;
+        // never roll off the far side of the platform
+        f.x = Math.max(g.x * FX, Math.min((g.x + g.w) * FX, f.x));
+      }
+    }
+    if (f.stateFrame >= lr.faf) {
+      f.grounded = 1; f.ground = l.solid; f.ledge = -1;
       setState(f, 'idle', 'idle');
     }
   },

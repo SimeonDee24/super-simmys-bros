@@ -46,6 +46,8 @@ const stats = {
   ledgeHang: px(44),       // how far the feet hang below the ledge
   ledgeMinHang: 8,         // frames before a ledge option can be chosen
   ledgeGetupFrames: 22,
+  // Ledge roll (U while hanging): climbs up, then rolls onto the stage away from the edge.
+  ledgeRoll: { rise: 10, roll: [11, 28], speed: px(2.2), intangible: [1, 24], faf: 36 },
   ledgeJumpVel: px(5.29),
   ledgeJumpH: px(1.2),
 
@@ -234,6 +236,15 @@ const animations = {
     [30, { torso: 4, armF: [163, 8], armB: [168, 6], legF: [10, -15], legB: [-2, -10], footF: 25, footB: 30 }],
     [30, { torso: 6, armF: [163, 8], armB: [168, 6], legF: [14, -22], legB: [2, -16], footF: 25, footB: 30 }],
   ], { ease: true }),
+  ledgeRoll: anim(false, [
+    [6, { torso: 4, armF: [163, 8], armB: [168, 6], legF: [10, -15], legB: [-2, -10], footF: 25 }],
+    [5, { torso: 30, armF: [60, 60], armB: [50, 70], legF: [70, -100], legB: [20, -40] }],
+    [4, ROLL_BALL],
+    [7, { ...ROLL_BALL, hip: [1, 11] }],
+    [7, ROLL_BALL],
+    [6, { hip: [0, 6], torso: 24, head: 10, armF: [30, 60], armB: [10, 60], legF: [50, -95], legB: [35, -85] }],
+    [1, STAND],
+  ]),
   ledgeGetup: anim(false, [
     [8, { torso: 4, armF: [163, 8], armB: [168, 6], legF: [10, -15], legB: [-2, -10], footF: 25 }],
     [7, { torso: 30, armF: [60, 60], armB: [50, 70], legF: [70, -100], legB: [20, -40] }],
