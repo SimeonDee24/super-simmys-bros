@@ -108,3 +108,33 @@ export function checkBlastZones(f, stage) {
     setState(f, 'dead', 'fall');
   }
 }
+
+// Fighters standing on the ground push each other instead of walking or
+// running through. Airborne fighters, and anyone rolling or dodging, pass
+// through freely (cross-ups still work). Nobody gets pushed off an edge.
+const NO_PUSH = {
+  dead: 1, out: 1, respawn: 1, grabbed: 1, thrown: 1, holding: 1, throwing: 1,
+  ledge: 1, ledgeGetup: 1, ledgeRoll: 1, roll: 1, spotdodge: 1, getupRoll: 1, knockdown: 1,
+};
+export function pushApart(state, stage) {
+  const [a, b] = state.fighters;
+  if (!a || !b || !a.grounded || !b.grounded || a.ground !== b.ground) return;
+  if (NO_PUSH[a.state] || NO_PUSH[b.state] || a.intangible > 0 || b.intangible > 0) return;
+  const dist = Math.abs(b.x - a.x);
+  const W = CONFIG.PUSH_WIDTH * FX;
+  if (dist >= W) return;
+  const dir = b.x > a.x || (b.x === a.x && a.slot < b.slot) ? 1 : -1;   // +1: b is to the right of a
+  const hard = CONFIG.PUSH_HARD * FX;
+  // gentle push while they overlap a little; a firm one past the hard limit
+  let each = Math.min(CONFIG.PUSH_RATE, (W - dist) >> 1);
+  if (dist < hard) each = Math.max(each, ((hard - dist) + 1) >> 1);
+  const g = stage.solids[a.ground];
+  const L = g.x * FX, R = (g.x + g.w) * FX;
+  const move = (f, dx) => { const x = Math.max(L, Math.min(R, f.x + dx)); const done = x - f.x; f.x = x; return done; };
+  const da = move(a, -dir * each);
+  const db = move(b, dir * each);
+  // one of them is stopped at the edge: the other takes the rest of the push
+  const shortA = each - Math.abs(da), shortB = each - Math.abs(db);
+  if (shortA > 0) move(b, dir * shortA);
+  if (shortB > 0) move(a, -dir * shortB);
+}

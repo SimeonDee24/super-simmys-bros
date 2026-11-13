@@ -7,7 +7,7 @@ import { CONFIG } from '../config/config.js';
 import { getStage } from '../stages/index.js';
 import { getCharacter } from '../characters/index.js';
 import { newFighter, updateFighter } from './fighter.js';
-import { moveFighter, checkBlastZones } from './physics.js';
+import { moveFighter, checkBlastZones, pushApart } from './physics.js';
 import { resolveHits } from './combat.js';
 import { stepProjectiles, resolveProjectileHits } from './projectiles.js';
 import { resolveGrabs } from './grabs.js';
@@ -37,6 +37,7 @@ export function step(state, inputs) {
     moveFighter(f, stage, st);
     checkBlastZones(f, stage);
   }
+  pushApart(state, stage);
   stepProjectiles(state);
   resolveHits(state);
   resolveGrabs(state);

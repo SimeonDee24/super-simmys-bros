@@ -143,7 +143,10 @@ function trySpecial(c, air) {
   if (c.input & BTN.UP) slot = 'up';
   else if (c.input & BTN.DOWN) slot = 'down';
   else if (c.dir) slot = 'side';
-  const name = sp[slot];
+  // A direction with no special of its own yet falls back to the neutral
+  // special, so drifting or holding up in the air still shoots.
+  let name = sp[slot];
+  if (!name) { slot = 'neutral'; name = sp.neutral; }
   if (!name) return false;
   const mv = c.ch.moves[name];
   if (mv.limit && countProjectiles(c.match, f.slot, mv.spawn.projectile) >= mv.limit) return false;

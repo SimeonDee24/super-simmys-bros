@@ -68,6 +68,12 @@ export const CONFIG = {
   GETUP_INTANGIBLE: 20,     // frames you cannot be hit while standing up or rolling
   GETUP_STAND_FRAMES: 25,
 
+  // --- Body push ---
+  // Standing fighters cannot walk or run through each other: they push.
+  PUSH_WIDTH: 12,           // px apart at which two grounded fighters start to push
+  PUSH_RATE: 80,            // gentle push per frame while slightly overlapping (1/256 px)
+  PUSH_HARD: 6,             // px: never closer than this; the runner pushes the other along
+
   // --- Ledges ---
   LEDGE_REACH_X: 20,        // px outside the ledge where it can be grabbed
   LEDGE_INSIDE_X: 2,        // px past the ledge (over the stage) that still grab

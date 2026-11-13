@@ -516,4 +516,26 @@ for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BT
   for (let i = 0; i < 14; i++) step(s, [0, 0]);
   check('grab while running is a dash grab', dg === 'dashGrab');
 }
+// Neutral special in the air while drifting or holding up (no side/up special yet)
+for (const [label, hold, wait] of [['rising and drifting', BTN.RIGHT, 6], ['falling and drifting', BTN.LEFT, 30], ['holding up', BTN.UP, 20]]) {
+  const s = createMatch(setup); const a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  step(s, [BTN.JUMP, 0]); for (let i = 0; i < wait; i++) step(s, [BTN.JUMP | hold, 0]);
+  step(s, [BTN.SPECIAL | hold, 0]);
+  check(`neutral special comes out in the air while ${label}`, a.move === 'jumpShot');
+}
+// Body push: no running through standing opponents, no pushing off edges, rolls still pass
+{
+  let s = createMatch(setup); let [a, v] = s.fighters;
+  for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [80, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
+  check('running into a standing opponent pushes them instead of passing through', v.x > a.x && v.x - a.x >= 5 * FX && v.x > 300 * FX);
+  s = createMatch(setup); [a, v] = s.fighters; v.x = 360 * FX;
+  for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [150, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
+  check('nobody gets pushed off the edge', v.grounded === 1 && v.x <= 380 * FX && v.state !== 'dead');
+  s = createMatch(setup); [a, v] = s.fighters; a.x = 230 * FX; v.x = 244 * FX;
+  for (let i = 0; i < 3; i++) step(s, [BTN.SHIELD, 0]); step(s, [BTN.SHIELD | BTN.RIGHT, 0]); for (let i = 0; i < 35; i++) step(s, [BTN.SHIELD, 0]);
+  check('rolling still goes through them', a.x > v.x);
+  s = createMatch(setup); [a, v] = s.fighters; a.x = 220 * FX; v.x = 250 * FX;
+  step(s, [BTN.JUMP | BTN.RIGHT, 0]); for (let i = 0; i < 40; i++) step(s, [BTN.JUMP | BTN.RIGHT, 0]);
+  check('jumping over them still works', a.x > v.x);
+}
 process.exit(fails ? 1 : 0);
