@@ -364,8 +364,8 @@ const moves = {
   // --- Tilts ---
   ftilt: { faf: 22, trail: { part: 'toeF', from: 3, to: 7 }, hitboxes: hits(5, 7, LEG_F, 7, 361, 8, 100) },
   utilt: { faf: 28, trail: { part: 'fistF', from: 4, to: 11 }, hitboxes: [
-    ...hits(5, 11, [['fistF', 8], ['elbowF', 6]], 5.5, 96, 62, 105),
-    hit(5, 8, 'chest', 6, 5.5, 96, 62, 105, { off: [5, 0] }),   // close to the body on the way up
+    ...hits(5, 11, [['fistF', 6], ['elbowF', 4]], 5.5, 96, 88, 105),
+    hit(5, 8, 'chest', 5, 5.5, 96, 88, 105, { off: [5, 0] }),   // close to the body on the way up
   ] },
   dtilt: { faf: 23, endsCrouched: true, trail: { part: 'toeF', from: 4, to: 7 }, hitboxes: [
     hit(5, 7, 'kneeF', 5, 7, 80, 30, 80), hit(5, 7, 'shinF', 5, 7, 80, 30, 80), hit(5, 7, 'toeF', 6, 5, 80, 30, 80),
