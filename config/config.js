@@ -94,7 +94,8 @@ export const CONFIG = {
   GAME_END_FRAMES: 150,     // how long GAME! shows before leaving the match
 
   // --- Camera (render only, never affects the simulation) ---
-  CAMERA: { maxPanX: 14, maxPanY: 8, followDiv: 8, ease: 0.08 },
+  // Zoom 1 shows 480x270 world pixels. margins = room kept around the fighters.
+  CAMERA: { zoomMin: 0.62, zoomMax: 1.4, marginX: 80, marginTop: 50, marginBottom: 62, ease: 0.07, zoomEase: 0.05 },
 
   // --- Updates ---
   UPDATE_CHECK_SECONDS: 60, // how often the title screen looks for a new version

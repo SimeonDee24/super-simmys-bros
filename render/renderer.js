@@ -1,5 +1,7 @@
-// Draws everything onto the 480x270 canvas, which the browser scales up by a
-// whole number so pixels stay crisp. Reads the game state but never changes it.
+// Draws everything. The screen is laid out in 480x270 units, but the canvas
+// itself is as sharp as the window allows (up to about 1080p). The match is
+// seen through a zooming camera; the HUD and menus stay fixed on the screen.
+// Reads the game state but never changes it.
 import { CONFIG } from '../config/config.js';
 import { GAME_VERSION } from '../config/version.js';
 import { FX, toPx } from '../engine/fixed.js';
@@ -9,10 +11,27 @@ import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { DollRenderer } from './doll.js';
 import { Background } from './background.js';
-import { drawText } from './font.js';
+import { drawLabel as drawText } from './font.js';
 
 const W = CONFIG.SCREEN_W, H = CONFIG.SCREEN_H;
 const PLAYER_COLORS = ['#ff5a5a', '#5aa2ff'];
+
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+function rgba(hex, a) {
+  const n = parseInt(hex.slice(1), 16);
+  return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + Math.max(0, Math.min(1, a)).toFixed(3) + ')';
+}
+function shade(hex, k) {
+  const n = parseInt(hex.slice(1), 16), f = (v) => Math.round(v * k).toString(16).padStart(2, '0');
+  return '#' + f((n >> 16) & 255) + f((n >> 8) & 255) + f(n & 255);
+}
+// Damage number colour: white, then redder and finally darker as it climbs.
+function damageColor(p) {
+  const t = Math.min(1, p / 150), d = Math.max(0, Math.min(1, (p - 150) / 150));
+  const h = (v) => Math.round(v).toString(16).padStart(2, '0');
+  const gb = 255 * Math.pow(1 - t, 1.25);
+  return '#' + h(255 - 105 * d) + h(gb * (1 - d)) + h(gb * (1 - d));
+}
 
 // Hard-edged filled circle (render only).
 function disc(ctx, cx, cy, r) {
@@ -26,12 +45,14 @@ export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.ctx.imageSmoothingEnabled = false;
     this.doll = new DollRenderer();
     this.bgs = new Map();   // one pre-rendered background per stage
     this.thumbs = new Map();
     this.bg = null;
-    this.cam = { x: 0, y: 0 };
+    this.cam = { x: W / 2, y: H / 2, z: 1 };   // world point at the screen centre, and zoom
+    this.camTick = -1;
+    this.S = 1;             // real canvas pixels per screen unit (the screen is 480x270 units)
+    this.maxScale = 4;      // sharpness cap: 4 = 1080p. Lowered automatically on slow machines.
     this.time = 0;
     this.effects = [];      // short-lived visual effects (render only)
     this.seen = [];         // last drawn flags per fighter, to spot changes
@@ -39,12 +60,39 @@ export class Renderer {
     window.addEventListener('resize', () => this.resize());
   }
 
-  // Largest whole-number scale that fits the window (in real device pixels).
+  // Fill the window (keeping 16:9) and draw at the screen's real resolution,
+  // up to about 1080p, so shapes and edges come out smooth.
   resize() {
     const dpr = window.devicePixelRatio || 1;
-    const k = Math.max(1, Math.floor(Math.min((window.innerWidth * dpr) / W, (window.innerHeight * dpr) / H)));
-    this.canvas.style.width = (W * k) / dpr + 'px';
-    this.canvas.style.height = (H * k) / dpr + 'px';
+    const fit = Math.max(0.5, Math.min(window.innerWidth / W, window.innerHeight / H));
+    this.canvas.style.width = Math.floor(W * fit) + 'px';
+    this.canvas.style.height = Math.floor(H * fit) + 'px';
+    const s = Math.max(1, Math.min(this.maxScale, fit * dpr));
+    this.canvas.width = Math.round(W * s);
+    this.canvas.height = Math.round(H * s);
+    this.S = this.canvas.width / W;
+  }
+
+  // Called when the game is running slowly: draw at a lower resolution.
+  // Returns false once it is already as low as it goes.
+  lowerQuality() {
+    if (this.maxScale <= 1.5) return false;
+    this.maxScale = Math.max(1.5, Math.min(this.maxScale, this.S) * 0.75);
+    this.resize();
+    return true;
+  }
+
+  // Drawing in screen units (480x270, for the HUD and menus) or in world
+  // pixels as seen through the camera.
+  ui() { this.ctx.setTransform(this.S, 0, 0, this.S, 0, 0); }
+  world(view = this.view) {
+    const k = this.S * view.z;
+    this.ctx.setTransform(k, 0, 0, k, this.S * (W / 2 - view.x * view.z), this.S * (H / 2 - view.y * view.z));
+  }
+  toScreen(wx, wy, view = this.view) { return [(wx - view.x) * view.z + W / 2, (wy - view.y) * view.z + H / 2]; }
+  flash(alpha, color = '#ffffff') {
+    const ctx = this.ctx;
+    this.ui(); ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; this.world();
   }
 
   setStage(stage) {
@@ -52,35 +100,50 @@ export class Renderer {
     this.bg = this.bgs.get(stage.id);
   }
 
-  resetEffects() { this.effects = []; this.seen = []; }
+  resetEffects() { this.effects = []; this.seen = []; this.camTick = -1; }
 
   // A small still picture of a stage for menus.
   thumb(stage) {
     if (!this.thumbs.has(stage.id)) {
       this.setStage(stage);
-      const full = document.createElement('canvas');
-      full.width = W; full.height = H;
-      this.bg.draw(full.getContext('2d'), 0, 0, 0);
       const c = document.createElement('canvas');
-      c.width = 96; c.height = 54;
+      c.width = 384; c.height = 216;
       const cx = c.getContext('2d');
-      cx.imageSmoothingEnabled = true;
-      cx.drawImage(full, 0, 0, 96, 54);
+      this.bg.draw(cx, 0, { x: W / 2, y: H / 2, z: 1, S: c.width / W });
+      cx.setTransform(1, 0, 0, 1, 0, 0);
       this.thumbs.set(stage.id, c);
     }
     return this.thumbs.get(stage.id);
   }
 
-  // Fixed camera with a slight pan toward the action. No zoom.
-  updateCamera(state) {
-    const c = CONFIG.CAMERA;
-    let ax = 0, ay = 0;
-    for (const f of state.fighters) { ax += toPx(f.x); ay += toPx(f.y); }
-    ax /= state.fighters.length; ay /= state.fighters.length;
-    const tx = Math.max(-c.maxPanX, Math.min(c.maxPanX, (ax - W / 2) / c.followDiv));
-    const ty = Math.max(-c.maxPanY, Math.min(c.maxPanY, (ay - 150) / c.followDiv));
-    this.cam.x += (tx - this.cam.x) * c.ease;
-    this.cam.y += (ty - this.cam.y) * c.ease;
+  // Smash-style camera: frames all the fighters, zooming in when they are
+  // close together and pulling back as they spread out. It never looks past
+  // the camera limits, which sit a little inside the blast zones.
+  updateCamera(state, stage) {
+    const c = CONFIG.CAMERA, b = stage.blast;
+    const bx0 = b.left + 20, bx1 = b.right - 20, by0 = b.top + 30, by1 = Math.min(b.bottom - 10, 335);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, any = false;
+    for (const f of state.fighters) {
+      if (f.state === 'dead' || f.state === 'out') continue;
+      any = true;
+      const px = clamp(toPx(f.x), bx0 + c.marginX, bx1 - c.marginX), py = clamp(toPx(f.y), by0 + 44 + c.marginTop, by1 - c.marginBottom);
+      x0 = Math.min(x0, px - c.marginX); x1 = Math.max(x1, px + c.marginX);
+      y0 = Math.min(y0, py - 44 - c.marginTop); y1 = Math.max(y1, py + c.marginBottom);
+    }
+    if (!any) { const m = stage.solids[0]; x0 = m.x; x1 = m.x + m.w; y0 = m.y - 130; y1 = m.y + 60; }
+    const z = clamp(Math.min(W / (x1 - x0), H / (y1 - y0)), c.zoomMin, c.zoomMax);
+    const hw = W / 2 / z, hh = H / 2 / z;
+    const tx = bx0 + hw < bx1 - hw ? clamp((x0 + x1) / 2, bx0 + hw, bx1 - hw) : (bx0 + bx1) / 2;
+    const ty = by0 + hh < by1 - hh ? clamp((y0 + y1) / 2, by0 + hh, by1 - hh) : (by0 + by1) / 2;
+    if (this.camTick < 0 || state.tick < this.camTick) { this.cam.x = tx; this.cam.y = ty; this.cam.z = z; }
+    else {
+      for (let n = Math.min(4, state.tick - this.camTick); n > 0; n--) {
+        this.cam.x += (tx - this.cam.x) * c.ease;
+        this.cam.y += (ty - this.cam.y) * c.ease;
+        this.cam.z += (z - this.cam.z) * c.zoomEase;
+      }
+    }
+    this.camTick = state.tick;
   }
 
   drawMatch(state, opts = {}) {
@@ -88,50 +151,54 @@ export class Renderer {
     const stage = getStage(state.stageId);
     this.setStage(stage);
     this.time++;
-    this.updateCamera(state);
-    let camX = Math.round(this.cam.x), camY = Math.round(this.cam.y);
+    this.updateCamera(state, stage);
     // screen shake while a KO blast is fresh
-    for (const f of state.fighters) {
-      if (f.state === 'dead' && f.stateFrame < 14) {
-        const amp = (14 - f.stateFrame) >> 2;
-        camX += ((f.stateFrame * 7) % 3 - 1) * amp;
-        camY += ((f.stateFrame * 5) % 3 - 1) * amp;
+    let shX = 0, shY = 0;
+    for (const e of this.effects) {
+      const age = state.tick - e.tick;
+      if (e.type === 'ko' && age >= 0 && age < 18) {
+        const amp = ((18 - age) / 18) * 5 / this.cam.z;
+        shX += Math.sin(age * 2.7) * amp; shY += Math.cos(age * 3.9) * amp;
       }
     }
-    this.bg.draw(ctx, this.time, camX, camY);
+    this.view = { x: this.cam.x + shX, y: this.cam.y + shY, z: this.cam.z, S: this.S };
+    this.bg.draw(ctx, this.time, this.view);
+    this.world();
 
+    for (const f of state.fighters) this.drawShadow(f, stage);
     for (const f of state.fighters) {
       if (f.state === 'dead' || f.state === 'out') continue;
       const ch = getCharacter(f.charId);
-      if (f.state === 'respawn') this.drawRespawnPlatform(toPx(f.x) - camX, toPx(f.y) - camY, f.slot);
+      if (f.state === 'respawn') this.drawRespawnPlatform(toPx(f.x), toPx(f.y), f.slot);
       const blink = f.invuln > 0 && (state.tick >> 2) & 1;
       // the fighter who got hit shakes during hitlag
-      const shake = f.hitlag > 0 && f.state === 'hitstun' ? ((f.hitlag & 1) ? 1 : -1) : 0;
+      const shake = f.hitlag > 0 && f.state === 'hitstun' ? ((f.hitlag & 1) ? 0.8 : -0.8) : 0;
       // dodging: a pale shimmer while he cannot be hit
       const dodging = f.intangible > 0 && (f.state === 'roll' || f.state === 'spotdodge' || f.state === 'airdodge' || f.state === 'ledgeRoll' || f.state === 'ledge' || f.state === 'ledgeGetup');
       const tint = blink ? '#ffffff' : dodging && (state.tick & 2) ? '#d8f4ff' : null;
       // directional air dodge: fading afterimages trailing behind him
       if (f.state === 'airdodge' && f.dodgeDir && (f.vx || f.vy)) {
         for (const [k, alpha] of [[6, 0.18], [3, 0.32]]) {
-          this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, toPx(f.x - f.vx * k) - camX, toPx(f.y - f.vy * k) - camY, f.facing,
+          this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, (f.x - f.vx * k) / FX, (f.y - f.vy * k) / FX, f.facing,
             { flash: '#bfeaff', alpha });
         }
       }
-      this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, toPx(f.x) - camX + shake, toPx(f.y) - camY, f.facing,
+      this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, f.x / FX + shake, f.y / FX, f.facing,
         tint ? { flash: tint } : undefined);
-      if (f.state === 'shield' || f.state === 'shieldStun') this.drawShield(state, f, camX, camY);
-      if (f.state === 'dizzy') this.drawDizzy(f, camX, camY);
+      if (f.state === 'shield' || f.state === 'shieldStun') this.drawShield(state, f, 0, 0);
+      if (f.state === 'dizzy') this.drawDizzy(f, 0, 0);
     }
 
-    for (const f of state.fighters) this.drawTrail(f, getCharacter(f.charId), camX, camY);
-    for (const f of state.fighters) this.drawCard(state, f, getCharacter(f.charId), camX, camY);
-    for (const f of state.fighters) this.drawHeldBall(f, getCharacter(f.charId), camX, camY);
-    for (const p of state.projectiles || []) this.drawProjectile(p, camX, camY);
-    for (const f of state.fighters) this.drawChargeMeter(state, f, getCharacter(f.charId), camX, camY);
-    this.drawEffects(state, camX, camY);
-    for (const f of state.fighters) this.drawOffscreen(state, f, camX, camY);
-    for (const f of state.fighters) if (f.state === 'dead') this.drawKoBlast(f);
-    if (opts.showBoxes) this.drawBoxes(state, stage, camX, camY);
+    for (const f of state.fighters) this.drawTrail(f, getCharacter(f.charId), 0, 0);
+    for (const f of state.fighters) this.drawCard(state, f, getCharacter(f.charId), 0, 0);
+    for (const f of state.fighters) this.drawHeldBall(f, getCharacter(f.charId), 0, 0);
+    for (const p of state.projectiles || []) this.drawProjectile(p, 0, 0);
+    for (const f of state.fighters) this.drawChargeMeter(state, f, getCharacter(f.charId), 0, 0);
+    this.drawEffects(state);
+    if (opts.showBoxes) { this.world(); this.drawBoxes(state, stage, 0, 0); }
+    this.ui();
+    for (const f of state.fighters) this.drawOffscreen(state, f);
+    for (const e of this.effects) if (e.type === 'ko') this.drawKo(e, state.tick - e.tick);
     this.drawHud(state);
     if (opts.debugLines) {
       let y = 4;
@@ -139,204 +206,278 @@ export class Renderer {
     }
   }
 
-  // Off-screen bubble: when a fighter leaves the screen, a ringed bubble at
-  // the nearest edge shows them shrunk to half size, with a pointer toward
-  // where they really are.
-  drawOffscreen(state, f, camX, camY) {
+  // Soft shadow on the ground under a fighter; fainter and smaller the higher he is.
+  drawShadow(f, stage) {
     if (f.state === 'dead' || f.state === 'out' || f.state === 'respawn') return;
-    const sx = toPx(f.x) - camX, sy = toPx(f.y) - camY;
-    const top = sy - 44;
-    if (sx > -8 && sx < W + 8 && sy > 0 && top < H) return;   // still (partly) visible
-    const R = 17, cx = Math.max(R + 3, Math.min(W - R - 3, sx)), cy = Math.max(R + 3, Math.min(H - R - 30, sy - 22));
-    const ctx = this.ctx, col = PLAYER_COLORS[f.slot];
-    if (!this.mini) { this.mini = document.createElement('canvas'); this.mini.width = 72; this.mini.height = 72; }
-    const m = this.mini, mc = m.getContext('2d');
-    mc.clearRect(0, 0, 72, 72);
-    this.doll.drawAnim(mc, getCharacter(f.charId), f.alt, f.anim, f.animFrame, 36, 60, f.facing);
-    // pointer toward the fighter
-    const ang = Math.atan2(sy - 22 - cy, sx - cx);
-    ctx.fillStyle = col;
-    for (let d = 0; d < 7; d++) {
-      const w = 7 - d, px = cx + Math.cos(ang) * (R + 2 + d), py = cy + Math.sin(ang) * (R + 2 + d);
-      ctx.fillRect(Math.round(px - w / 2), Math.round(py - w / 2), w, w);
-    }
-    ctx.fillStyle = '#100d16'; disc(ctx, cx, cy, R + 2);
-    ctx.fillStyle = col; disc(ctx, cx, cy, R + 1);
-    ctx.fillStyle = '#2a2638'; disc(ctx, cx, cy, R - 1);
-    ctx.save();
-    ctx.beginPath(); ctx.arc(cx + 0.5, cy + 0.5, R - 1, 0, Math.PI * 2); ctx.clip();
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(m, 0, 0, 72, 72, Math.round(cx - 18), Math.round(cy - 20), 36, 36);
-    ctx.restore();
+    const x = f.x / FX, y = f.y / FX;
+    let gy = Infinity;
+    for (const s of stage.solids) if (x >= s.x && x <= s.x + s.w && s.y >= y - 2 && s.y < gy) gy = s.y;
+    if (gy === Infinity) return;
+    const h = Math.max(0, gy - y), k = Math.max(0, 1 - h / 150);
+    if (k <= 0) return;
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(0,0,0,' + (0.34 * k).toFixed(3) + ')';
+    ctx.beginPath(); ctx.ellipse(x, gy + 0.8, 5 + 5 * k, 1.2 + 1.2 * k, 0, 0, Math.PI * 2); ctx.fill();
   }
 
-  // Shield bubble: player-coloured, shrinks with shield health, flashes when hit.
-  drawShield(state, f, camX, camY) {
+  // Off-screen bubble: when a fighter leaves the screen, a ringed bubble at
+  // the nearest edge shows them at half size, with a pointer toward where
+  // they really are.
+  drawOffscreen(state, f) {
+    if (f.state === 'dead' || f.state === 'out' || f.state === 'respawn') return;
+    const z = this.view.z;
+    const [sx, sy] = this.toScreen(f.x / FX, f.y / FX - 22);
+    if (sx > -8 * z && sx < W + 8 * z && sy > -18 * z && sy < H + 18 * z) return;   // still (partly) visible
+    const R = 17, cx = clamp(sx, R + 4, W - R - 4), cy = clamp(sy, R + 4, H - R - 34);
+    const ctx = this.ctx, col = PLAYER_COLORS[f.slot];
+    const ang = Math.atan2(sy - cy, sx - cx);
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(ang) * (R + 8), cy + Math.sin(ang) * (R + 8));
+    ctx.lineTo(cx + Math.cos(ang + 0.42) * (R + 0.5), cy + Math.sin(ang + 0.42) * (R + 0.5));
+    ctx.lineTo(cx + Math.cos(ang - 0.42) * (R + 0.5), cy + Math.sin(ang - 0.42) * (R + 0.5));
+    ctx.closePath(); ctx.fill();
+    const g = ctx.createRadialGradient(cx - 5, cy - 6, 2, cx, cy, R);
+    g.addColorStop(0, '#5a5670'); g.addColorStop(1, '#1d1a2b');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, R - 0.5, 0, Math.PI * 2); ctx.clip();
+    ctx.translate(cx, cy + 11); ctx.scale(0.5, 0.5);
+    this.doll.drawAnim(ctx, getCharacter(f.charId), f.alt, f.anim, f.animFrame, 0, 0, f.facing);
+    ctx.restore();
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.arc(cx, cy, R - 1.6, Math.PI * 1.05, Math.PI * 1.6); ctx.stroke();
+  }
+
+  // Shield bubble: player-coloured glass ball that shrinks with shield health
+  // and flashes when hit.
+  drawShield(state, f) {
     const ctx = this.ctx;
     const [cx0, cy0] = shieldCentre(f);
-    const cx = toPx(cx0) - camX, cy = toPx(cy0) - camY, r = shieldRadius(f) >> 8;
+    const cx = cx0 / FX, cy = cy0 / FX, r = shieldRadius(f) / FX;
     const hitFlash = f.shieldHitTick >= 0 && state.tick - f.shieldHitTick < 4;
     const low = f.shieldHp < CONFIG.SHIELD_MAX / 4;
     const col = hitFlash ? '#ffffff' : low && (state.tick & 4) ? '#ff6a4a' : PLAYER_COLORS[f.slot];
-    for (let dy = -r; dy <= r; dy++) {
-      const h = Math.floor(Math.sqrt(r * r - dy * dy));
-      ctx.fillStyle = col; ctx.globalAlpha = 0.38;
-      ctx.fillRect(cx - h, cy + dy, h * 2 + 1, 1);
-      ctx.globalAlpha = 0.9;
-      ctx.fillRect(cx - h, cy + dy, 1, 1); ctx.fillRect(cx + h, cy + dy, 1, 1);
-    }
-    // highlight
-    ctx.globalAlpha = 0.7; ctx.fillStyle = '#ffffff';
-    ctx.fillRect(cx - (r >> 1), cy - (r >> 1) - 1, Math.max(1, r >> 2), 1);
-    ctx.fillRect(cx - (r >> 1) - 1, cy - (r >> 1), 1, Math.max(1, r >> 2));
-    ctx.globalAlpha = 1;
+    const g = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.4, r * 0.05, cx, cy, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.8)'); g.addColorStop(0.3, rgba(col, 0.38)); g.addColorStop(0.85, rgba(col, 0.5)); g.addColorStop(1, rgba(col, 0.85));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = rgba(col, 0.95); ctx.lineWidth = 0.7; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 0.9; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(cx, cy, r * 0.78, Math.PI * 1.1, Math.PI * 1.45); ctx.stroke();
   }
 
   // Dizzy after a shield break: little stars circling his head.
-  drawDizzy(f, camX, camY) {
-    const ctx = this.ctx, x = toPx(f.x) - camX, y = toPx(f.y) - camY - 46;
+  drawDizzy(f) {
+    const x = f.x / FX, y = f.y / FX - 46;
     for (let i = 0; i < 3; i++) {
       const a = (f.stateFrame / 9) + (i * Math.PI * 2) / 3;
-      const sx = Math.round(x + Math.cos(a) * 8), sy = Math.round(y + Math.sin(a) * 2);
-      ctx.fillStyle = '#ffe14a';
-      ctx.fillRect(sx - 1, sy, 3, 1); ctx.fillRect(sx, sy - 1, 1, 3);
+      this.star(x + Math.cos(a) * 8, y + Math.sin(a) * 2.2, 2.6 + Math.sin(a) * 0.6, '#ffe14a', '#ffffff', a * 2);
+    }
+  }
+
+  // A four-point sparkle.
+  star(x, y, r, color, core, rot = 0) {
+    const ctx = this.ctx;
+    for (const [rr, col] of [[r, color], [r * 0.5, core]]) {
+      ctx.fillStyle = col; ctx.beginPath();
+      for (let k = 0; k < 8; k++) {
+        const a = rot + (k * Math.PI) / 4, d = k & 1 ? rr * 0.28 : rr;
+        ctx.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d);
+      }
+      ctx.closePath(); ctx.fill();
     }
   }
 
   // The little hover pad a fighter stands on after a KO.
   drawRespawnPlatform(x, y, slot) {
     const ctx = this.ctx, col = PLAYER_COLORS[slot];
-    ctx.fillStyle = '#100d16'; ctx.fillRect(x - 17, y, 34, 6); ctx.fillRect(x - 12, y + 6, 24, 3);
-    ctx.fillStyle = '#e9eef5'; ctx.fillRect(x - 16, y, 32, 2);
-    ctx.fillStyle = '#aab3c4'; ctx.fillRect(x - 16, y + 2, 32, 3);
-    ctx.fillStyle = col; ctx.fillRect(x - 13, y + 3, 26, 1);
-    ctx.fillStyle = '#6a7388'; ctx.fillRect(x - 11, y + 5, 22, 3);
-    // glow underneath, pulsing
-    const pulse = (this.time >> 2) & 1;
-    ctx.fillStyle = '#9fe9ff'; ctx.fillRect(x - 7 + pulse, y + 8, 14 - pulse * 2, 1);
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 3, y + 9, 6, 1 + pulse);
+    const pulse = 0.5 + 0.5 * Math.sin(this.time / 6);
+    const glow = ctx.createRadialGradient(x, y + 9, 1, x, y + 9, 16);
+    glow.addColorStop(0, 'rgba(190,240,255,' + (0.5 + 0.3 * pulse).toFixed(2) + ')'); glow.addColorStop(1, 'rgba(159,233,255,0)');
+    ctx.fillStyle = glow; ctx.beginPath(); ctx.ellipse(x, y + 9, 16, 7, 0, 0, Math.PI * 2); ctx.fill();
+    const body = (grow, fill) => {
+      ctx.fillStyle = fill; ctx.beginPath();
+      ctx.moveTo(x - 17 - grow, y - grow * 0.5); ctx.lineTo(x + 17 + grow, y - grow * 0.5);
+      ctx.quadraticCurveTo(x + 15, y + 6 + grow, x + 9, y + 8 + grow);
+      ctx.lineTo(x - 9, y + 8 + grow);
+      ctx.quadraticCurveTo(x - 15, y + 6 + grow, x - 17 - grow, y - grow * 0.5);
+      ctx.closePath(); ctx.fill();
+    };
+    body(0.7, '#100d16');
+    const g = ctx.createLinearGradient(0, y, 0, y + 8);
+    g.addColorStop(0, '#f4f7fb'); g.addColorStop(0.3, '#b9c2d2'); g.addColorStop(1, '#5d667b');
+    body(0, g);
+    ctx.fillStyle = col; ctx.fillRect(x - 12, y + 2.6, 24, 1.2);
+    ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(x - 15.5, y + 0.2, 31, 0.8);
   }
 
-  // KO blast: a burst of rays shooting into the screen from where the fighter
-  // crossed the blast zone, in that player's colour.
-  drawKoBlast(f) {
-    const ctx = this.ctx, age = f.stateFrame, LIFE = 42;
-    if (age >= LIFE) return;
-    const x0 = f.koX, y0 = f.koY;
-    const base = Math.atan2(H / 2 - y0, W / 2 - x0); // points into the screen
-    const colors = ['#ffffff', PLAYER_COLORS[f.slot], '#ffe14a'];
-    const reach = Math.min(1, age / 10), fade = age > 26 ? (LIFE - age) / (LIFE - 26) : 1;
-    for (let i = -7; i <= 7; i++) {
-      const ang = base + i * 0.13 + ((i * 37) % 5) * 0.012;
-      const len = (150 + ((i * 53 + 400) % 140)) * reach;
-      const thick = Math.max(1, Math.round((5 - Math.abs(i) * 0.4) * fade));
-      const start = age > 26 ? len * (1 - fade) : 0; // rays pull away from the edge as they fade
-      ctx.fillStyle = colors[(i + 21) % 3];
-      const cs = Math.cos(ang), sn = Math.sin(ang);
-      for (let d = start; d < len; d += 2) {
-        const t = Math.max(1, Math.round(thick * (1 - d / (len + 1) * 0.7)));
-        ctx.fillRect(Math.round(x0 + cs * d - t / 2), Math.round(y0 + sn * d - t / 2), t, t);
-      }
+  // KO blast (in screen units): a column of light bursting into the screen
+  // from the edge the fighter left through, in that player's colour.
+  drawKo(e, age) {
+    const LIFE = 50;
+    if (age < 0 || age >= LIFE) return;
+    const ctx = this.ctx, x0 = e.sx, y0 = e.sy, base = e.ang, col = PLAYER_COLORS[e.slot];
+    const reach = Math.min(1, age / 8), fade = age > 26 ? (LIFE - age) / (LIFE - 26) : 1;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    // wide soft beam
+    const beam = (spread, len, color, alpha) => {
+      const g = ctx.createLinearGradient(x0, y0, x0 + Math.cos(base) * len, y0 + Math.sin(base) * len);
+      g.addColorStop(0, rgba(color, alpha)); g.addColorStop(1, rgba(color, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(x0, y0);
+      ctx.lineTo(x0 + Math.cos(base - spread) * len, y0 + Math.sin(base - spread) * len);
+      ctx.lineTo(x0 + Math.cos(base + spread) * len, y0 + Math.sin(base + spread) * len);
+      ctx.closePath(); ctx.fill();
+    };
+    beam(0.55, 420 * reach, col, 0.55 * fade);
+    beam(0.3, 460 * reach, '#ffe14a', 0.5 * fade);
+    beam(0.12, 500 * reach, '#ffffff', 0.8 * fade);
+    // rays
+    for (let i = -8; i <= 8; i++) {
+      const ang = base + i * 0.12 + ((i * 37) % 5) * 0.012;
+      const len = (190 + ((i * 53 + 424) % 170)) * reach;
+      const start = age > 26 ? len * (1 - fade) : 0;   // rays pull away from the edge as they fade
+      const wdt = (7 - Math.abs(i) * 0.5) * fade;
+      const cs = Math.cos(ang), sn = Math.sin(ang), nx = -sn, ny = cs;
+      ctx.fillStyle = rgba([col, '#ffe14a', '#ffffff'][(i + 24) % 3], 0.85 * fade);
+      ctx.beginPath();
+      ctx.moveTo(x0 + cs * start + nx * wdt, y0 + sn * start + ny * wdt);
+      ctx.lineTo(x0 + cs * len, y0 + sn * len);
+      ctx.lineTo(x0 + cs * start - nx * wdt, y0 + sn * start - ny * wdt);
+      ctx.closePath(); ctx.fill();
     }
-    // flash at the source
-    const r = Math.round((age < 6 ? 10 + age * 6 : 46) * fade);
-    for (const [rr, col] of [[r, PLAYER_COLORS[f.slot]], [Math.round(r * 0.7), '#ffe14a'], [Math.round(r * 0.4), '#ffffff']]) {
-      ctx.fillStyle = col;
-      for (let dy = -rr; dy <= rr; dy++) {
-        const half = Math.floor(Math.sqrt(rr * rr - dy * dy));
-        ctx.fillRect(x0 - half, y0 + dy, half * 2 + 1, 1);
-      }
+    // fireball at the edge
+    const r = (age < 6 ? 20 + age * 12 : 92) * fade;
+    if (r > 1) {
+      const g = ctx.createRadialGradient(x0, y0, 0, x0, y0, r);
+      g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.3, rgba('#ffe14a', 0.9)); g.addColorStop(0.65, rgba(col, 0.6)); g.addColorStop(1, rgba(col, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x0, y0, r, 0, Math.PI * 2); ctx.fill();
     }
-    if (age < 3) { ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillRect(0, 0, W, H); }
+    // shock rings and flying embers
+    for (const [delay, speed] of [[0, 9], [5, 7]]) {
+      const a = age - delay;
+      if (a < 0 || a > 26) continue;
+      ctx.strokeStyle = rgba('#ffffff', 0.8 * (1 - a / 26)); ctx.lineWidth = 4 * (1 - a / 26) + 0.5;
+      ctx.beginPath(); ctx.arc(x0, y0, 12 + a * speed, 0, Math.PI * 2); ctx.stroke();
+    }
+    for (let i = 0; i < 16; i++) {
+      const ang = base + (((i * 71) % 100) / 100 - 0.5) * 1.5, sp = 5 + ((i * 29) % 7);
+      const d = age * sp, a = Math.max(0, 1 - age / 34);
+      ctx.fillStyle = rgba(i & 1 ? '#ffffff' : col, a);
+      ctx.beginPath(); ctx.arc(x0 + Math.cos(ang) * d, y0 + Math.sin(ang) * d, 2.4 * a + 0.6, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+    if (age < 4) { ctx.fillStyle = 'rgba(255,255,255,' + (0.7 - age * 0.15) + ')'; ctx.fillRect(0, 0, W, H); }
   }
 
   // Effects are spawned by watching the state change between drawn frames and
   // aged by the simulation tick, so they freeze correctly while paused.
-  drawEffects(state, camX, camY) {
-    const ctx = this.ctx;
+  // Drawn in world pixels.
+  drawEffects(state) {
+    const ctx = this.ctx, add = (e) => this.effects.push({ tick: state.tick, ...e });
     state.fighters.forEach((f, i) => {
       const was = this.seen[i] || {};
-      if (f.fastFall && !was.fastFall) {
-        this.effects.push({ type: 'fastfall', x: toPx(f.x), y: toPx(f.y) - 24, tick: state.tick });
-      }
+      const x = f.x / FX, y = f.y / FX, known = was.state !== undefined;
+      if (f.fastFall && !was.fastFall) add({ type: 'fastfall', x, y: y - 24 });
       if (f.lastHitTick >= 0 && f.lastHitTick !== was.lastHitTick && was.lastHitTick !== undefined) {
-        this.effects.push({ type: 'spark', x: f.hitX, y: f.hitY, tick: state.tick, size: Math.min(14, 5 + (f.lastHitDmg / 14 | 0)), seed: f.lastHitTick });
+        add({ type: 'spark', x: f.hitX, y: f.hitY, size: Math.min(20, 7 + (f.lastHitDmg / 10 | 0)), seed: f.lastHitTick });
       }
-      if (f.parryTick >= 0 && f.parryTick !== was.parryTick && was.parryTick !== undefined) {
-        this.effects.push({ type: 'parry', x: toPx(f.x), y: toPx(f.y) - 22, tick: state.tick });
+      if (f.parryTick >= 0 && f.parryTick !== was.parryTick && was.parryTick !== undefined) add({ type: 'parry', x, y: y - 22 });
+      if (f.state === 'shieldBreak' && was.state !== 'shieldBreak' && known) add({ type: 'break', x, y: y - 22, slot: f.slot });
+      if (f.counterTick >= 0 && f.counterTick !== was.counterTick && was.counterTick !== undefined) add({ type: 'counter', x, y: y - 24 });
+      if (known && f.state !== 'dead' && f.state !== 'out' && f.state !== 'respawn') {
+        // dust: landing, taking off, dashing, skidding to a stop or turning
+        if (f.grounded && was.grounded === 0) add({ type: 'dust', x, y, dir: 0, n: f.state === 'land' || f.state === 'knockdown' ? 6 : 4 });
+        if (!f.grounded && was.grounded === 1 && f.vy < 0) add({ type: 'dust', x: was.x, y: was.y, dir: 0, n: 4 });
+        if (f.state === 'dash' && was.state !== 'dash') add({ type: 'dust', x: x - f.facing * 4, y, dir: -f.facing, n: 4 });
+        if ((f.state === 'brake' || f.state === 'turn') && was.state !== f.state) add({ type: 'dust', x: x + Math.sign(f.vx) * 5, y, dir: Math.sign(f.vx), n: 3 });
+        // launched hard: a trail of smoke puffs
+        if (f.state === 'hitstun' && f.hitlag <= 0 && f.kbSpeed > 2.4 * FX && state.tick !== was.tick && (state.tick & 1) === 0) {
+          add({ type: 'smoke', x, y: y - 20, slot: f.slot, big: f.kbSpeed > 5 * FX });
+        }
       }
-      if (f.state === 'shieldBreak' && was.state !== 'shieldBreak' && was.state !== undefined) {
-        this.effects.push({ type: 'break', x: toPx(f.x), y: toPx(f.y) - 22, tick: state.tick, slot: f.slot });
+      // KO: remember where on the screen edge he left
+      if (f.state === 'dead' && was.state !== 'dead' && known) {
+        const [sx0, sy0] = this.toScreen(x, y - 20);
+        const sx = clamp(sx0, 0, W), sy = clamp(sy0, 0, H);
+        add({ type: 'ko', sx, sy, ang: Math.atan2(H / 2 - sy, W / 2 - sx), slot: f.slot });
       }
-      if (f.counterTick >= 0 && f.counterTick !== was.counterTick && was.counterTick !== undefined) {
-        this.effects.push({ type: 'counter', x: toPx(f.x), y: toPx(f.y) - 24, tick: state.tick });
-      }
-      this.seen[i] = { fastFall: f.fastFall, lastHitTick: f.lastHitTick, parryTick: f.parryTick, state: f.state, counterTick: f.counterTick };
+      this.seen[i] = { fastFall: f.fastFall, lastHitTick: f.lastHitTick, parryTick: f.parryTick, state: f.state, counterTick: f.counterTick, grounded: f.grounded, x, y, tick: state.tick };
     });
-    this.effects = this.effects.filter((e) => state.tick >= e.tick && state.tick - e.tick < (e.type === 'break' ? 30 : e.type === 'parry' || e.type === 'counter' ? 22 : 14));
+    const LIFE = { break: 30, parry: 22, counter: 22, ko: 50, dust: 20, smoke: 26, spark: 16, fastfall: 14 };
+    this.effects = this.effects.filter((e) => state.tick >= e.tick && state.tick - e.tick < LIFE[e.type]);
     for (const e of this.effects) {
       const age = state.tick - e.tick;
-      const x = e.x - camX, y = e.y - camY;
+      const x = e.x, y = e.y;
+      if (e.type === 'ko') continue;   // drawn later, in screen units
       if (e.type === 'spark') { this.drawSpark(x, y, age, e.size, e.seed); continue; }
+      if (e.type === 'dust') {
+        const t = age / 20;
+        for (let k = 0; k < e.n; k++) {
+          const side = e.dir || (k & 1 ? 1 : -1), j = ((k * 37 + 11) % 10) / 10;
+          const px = x + side * (2 + (5 + j * 9) * (1 - (1 - t) * (1 - t))), py = y - 1.5 - j * 2 - t * (3 + j * 5);
+          ctx.fillStyle = 'rgba(244,240,228,' + (0.6 * (1 - t)).toFixed(3) + ')';
+          ctx.beginPath(); ctx.arc(px, py, 1.6 + j * 1.4 + t * 2.6, 0, Math.PI * 2); ctx.fill();
+        }
+        continue;
+      }
+      if (e.type === 'smoke') {
+        const t = age / 26, r = (e.big ? 5 : 3.5) + t * (e.big ? 7 : 5);
+        const g = ctx.createRadialGradient(x, y - t * 4, r * 0.2, x, y - t * 4, r);
+        g.addColorStop(0, 'rgba(255,255,255,' + (0.55 * (1 - t)).toFixed(3) + ')');
+        g.addColorStop(0.6, rgba(PLAYER_COLORS[e.slot], 0.22 * (1 - t)));
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y - t * 4, r, 0, Math.PI * 2); ctx.fill();
+        continue;
+      }
       if (e.type === 'counter') {
         // red-and-white burst and a flash: the bluff worked
-        this.drawRing(x, y, 8 + age * 3, age & 2 ? '#ffffff' : '#ff4a5a', 1 - age / 22);
-        this.drawRing(x, y, 4 + age * 2, '#ffe14a', 1 - age / 16);
-        if (age < 2) { ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(0, 0, W, H); }
+        this.drawRing(x, y, 8 + age * 3, age & 2 ? '#ffffff' : '#ff4a5a', 1 - age / 22, 2.2);
+        this.drawRing(x, y, 4 + age * 2, '#ffe14a', 1 - age / 16, 1.4);
+        if (age < 2) this.flash(0.4);
         continue;
       }
-      if (e.type === 'parry') { this.drawRing(x, y, 6 + age * 2, age < 6 ? '#ffffff' : '#9fe9ff', 1 - age / 22); continue; }
+      if (e.type === 'parry') { this.drawRing(x, y, 6 + age * 2, age < 6 ? '#ffffff' : '#9fe9ff', 1 - age / 22, 2); continue; }
       if (e.type === 'break') {
-        for (let k = 0; k < 10; k++) {
-          const a = (k / 10) * Math.PI * 2, d = 4 + age * 2.2;
-          ctx.fillStyle = k & 1 ? '#ffffff' : PLAYER_COLORS[e.slot];
+        for (let k = 0; k < 12; k++) {
+          const a = (k / 12) * Math.PI * 2, d = 4 + age * 2.2;
           ctx.globalAlpha = Math.max(0, 1 - age / 30);
-          ctx.fillRect(Math.round(x + Math.cos(a) * d) - 1, Math.round(y + Math.sin(a) * d) - 1, 3, 3);
+          this.star(x + Math.cos(a) * d, y + Math.sin(a) * d, 3.2, k & 1 ? '#ffffff' : PLAYER_COLORS[e.slot], '#ffffff', a);
         }
         ctx.globalAlpha = 1;
-        if (age < 3) { ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(0, 0, W, H); }
+        this.drawRing(x, y, 6 + age * 3.4, '#ffffff', 1 - age / 18, 2.5);
+        if (age < 3) this.flash(0.35);
         continue;
       }
-      // four-point twinkle: grows fast, then shrinks
-      const len = age < 3 ? 3 + age * 2 : Math.max(1, 8 - ((age - 3) * 2) / 3 | 0);
-      ctx.fillStyle = '#5fc8ff';
-      ctx.fillRect(x - len, y, len * 2 + 1, 1);
-      ctx.fillRect(x, y - len, 1, len * 2 + 1);
-      const d = Math.max(1, len >> 1);
-      ctx.fillStyle = '#bff0ff';
-      ctx.fillRect(x - d, y - 1, d * 2 + 1, 3);
-      ctx.fillRect(x - 1, y - d, 3, d * 2 + 1);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(x - (d >> 1), y, (d >> 1) * 2 + 1, 1);
-      ctx.fillRect(x, y - (d >> 1), 1, (d >> 1) * 2 + 1);
+      // fast fall: a four-point twinkle that grows fast, then shrinks
+      const len = age < 3 ? 4 + age * 2.5 : Math.max(1, 10 - (age - 3) * 0.8);
+      this.star(x, y, len, '#5fc8ff', '#ffffff', 0);
     }
   }
 
   // --- Basketball ---
-  // A plain orange ball with dark seams that turn as it travels.
+  // An orange ball with dark seams that turn as it travels.
   drawBall(x, y, r, spin, alpha = 1) {
     const ctx = this.ctx;
+    ctx.save();
     ctx.globalAlpha = alpha;
-    for (let dy = -r - 1; dy <= r + 1; dy++) {
-      const h = Math.floor(Math.sqrt((r + 1) * (r + 1) - dy * dy));
-      ctx.fillStyle = '#100d16'; ctx.fillRect(x - h, y + dy, h * 2 + 1, 1);
-    }
-    for (let dy = -r; dy <= r; dy++) {
-      const h = Math.floor(Math.sqrt(r * r - dy * dy));
-      ctx.fillStyle = dy < -r / 3 ? '#f2a04a' : dy > r / 3 ? '#c4621f' : '#e0812f';
-      ctx.fillRect(x - h, y + dy, h * 2 + 1, 1);
-    }
-    ctx.fillStyle = '#3a1d0e';
-    const s = ((Math.floor(spin / 512) % 4) + 4) % 4;   // seams rotate in 4 steps
-    if (s === 0 || s === 2) { ctx.fillRect(x - r, y, r * 2 + 1, 1); ctx.fillRect(x, y - r, 1, r * 2 + 1); }
-    else { for (let k = -r + 1; k < r; k++) { ctx.fillRect(x + k, y + k, 1, 1); ctx.fillRect(x + k, y - k, 1, 1); } }
-    ctx.fillStyle = '#fbd29a'; ctx.fillRect(x - (r >> 1), y - (r >> 1) - 1, 1, 1);
-    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.arc(x, y, r + 0.6, 0, Math.PI * 2); ctx.fill();
+    const g = ctx.createRadialGradient(x - r * 0.4, y - r * 0.45, r * 0.1, x, y, r);
+    g.addColorStop(0, '#ffc27a'); g.addColorStop(0.45, '#e8842f'); g.addColorStop(1, '#a94f17');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.clip();
+    ctx.translate(x, y); ctx.rotate((spin / 2048) * Math.PI);
+    ctx.strokeStyle = '#3a1d0e'; ctx.lineWidth = Math.max(0.35, r * 0.11);
+    ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.moveTo(0, -r); ctx.lineTo(0, r); ctx.stroke();
+    ctx.beginPath(); ctx.arc(-r * 1.25, 0, r * 0.95, -1, 1); ctx.stroke();
+    ctx.beginPath(); ctx.arc(r * 1.25, 0, r * 0.95, Math.PI - 1, Math.PI + 1); ctx.stroke();
+    ctx.restore();
   }
+
   drawProjectile(p, camX, camY) {
     const d = getCharacter(p.charId).projectiles[p.kind];
     const fade = p.spent ? Math.max(0.2, p.life / d.fadeFrames) : 1;
-    this.drawBall(toPx(p.x) - camX, toPx(p.y) - camY, d.r, p.spin, fade);
+    this.drawBall(p.x / FX, p.y / FX, d.r, p.spin, fade);
   }
   // The ball in his hands before it is released.
   drawHeldBall(f, ch, camX, camY) {
@@ -345,8 +486,8 @@ export class Renderer {
     if (!mv.holdBall || f.stateFrame < mv.holdBall[0] || f.stateFrame > mv.holdBall[1]) return;
     const s = solve(ch.skeleton, samplePose(ch.animations[f.anim], f.animFrame));
     const a = jointAt(s, 'fistF'), b = jointAt(s, 'fistB');
-    const x = toPx(f.x + f.facing * ((a[0] + b[0]) >> 1)) - camX + f.facing * 2;
-    const y = toPx(f.y + ((a[1] + b[1]) >> 1)) - camY - 3;
+    const x = (f.x + f.facing * ((a[0] + b[0]) >> 1)) / FX + f.facing * 2;
+    const y = (f.y + ((a[1] + b[1]) >> 1)) / FX - 3;
     this.drawBall(x, y, ch.projectiles.basketball.r, 0);
   }
   // Power meter over his head while charging a shot.
@@ -397,70 +538,78 @@ export class Renderer {
     this.drawOneTrail(f, ch, tr, camX, camY);
   }
 
-  drawOneTrail(f, ch, tr, camX, camY) {
+  drawOneTrail(f, ch, tr) {
     const LEN = 6;
     const newest = Math.min(f.stateFrame, tr.to), oldest = Math.max(tr.from, f.stateFrame - LEN);
     if (newest <= oldest) return;
     const a = ch.animations[f.anim];
     const pts = [];
-    // arc trails sample between frames so a fast swing draws a smooth curve
-    const stepF = tr.arc ? 0.25 : 1;
-    for (let fr = newest; fr >= oldest - 1e-6; fr -= stepF) {
+    // sample between frames so a fast swing draws a smooth curve
+    for (let fr = newest; fr >= oldest - 1e-6; fr -= 0.25) {
       const j = jointAt(solve(ch.skeleton, samplePose(a, fr)), tr.part);
-      pts.push([toPx(f.x + f.facing * j[0]) - camX, toPx(f.y + j[1]) - camY]);
+      pts.push([(f.x + f.facing * j[0]) / FX, (f.y + j[1]) / FX]);
     }
     // straight trails are flattened to one height: a clean horizontal streak
     if (tr.straight) for (const pt of pts) pt[1] = pts[0][1];
     const ctx = this.ctx, width = tr.width || 5, n = pts.length - 1;
     const colors = ch.trailColors || ['#ff9a3c', '#ffe14a', '#ffffff'];
     const fade = f.stateFrame > tr.to ? Math.max(0, 1 - (f.stateFrame - tr.to) / LEN) : 1;
-    colors.forEach((col, pass) => {
-      ctx.fillStyle = col;
+    ctx.save();
+    ctx.lineCap = 'round';
+    [[1.15, 0.5], [0.72, 0.85], [0.34, 1]].forEach(([wk, alpha], pass) => {
+      ctx.strokeStyle = colors[pass];
       for (let i = 0; i < n; i++) {
-        const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
-        const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0)));
-        for (let s = 0; s <= steps; s++) {
-          const u = (i + s / steps) / n;              // 0 at the limb, 1 at the tail
-          const w = Math.round((width * (1 - u) * fade + 1) * (1 - pass * 0.36));
-          if (w < 1) continue;
-          ctx.fillRect(Math.round(x0 + ((x1 - x0) * s) / steps - w / 2), Math.round(y0 + ((y1 - y0) * s) / steps - w / 2), w, w);
-        }
+        const u = i / n;                                // 0 at the limb, 1 at the tail
+        const w = (width * (1 - u) * fade + 0.4) * wk;
+        ctx.globalAlpha = alpha * (1 - u * 0.75) * (0.4 + 0.6 * fade);
+        ctx.lineWidth = w;
+        ctx.beginPath(); ctx.moveTo(pts[i][0], pts[i][1]); ctx.lineTo(pts[i + 1][0], pts[i + 1][1]); ctx.stroke();
       }
     });
+    ctx.restore();
   }
 
-  drawRing(x, y, r, color, alpha) {
+  drawRing(x, y, r, color, alpha, width = 1.6) {
     const ctx = this.ctx;
-    ctx.fillStyle = color; ctx.globalAlpha = Math.max(0, alpha);
-    for (let a = 0; a < 64; a++) {
-      const t = (a / 64) * Math.PI * 2;
-      ctx.fillRect(Math.round(x + Math.cos(t) * r), Math.round(y + Math.sin(t) * r), 2, 2);
-    }
+    ctx.strokeStyle = color; ctx.globalAlpha = Math.max(0, alpha); ctx.lineWidth = width * Math.max(0.3, alpha);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha = 1;
   }
 
-  // Hit spark: a jagged burst that is bigger for stronger hits.
+  // Hit spark: a spiky flash with a shock ring and flying streaks, bigger for
+  // stronger hits.
   drawSpark(x, y, age, size, seed) {
     const ctx = this.ctx;
-    if (age > 9) return;
-    const grow = age < 3 ? (age + 1) / 3 : 1, fade = age > 5 ? (10 - age) / 5 : 1;
-    const spikes = 8;
-    for (let i = 0; i < spikes; i++) {
-      const ang = (i / spikes) * Math.PI * 2 + (seed % 7) * 0.3;
-      const len = size * grow * (i & 1 ? 1 : 0.55);
-      const inner = age > 3 ? len * (1 - fade) : 0;
-      const cs = Math.cos(ang), sn = Math.sin(ang);
-      for (let d = inner; d <= len; d++) {
-        const t = Math.max(1, Math.round((1 - d / (len + 1)) * 3 * fade));
-        ctx.fillStyle = d < len * 0.5 ? '#ffffff' : (i & 1 ? '#ffe14a' : '#ff9a3c');
-        ctx.fillRect(Math.round(x + cs * d - t / 2), Math.round(y + sn * d - t / 2), t, t);
-      }
+    const rot = (seed % 7) * 0.3;
+    if (age <= 9) {
+      const grow = age < 3 ? (age + 1) / 3 : 1, fade = age > 4 ? (10 - age) / 6 : 1;
+      const burst = (r, inner, spikes, color) => {
+        ctx.fillStyle = color; ctx.beginPath();
+        for (let k = 0; k < spikes * 2; k++) {
+          const a = rot + (k * Math.PI) / spikes;
+          const d = k & 1 ? r * inner : r * (0.75 + ((k * 13 + seed) % 5) / 16);
+          ctx.lineTo(x + Math.cos(a) * d, y + Math.sin(a) * d);
+        }
+        ctx.closePath(); ctx.fill();
+      };
+      ctx.globalAlpha = fade;
+      burst(size * 1.25 * grow, 0.34, 9, '#ff9a3c');
+      burst(size * 1.0 * grow, 0.32, 9, '#ffe14a');
+      burst(size * 0.62 * grow, 0.4, 7, '#ffffff');
+      ctx.globalAlpha = 1;
     }
-    if (age < 4) {
-      const r = Math.round(size * 0.45 * grow);
-      ctx.fillStyle = '#ffffff';
-      for (let dy = -r; dy <= r; dy++) { const h = Math.floor(Math.sqrt(r * r - dy * dy)); ctx.fillRect(x - h, y + dy, h * 2 + 1, 1); }
+    // shock ring
+    this.drawRing(x, y, size * 0.5 + age * size * 0.16, '#ffffff', 1 - age / 12, size * 0.16);
+    // streaks flying outward
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 7; k++) {
+      const a = rot + 0.4 + (k * Math.PI * 2) / 7 + ((k * 29 + seed) % 10) / 20;
+      const d0 = size * 0.6 + age * size * 0.22, d1 = d0 + size * 0.5 * Math.max(0, 1 - age / 16);
+      ctx.strokeStyle = k & 1 ? '#ffe14a' : '#ffffff';
+      ctx.globalAlpha = Math.max(0, 1 - age / 16); ctx.lineWidth = Math.max(0.3, size * 0.09 * (1 - age / 16));
+      ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * d0, y + Math.sin(a) * d0); ctx.lineTo(x + Math.cos(a) * d1, y + Math.sin(a) * d1); ctx.stroke();
     }
+    ctx.globalAlpha = 1;
   }
 
   // Debug view: stage solids, ledge-grab boxes, collision boxes, hurtboxes.
@@ -502,6 +651,8 @@ export class Renderer {
     }
   }
 
+  // Melee-style HUD: stock icons over a big damage number that reddens and
+  // darkens as it climbs, and shakes when its fighter is hit.
   drawHud(state) {
     const ctx = this.ctx;
     const n = state.fighters.length;
@@ -509,25 +660,46 @@ export class Renderer {
       const f = state.fighters[i];
       const ch = getCharacter(f.charId);
       const cx = Math.round(W / 2 + (i - (n - 1) / 2) * 150);
-      const y = H - 30;
-      ctx.fillStyle = 'rgba(10,10,24,0.78)';
-      ctx.fillRect(cx - 38, y - 3, 76, 28);
-      ctx.fillStyle = PLAYER_COLORS[i];
-      ctx.fillRect(cx - 38, y - 3, 76, 2);
-      drawText(ctx, 'P' + (i + 1) + ' ' + ch.name, cx, y + 2, PLAYER_COLORS[i], 1, 'center', '#000000');
-      // percent shifts from white through yellow and orange to red as it climbs
-      const p = f.percent / 10;
-      const pc = p < 30 ? '#ffffff' : p < 60 ? '#ffe9a0' : p < 90 ? '#ffc04a' : p < 120 ? '#ff8a3c' : '#ff4a3a';
-      drawText(ctx, p.toFixed(1) + '%', cx, y + 10, pc, 2, 'center', '#000000');
+      const base = H - 13;
+      // stock icons: the character's head, one per stock left
       for (let s = 0; s < f.stocks; s++) {
-        ctx.fillStyle = '#000000'; ctx.fillRect(cx - 35 + s * 6, y + 19, 5, 5);
-        ctx.fillStyle = PLAYER_COLORS[i]; ctx.fillRect(cx - 34 + s * 6, y + 20, 3, 3);
+        const ix = cx - (f.stocks - 1) * 5.5 + s * 11, iy = base - 31;
+        ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.ellipse(ix + 0.6, iy + 1, 5.2, 5.2, 0, 0, Math.PI * 2); ctx.fill();
+        this.doll.drawHead(ctx, ch, f.alt, ix, iy, 9);
       }
+      // damage number
+      const p = f.percent / 10, out = f.state === 'out';
+      const hitAge = f.lastHitTick >= 0 ? state.tick - f.lastHitTick : 99;
+      let dx = 0, dy = 0;
+      if (hitAge < 16 && !out) {
+        const amp = ((16 - hitAge) / 16) * Math.min(5, 1.6 + f.lastHitDmg / 45);
+        dx = Math.sin(hitAge * 2.9 + i) * amp; dy = Math.cos(hitAge * 3.7 + i) * amp;
+      }
+      const whole = String(Math.floor(p));
+      const font = (px) => 'italic 900 ' + px + 'px "Arial Black", "Helvetica Neue", "Segoe UI", Arial, sans-serif';
+      ctx.font = font(27);
+      const w1 = ctx.measureText(whole).width;
+      ctx.font = font(13);
+      const w2 = ctx.measureText('%').width + 1;
+      const left = cx - (w1 + w2) / 2 + dx, y = base + dy;
+      const fill = out ? '#6d6d78' : damageColor(p);
+      const text = (str, px, x, yy) => {
+        ctx.font = font(px); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+        ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillText(str, x + 1.6, yy + 2);
+        ctx.strokeStyle = '#17111b'; ctx.lineWidth = px * 0.13 + 0.8; ctx.strokeText(str, x, yy);
+        const g = ctx.createLinearGradient(0, yy - px * 0.75, 0, yy);
+        g.addColorStop(0, '#ffffff'); g.addColorStop(0.45, fill); g.addColorStop(1, shade(fill, 0.72));
+        ctx.fillStyle = out ? fill : g; ctx.fillText(str, x, yy);
+      };
+      text(whole, 27, left, y);
+      text('%', 13, left + w1 + 1, y);
+      drawText(ctx, 'P' + (i + 1) + ' ' + ch.name, cx, base + 4, PLAYER_COLORS[i], 1, 'center', '#000000');
     }
   }
 
   drawPause(lines) {
     const ctx = this.ctx;
+    this.ui();
     ctx.fillStyle = 'rgba(6,6,20,0.72)';
     ctx.fillRect(0, 0, W, H);
     let y = 44;
@@ -539,6 +711,7 @@ export class Renderer {
 
   drawBanner(text) {
     const ctx = this.ctx;
+    this.ui();
     ctx.fillStyle = 'rgba(6,6,20,0.45)';
     ctx.fillRect(0, 96, W, 60);
     drawText(ctx, text, W / 2 + 3, 109, '#1a1440', 7, 'center');
@@ -549,9 +722,10 @@ export class Renderer {
   // tiles = [{ stage } | { random: true }], returns nothing; layout is in stageTileRect().
   drawStageSelect(tiles, index, cpuText) {
     const ctx = this.ctx;
+    this.ui();
     this.time++;
     const sel = tiles[index];
-    if (sel.stage) { this.setStage(sel.stage); this.bg.draw(ctx, this.time, 0, 0); }
+    if (sel.stage) { this.setStage(sel.stage); this.bg.draw(ctx, this.time, { x: W / 2, y: H / 2, z: 1, S: this.S }); }
     else {
       ctx.fillStyle = '#141230'; ctx.fillRect(0, 0, W, H);
       const shown = tiles[(this.time >> 3) % (tiles.length - 1)].stage; // flick through the stages
@@ -588,9 +762,10 @@ export class Renderer {
 
   drawTitle(stage, info) {
     const ctx = this.ctx;
+    this.ui();
     this.setStage(stage);
     this.time++;
-    this.bg.draw(ctx, this.time, 0, 0);
+    this.bg.draw(ctx, this.time, { x: W / 2, y: H / 2, z: 1, S: this.S });
     const ch = getCharacter(info.charId);
     this.doll.drawAnim(ctx, ch, 0, 'idle', this.time, 240, stage.solids[0].y, 1);
 

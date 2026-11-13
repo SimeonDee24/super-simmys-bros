@@ -130,14 +130,41 @@ const LAYER_BUILDERS = {
 };
 
 const TOOLS = { rng32, disc, drawText };
-const MARGIN_X = (LAYER_W - W) / 2, MARGIN_Y = 10;
+// Custom paintings and the platform art are drawn with room on every side,
+// because the camera zooms out and pans.
+const MARGIN_X = 200, MARGIN_TOP = 70, CUSTOM_W = W + MARGIN_X * 2, CUSTOM_H = 480;
+const PLAT_TOP = 60, PLAT_H = 440;
+
+// Pixel-art smoothing (the EPX / Scale2x rule): doubles a picture, rounding
+// off staircase edges instead of just making the squares bigger.
+function smooth2x(src) {
+  const w = src.width, h = src.height;
+  const sd = new Uint32Array(src.getContext('2d').getImageData(0, 0, w, h).data.buffer);
+  const out = makeCanvas(w * 2, h * 2), octx = out.getContext('2d');
+  const img = octx.createImageData(w * 2, h * 2);
+  const od = new Uint32Array(img.data.buffer);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = y * w + x, P = sd[i];
+      const A = y > 0 ? sd[i - w] : P, D = y < h - 1 ? sd[i + w] : P;
+      const C = x > 0 ? sd[i - 1] : P, B = x < w - 1 ? sd[i + 1] : P;
+      const o = y * 2 * w * 2 + x * 2;
+      od[o] = C === A && C !== D && A !== B ? A : P;
+      od[o + 1] = A === B && A !== C && B !== D ? B : P;
+      od[o + w * 2] = D === C && D !== B && C !== A ? C : P;
+      od[o + w * 2 + 1] = B === D && B !== A && D !== C ? D : P;
+    }
+  }
+  octx.putImageData(img, 0, 0);
+  return out;
+}
 
 // A stage-specific painting: the stage file supplies draw(ctx, tools, stage),
 // working in screen coordinates. It does not tile, so it is drawn once with a
 // margin on every side for the camera pan.
 LAYER_BUILDERS.custom = (l, stage) => {
-  const c = makeCanvas(LAYER_W, LAYER_H + MARGIN_Y * 2), ctx = c.getContext('2d');
-  ctx.translate(MARGIN_X, MARGIN_Y);
+  const c = makeCanvas(CUSTOM_W, CUSTOM_H), ctx = c.getContext('2d');
+  ctx.translate(MARGIN_X, MARGIN_TOP);
   l.draw(ctx, TOOLS, stage);
   return c;
 };
@@ -146,61 +173,69 @@ export class Background {
   constructor(stage) {
     this.stage = stage;
     this.sky = this.buildSky(stage.background);
-    this.layers = stage.background.layers.map((l) => ({ def: l, canvas: (LAYER_BUILDERS[l.type] || LAYER_BUILDERS.clouds)(l, stage) }));
-    this.platform = makeCanvas(W, LAYER_H + 60);
-    this.platformOffY = 60; // room above the screen for tall art
-    const pctx = this.platform.getContext('2d');
-    pctx.translate(0, this.platformOffY);
+    // layers are smoothed to double size; the platform, which the fighters
+    // stand right next to, is smoothed twice (4x)
+    this.layers = stage.background.layers.map((l) => ({ def: l, canvas: smooth2x((LAYER_BUILDERS[l.type] || LAYER_BUILDERS.clouds)(l, stage)) }));
+    const plat = makeCanvas(W + MARGIN_X * 2, PLAT_H);
+    const pctx = plat.getContext('2d');
+    pctx.translate(MARGIN_X, PLAT_TOP);
     stage.art.draw(pctx, stage, TOOLS); // the stage paints its own platform
+    this.platform = smooth2x(smooth2x(plat));
   }
 
+  // A smooth sky gradient with a glowing sun.
   buildSky(bg) {
-    const c = makeCanvas(W, H), ctx = c.getContext('2d');
-    const bandH = H / bg.bands;
-    const colorAt = (t) => {
-      for (let i = 1; i < bg.sky.length; i++) {
-        if (t <= bg.sky[i][0]) {
-          const [t0, c0] = bg.sky[i - 1], [t1, c1] = bg.sky[i];
-          return mix(c0, c1, (t - t0) / (t1 - t0));
-        }
-      }
-      return bg.sky[bg.sky.length - 1][1];
-    };
-    for (let b = 0; b < bg.bands; b++) {
-      const y0 = Math.round(b * bandH), y1 = Math.round((b + 1) * bandH);
-      ctx.fillStyle = colorAt(b / (bg.bands - 1));
-      ctx.fillRect(0, y0, W, y1 - y0);
-      // one dithered row so the bands blend like pixel art
-      if (b > 0) for (let x = (b & 1); x < W; x += 2) ctx.fillRect(x, y0 - 1, 1, 1);
-    }
+    const K = 2, c = makeCanvas(W * K, H * K), ctx = c.getContext('2d');
+    const g = ctx.createLinearGradient(0, 0, 0, H * K);
+    for (const [t, col] of bg.sky) g.addColorStop(t, col);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W * K, H * K);
     const s = bg.sun;
     if (s) {
-      ctx.fillStyle = s.glow; disc(ctx, s.x, s.y, s.r + 7);
-      ctx.fillStyle = s.mid; disc(ctx, s.x, s.y, s.r + 3);
-      ctx.fillStyle = s.core; disc(ctx, s.x, s.y, s.r);
+      const x = s.x * K, y = s.y * K, r = s.r * K;
+      const halo = ctx.createRadialGradient(x, y, r * 0.6, x, y, r * 4.5);
+      halo.addColorStop(0, 'rgba(255,250,225,0.55)'); halo.addColorStop(0.35, 'rgba(255,245,210,0.18)'); halo.addColorStop(1, 'rgba(255,245,210,0)');
+      ctx.fillStyle = halo; ctx.fillRect(0, 0, W * K, H * K);
+      const core = ctx.createRadialGradient(x, y, 0, x, y, r * 1.25);
+      core.addColorStop(0, '#ffffff'); core.addColorStop(0.7, s.core); core.addColorStop(0.9, s.mid); core.addColorStop(1, 'rgba(255,238,176,0)');
+      ctx.fillStyle = core; ctx.beginPath(); ctx.arc(x, y, r * 1.25, 0, Math.PI * 2); ctx.fill();
     }
     return c;
   }
 
-  drawLayer(ctx, l, time, camX, camY) {
-    const d = l.def;
-    if (d.type === 'custom') {
-      ctx.drawImage(l.canvas, -MARGIN_X - Math.round(camX * d.parallax), -MARGIN_Y - Math.round(camY * d.parallax));
-      return;
+  // How much a layer grows and shrinks with the camera zoom. Far layers
+  // (small parallax) barely change, like distant scenery.
+  layerScale(d, z) { return 1 + (z - 1) * (0.15 + 0.2 * Math.min(1, d.parallax)); }
+
+  drawLayer(ctx, l, time, view) {
+    const d = l.def, S = view.S, s = this.layerScale(d, view.z);
+    const ox = (view.x - W / 2) * d.parallax, oy = (view.y - H / 2) * d.parallax;
+    // layer pixel p lands on screen at ((p - centre) - offset) * s + centre
+    ctx.setTransform(S * s, 0, 0, S * s, S * (W / 2 - (W / 2 + ox) * s), S * (H / 2 - (H / 2 + oy) * s));
+    if (d.type === 'custom') { ctx.drawImage(l.canvas, -MARGIN_X, -MARGIN_TOP, CUSTOM_W, CUSTOM_H); return; }
+    const drift = (time * (d.speed || 0)) / 60;
+    // tile across everything the screen can see
+    const left = W / 2 + ox - W / 2 / s, right = W / 2 + ox + W / 2 / s;
+    for (let k = Math.floor((left + drift) / LAYER_W); k * LAYER_W - drift < right; k++) {
+      ctx.drawImage(l.canvas, k * LAYER_W - drift, 0, LAYER_W + 0.5, LAYER_H);
     }
-    const off = Math.floor((time * (d.speed || 0)) / 60 + camX * d.parallax);
-    const x = -(((off % LAYER_W) + LAYER_W) % LAYER_W);
-    const y = -Math.round(camY * d.parallax);
-    ctx.drawImage(l.canvas, x, y);
-    ctx.drawImage(l.canvas, x + LAYER_W, y);
+    // keep filling downward with the layer's bottom edge colour
+    const bottom = H / 2 + oy + H / 2 / s;
+    if (bottom > LAYER_H && d.type && d.type !== 'clouds') { ctx.fillStyle = d.color; ctx.fillRect(left - 2, LAYER_H - 0.5, right - left + 4, bottom - LAYER_H + 2); }
   }
 
-  // time = rendered frames since start, cam = camera pan in pixels.
+  // time = rendered frames since start.
+  // view = { x, y: world point at the centre of the screen, z: zoom, S: real
+  // pixels per screen unit }. Leaves the context in plain screen units.
   // Layers marked front: true are drawn over the platform art (still behind fighters).
-  draw(ctx, time, camX, camY) {
-    ctx.drawImage(this.sky, 0, 0);
-    for (const l of this.layers) if (!l.def.front) this.drawLayer(ctx, l, time, camX, camY);
-    ctx.drawImage(this.platform, -camX, -camY - this.platformOffY);
-    for (const l of this.layers) if (l.def.front) this.drawLayer(ctx, l, time, camX, camY);
+  draw(ctx, time, view = { x: W / 2, y: H / 2, z: 1, S: 1 }) {
+    const S = view.S, z = view.z;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'low';   // plain bilinear: much cheaper for full-screen pictures
+    ctx.setTransform(S, 0, 0, S, 0, 0);
+    ctx.drawImage(this.sky, 0, 0, W, H);
+    for (const l of this.layers) if (!l.def.front) this.drawLayer(ctx, l, time, view);
+    ctx.setTransform(S * z, 0, 0, S * z, S * (W / 2 - view.x * z), S * (H / 2 - view.y * z));
+    ctx.drawImage(this.platform, -MARGIN_X, -PLAT_TOP, W + MARGIN_X * 2, PLAT_H);
+    for (const l of this.layers) if (l.def.front) this.drawLayer(ctx, l, time, view);
+    ctx.setTransform(S, 0, 0, S, 0, 0);
   }
 }

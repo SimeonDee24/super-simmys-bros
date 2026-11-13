@@ -2,14 +2,14 @@
 <!-- Art helper: open /tools/pose-sheet.html on the local server to see every
      animation key pose and palette of a character, enlarged. -->
 <html><head><meta charset="utf-8"><title>Pose sheet</title>
-<style>body{background:#7fa6d8;margin:8px;font:12px monospace}canvas{image-rendering:pixelated;width:1440px;height:auto;display:block}</style>
-</head><body><canvas id="c" width="480" height="780"></canvas>
+<style>body{background:#7fa6d8;margin:8px;font:12px monospace}canvas{width:1440px;height:auto;display:block}</style>
+</head><body><canvas id="c" width="1440" height="2340"></canvas>
 <script type="module">
 import { CHARACTERS } from '../characters/index.js';
 import { DollRenderer } from '../render/doll.js';
 import { drawText } from '../render/font.js';
 const ch = CHARACTERS[new URLSearchParams(location.search).get('i') | 0];
-const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const cv = document.getElementById("c"), ctx = cv.getContext("2d"); ctx.scale(3, 3);
 const doll = new DollRenderer();
 let x = 30, y = 64;
 for (const [name, a] of Object.entries(ch.animations)) {

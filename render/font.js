@@ -36,3 +36,22 @@ export function drawText(ctx, text, x, y, color = '#fff', scale = 1, align = 'le
     }
   }
 }
+
+// Smooth text for the HUD and menus, laid out like drawText (same position,
+// roughly the same size per `scale`) but drawn with real fonts so it stays
+// sharp at any resolution. Small text is monospaced so columns line up;
+// headings use a heavy italic.
+export function drawLabel(ctx, text, x, y, color = '#fff', scale = 1, align = 'left', shadow = null) {
+  text = String(text).toUpperCase();
+  const big = scale >= 2, size = big ? scale * 6.4 : 6.5;
+  ctx.font = big
+    ? 'italic 900 ' + size + 'px "Arial Black", "Helvetica Neue", "Segoe UI", Arial, sans-serif'
+    : '700 ' + size + 'px "SF Mono", Consolas, Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace';
+  ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
+  const by = y + scale * 5 + (big ? scale * 0.3 : 0.3);
+  if (shadow) {
+    ctx.fillStyle = shadow; ctx.fillText(text, x + size * 0.07, by + size * 0.1);
+    ctx.strokeStyle = shadow; ctx.lineWidth = Math.max(1.3, size * 0.17); ctx.strokeText(text, x, by);
+  }
+  ctx.fillStyle = color; ctx.fillText(text, x, by);
+}

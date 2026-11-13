@@ -3,8 +3,6 @@ html, body {
 }
 body { display: flex; align-items: center; justify-content: center; }
 #game {
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
   background: #000;
   display: block;
 }

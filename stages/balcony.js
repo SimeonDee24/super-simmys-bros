@@ -7,7 +7,7 @@
 
 function drawBalcony(ctx, stage, t) {
   const { rng32, disc, drawText } = t;
-  const LAYER_H = 340; // how far down the art must reach
+  const LAYER_H = 400; // how far down the art must reach
   const a = stage.art, rnd = rng32(a.seed);
   const [main, tier2, tier3] = stage.solids;
   const fx = a.facade.x, fw = a.facade.w, ftop = a.facade.top;

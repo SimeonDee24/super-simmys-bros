@@ -26,7 +26,7 @@ const stageTiles = [...STAGES.map((stage) => ({ stage })), { random: true }];
 let stageIndex = 0;
 let paused = false;
 let updateMessage = null;
-let fps = 0, fpsFrames = 0, fpsTime = 0;
+let fps = 0, fpsFrames = 0, fpsTime = 0, slowSeconds = 0;
 
 function startMatch(stage = STAGES[0]) {
   const state = createMatch({
@@ -174,7 +174,13 @@ function frame(now) {
   while (acc >= STEP_MS) { safely(tick); acc -= STEP_MS; }
   safely(render);
   fpsFrames++;
-  if (now - fpsTime >= 1000) { fps = fpsFrames; fpsFrames = 0; fpsTime = now; }
+  if (now - fpsTime >= 1000) {
+    fps = fpsFrames; fpsFrames = 0; fpsTime = now;
+    // Running slowly for a few seconds in a row: lower the picture sharpness
+    // a step so the game stays at full speed.
+    if (fps > 5 && fps < 50 && document.visibilityState === 'visible') { if (++slowSeconds >= 3) { renderer.lowerQuality(); slowSeconds = 0; } }
+    else slowSeconds = 0;
+  }
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

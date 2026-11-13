@@ -59,7 +59,7 @@ function drawSitter(ctx, rnd, x, y) {
 // Far side of the atrium: stacked floors with slatted timber walls.
 function drawAtrium(ctx, t) {
   const rnd = t.rng32(31);
-  const X0 = -120, X1 = 600, Y0 = -10, Y1 = 330;
+  const X0 = -200, X1 = 680, Y0 = -70, Y1 = 410;
   // slatted wall
   for (let x = X0; x < X1; x++) {
     const m = ((x % 3) + 3) % 3;
@@ -67,7 +67,7 @@ function drawAtrium(ctx, t) {
     ctx.fillRect(x, Y0, 1, Y1 - Y0);
   }
   // floors: recessed rooms, slab edge, glass railing
-  for (let fy = 40; fy < Y1; fy += 62) {
+  for (let fy = -22; fy < Y1; fy += 62) {
     for (let x = X0 + Math.floor(rnd() * 40); x < X1; ) {
       const w = 36 + Math.floor(rnd() * 60);
       ctx.fillStyle = C.farRoom; ctx.fillRect(x, fy - 36, w, 36);
@@ -103,14 +103,14 @@ function drawAtrium(ctx, t) {
     ctx.fillStyle = C.wood; ctx.fillRect(x, Y0, 5, 26);
     ctx.fillStyle = C.woodShade; ctx.fillRect(x + 4, Y0, 1, 26);
   }
-  ctx.fillStyle = C.woodShade; ctx.fillRect(X0, 14, X1 - X0, 2);
+  ctx.fillStyle = C.woodShade; ctx.fillRect(X0, Y0 + 24, X1 - X0, 2);
 }
 
 // The Egg: a big timber-clad ovoid on a concrete stem, with a bridge to it.
 function drawEgg(ctx, t) {
   const cx = 338, cy = 104, rx = 60, ry = 46;
   // stem
-  for (let y = cy + ry - 6; y < 340; y++) {
+  for (let y = cy + ry - 6; y < 410; y++) {
     const half = 15 - Math.min(5, (y - cy - ry) >> 4);
     ctx.fillStyle = C.concrete; ctx.fillRect(cx - half, y, half * 2, 1);
     ctx.fillStyle = C.concreteLight; ctx.fillRect(cx - half, y, 3, 1);
@@ -118,11 +118,11 @@ function drawEgg(ctx, t) {
   }
   // bridge
   const rnd = t.rng32(77);
-  for (let x = cx + 70; x < cx + 300; x += 22 + Math.floor(rnd() * 40)) drawStander(ctx, rnd, x, cy + 18);
-  ctx.fillStyle = C.railGlass; ctx.fillRect(cx, cy + 9, 300, 9);
-  ctx.fillStyle = C.rail; ctx.fillRect(cx, cy + 8, 300, 1);
-  ctx.fillStyle = C.concrete; ctx.fillRect(cx, cy + 18, 300, 5);
-  ctx.fillStyle = C.concreteShade; ctx.fillRect(cx, cy + 23, 300, 2);
+  for (let x = cx + 70; x < cx + 342; x += 22 + Math.floor(rnd() * 40)) drawStander(ctx, rnd, x, cy + 18);
+  ctx.fillStyle = C.railGlass; ctx.fillRect(cx, cy + 9, 342, 9);
+  ctx.fillStyle = C.rail; ctx.fillRect(cx, cy + 8, 342, 1);
+  ctx.fillStyle = C.concrete; ctx.fillRect(cx, cy + 18, 342, 5);
+  ctx.fillStyle = C.concreteShade; ctx.fillRect(cx, cy + 23, 342, 2);
   // shell, slightly fuller at the bottom, clad in horizontal strips
   for (let dy = -ry; dy <= ry; dy++) {
     const k = dy / ry;
