@@ -17,7 +17,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     anim: 'idle', animFrame: 0,
     grounded: 1, ground: spawn.ground || 0,
     jumpsLeft: st.airJumps, fastFall: 0, landLag: 0,
-    ledge: -1, ledgeCd: 0,  // ledge being held, and frames until one can be grabbed again
+    ledge: -1, ledgeCd: 0, ledgeQueue: 0,  // ledge being held, and frames until one can be grabbed again
     wallSide: 0,            // -1 / 1 while touching a wall in the air (for wall jumps)
     prevIn: 0, tapDir: 0, tapTimer: 0,
     buf: 0, bufTimer: 0, dashBuf: 0, dashBufTimer: 0, // input buffer
@@ -368,7 +368,10 @@ const STATES = {
   // (Ledge intangibility and trumping arrive with milestone 3.)
   ledge(c) {
     const { f, st } = c;
-    if (f.stateFrame < st.ledgeMinHang) return;
+    // Options cannot start for the first few frames of hanging, but a shield
+    // press made during them is remembered (jump and attack already are).
+    if (f.stateFrame < st.ledgeMinHang) { f.ledgeQueue |= c.pressed & BTN.SHIELD; return; }
+    if (f.ledgeQueue) { c.pressed |= f.ledgeQueue; f.ledgeQueue = 0; }
     if (c.pressed & BTN.ATTACK) {
       // Ledge attack: he is on the stage from now on; the move lifts him up.
       const l = getStage(c.match.stageId).ledges[f.ledge];

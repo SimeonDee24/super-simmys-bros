@@ -71,6 +71,7 @@ function tryLedgeGrab(f, stage, st) {
     if (out < -CONFIG.LEDGE_INSIDE_X * FX || out > CONFIG.LEDGE_REACH_X * FX) continue;
     if (Math.abs(handY - l.y * FX) > CONFIG.LEDGE_REACH_Y * FX) continue;
     f.ledge = i;
+    f.ledgeQueue = 0;
     f.tumbling = 0;
     f.airDodged = 0;
     f.x = l.x * FX + l.dir * st.ecbHalfW;
