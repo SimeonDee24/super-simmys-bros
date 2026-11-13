@@ -535,8 +535,13 @@ const STATES = {
         f.vx = f.facing * (r.speed[0] + Math.trunc(((r.speed[1] - r.speed[0]) * Math.min(f.charge, max)) / max));
         f.vy = -r.lift;
         f.grounded = 0; f.ground = -1; f.moveAir = 1; f.fastFall = 0;
+      } else if (f.hitGroups && f.vx * f.facing > 0) {
+        // Connected (or hit a shield): the rocket stops dead and he bounces
+        // back a little, then falls.
+        f.vx = -f.facing * mv.rocket.bounce[0];
+        f.vy = -mv.rocket.bounce[1];
       } else if (f.stateFrame <= mv.rocket.frame + mv.rocket.frames) {
-        f.vx -= Math.trunc((f.vx * mv.rocket.drag) / 1000);
+        f.vx -= Math.trunc((f.vx * (f.hitGroups ? 60 : mv.rocket.drag)) / 1000);
         f.vy = Math.min(f.vy + Math.trunc((st.gravity * mv.rocket.gravity) / 100), st.fallSpeed);
       } else airMotion(c);
     } else if (mv.fly && f.stateFrame >= mv.fly.frame) {

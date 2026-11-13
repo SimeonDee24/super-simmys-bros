@@ -567,7 +567,7 @@ for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['
   let normal = 0, misSeed = 0;
   for (let sd = 1; sd < 200 && (!normal || !misSeed); sd++) { const r = fb(0, sd, 0); if (r.mv === 'fastBreakMisfire') misSeed = misSeed || sd; else normal = normal || sd; }
   const tap = fb(0, normal, 0), full = fb(90, normal, 0);
-  check('fast break: a tap goes a short way, a full charge much further', tap.mv === 'fastBreak' && tap.dist > 35 && full.dist > tap.dist + 50 && tap.state === 'idle', `tap ${tap.dist.toFixed(0)}px, full ${full.dist.toFixed(0)}px`);
+  check('fast break: a tap goes a short way, a full charge much further', tap.mv === 'fastBreak' && tap.dist > 60 && full.dist > tap.dist + 35 && tap.state === 'idle', `tap ${tap.dist.toFixed(0)}px, full ${full.dist.toFixed(0)}px`);
   const tapHit = fb(0, normal, 30), fullHit = fb(90, normal, 30);
   check('fast break: 6% uncharged, 21% fully charged', tapHit.pct === 60 && fullHit.pct === 210, `${tapHit.pct / 10}% and ${fullHit.pct / 10}%`);
   const mis = fb(0, misSeed, 0), misHit = fb(0, misSeed, 40);
@@ -577,6 +577,14 @@ for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['
   check('fast break misfires about 1 time in 10', count >= 15 && count <= 48, `${count} of 300`);
   // same seed and inputs always give the same result
   check('fast break misfire is deterministic', fb(0, misSeed, 0).dist === mis.dist);
+  // hitting someone stops the dive instead of carrying on through them
+  {
+    const t = createMatch({ ...setup, seed: normal }); const [a, v] = t.fighters; a.x = 120 * FX; v.x = a.x + 40 * FX;
+    step(t, [BTN.SPECIAL | BTN.RIGHT, 0]); for (let i = 0; i < 90; i++) step(t, [BTN.SPECIAL, 0]);
+    let hitX = 0;
+    for (let i = 0; i < 150; i++) { step(t, [0, 0]); if (!hitX && v.percent) hitX = a.x; }
+    check('fast break stops when it connects (does not carry on past them)', hitX && a.x <= hitX + 2 * FX, `went ${((a.x - hitX) / FX).toFixed(0)}px past the hit`);
+  }
 }
 // Charging Fast Break in the air: no drifting
 {

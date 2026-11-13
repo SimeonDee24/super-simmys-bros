@@ -437,7 +437,7 @@ const animations = {
   rotorCap: anim(false, [
     [5, { hip: [0, 4], torso: 10, armF: [140, 70], armB: [130, 80], legF: [38, -72], legB: [18, -58] }],
     [7, { hip: [0, 5], torso: 6, head: 6, armF: [165, 60], armB: [155, 70], legF: [42, -80], legB: [22, -64] }],
-    ...Array.from({ length: 7 }, (_, i) => [10, i & 1
+    ...Array.from({ length: 9 }, (_, i) => [10, i & 1
       ? { ...RC_HANG, torso: -2, legF: [-4, -10], legB: [-20, -6], armF: [14, 26], armB: [-30, 14] }
       : RC_HANG]),
     [6, { ...RC_HANG, face: 'hurt' }],
@@ -743,7 +743,7 @@ const moves = {
   // charge. One time in ten it misfires instead: see fastBreakMisfire.
   fastBreak: { faf: 62, landLag: 16, landContinue: true, noDrift: true, float: { gravity: 20, fall: 25 },
     charge: { at: 14, max: 60 },
-    rocket: { frame: 16, frames: 30, speed: [px(2.0), px(4.2)], lift: px(1.0), gravity: 30, drag: 12,
+    rocket: { frame: 16, frames: 30, speed: [px(2.6), px(4.2)], lift: px(1.0), gravity: 30, drag: 12, bounce: [px(0.7), px(1.4)],
       misfire: { chance: 10, move: 'fastBreakMisfire' } },
     ledgeGrab: { from: 28 },
     trail: { part: 'neck', from: 16, to: 46, width: 8, straight: true },
@@ -754,7 +754,7 @@ const moves = {
   // The misfire: ignores the charge, flies much further and faster, 25%.
   fastBreakMisfire: { faf: 70, landLag: 22, burst: true, noDrift: true, float: { gravity: 20, fall: 25 },
     charge: { at: 14, max: 60 },
-    rocket: { frame: 16, frames: 36, speed: [px(5.0), px(5.0)], lift: px(1.3), gravity: 22, drag: 10 },
+    rocket: { frame: 16, frames: 36, speed: [px(5.0), px(5.0)], lift: px(1.3), gravity: 22, drag: 10, bounce: [px(0.9), px(1.8)] },
     ledgeGrab: { from: 34 },
     trail: { part: 'neck', from: 16, to: 52, width: 12, straight: true },
     hitboxes: [
@@ -764,11 +764,11 @@ const moves = {
   // Up special: Rotor Cap. A propeller cap lifts him a long way, steerable
   // left and right. The spinning blades hit above him (3% each, several
   // times) but his body is unprotected. He falls helpless afterwards.
-  rotorCap: { faf: 84, landLag: 14, helpless: true, float: { gravity: 15, fall: 20 },
-    fly: { frame: 12, frames: 62, rise: px(2.3), accel: px(0.3), drift: px(1.3), steer: px(0.09) },
+  rotorCap: { faf: 100, landLag: 14, helpless: true, float: { gravity: 15, fall: 20 },
+    fly: { frame: 12, frames: 78, rise: px(2.3), accel: px(0.3), drift: px(1.3), steer: px(0.09) },
     ledgeGrab: { from: 12, rising: true },
-    prop: { from: 5, to: 84 },
-    hitboxes: Array.from({ length: 9 }, (_, i) =>
+    prop: { from: 5, to: 100 },
+    hitboxes: Array.from({ length: 11 }, (_, i) =>
       hit(12 + i * 7, 18 + i * 7, 'neck', 7, 3, 85, 0, 100, { off: [0, -13], group: i, fkb: 45 })) },
   // Down special: Bluff (counter). If he is hit on frames 5-26 he takes no
   // damage and flips the card back at them for 1.2x the damage (at least 8%).
