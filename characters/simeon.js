@@ -36,8 +36,8 @@ const stats = {
 
   // Air
   gravity: px(0.23),
-  fallSpeed: px(3.2),
-  fastFallSpeed: px(4.9),
+  fallSpeed: px(2.9),
+  fastFallSpeed: px(4.5),
   airSpeed: px(2.7),
   airAccel: px(0.22),
   airFriction: px(0.026),
