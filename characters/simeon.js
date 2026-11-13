@@ -273,7 +273,7 @@ const animations = {
     [2, { torso: 8, armF: [130, 5], armB: [-40, 60], legF: [20, -30], legB: [-15, -35], ...FISTS, face: 'yell' }],
     [2, { torso: 28, armF: [75, 5], armB: [-30, 60], legF: [10, -20], legB: [-25, -40], ...FISTS, face: 'yell' }],
     [8, { torso: 40, head: 15, armF: [30, 5], armB: [-20, 50], legF: [10, -20], legB: [-25, -40], ...FISTS }],
-    [20, AIR],
+    [12, AIR],
   ]),
   // Back air: dropkick, body level with both legs thrust out behind.
   bair: anim(false, [
@@ -285,11 +285,11 @@ const animations = {
   // Up air: a full backflip with one leg extended, so the foot sweeps from
   // in front, over the head, to behind. rot runs from 0 to -360.
   uair: anim(false, [
-    [4, { ...UAIR_TUCK, rot: 0 }],
-    [4, { ...UAIR_KICK, rot: -60 }],
-    [9, { ...UAIR_KICK, rot: -185 }],
-    [7, { ...UAIR_TUCK, rot: -310 }],
-    [3, { ...AIR, rot: -360 }],
+    [3, { ...UAIR_TUCK, rot: 0 }],
+    [5, { ...UAIR_KICK, rot: -25 }],   // frame 3: leg low and in front
+    [7, { ...UAIR_KICK, rot: -185 }],  // frame 8: leg overhead, slightly behind
+    [5, { ...UAIR_TUCK, rot: -320 }],
+    [2, { ...AIR, rot: -360 }],
   ], { ease: false }),
   // Down air: spinning with both arms out.
   dair: anim(false, [
@@ -349,22 +349,22 @@ const moves = {
   ] },
 
   // --- Aerials ---
-  nair: { faf: 38, landLag: 5, autoCancel: [3, 32], hitboxes: [
+  nair: { faf: 30, landLag: 4, autoCancel: [3, 26], hitboxes: [
     ...hits(3, 5, [['toeF', 6], ['shinF', 5], ['hip', 6]], 8, 361, 20, 100),
     ...hits(6, 24, [['toeF', 5], ['shinF', 5], ['hip', 6]], 5, 361, 10, 100),
   ] },
-  fair: { faf: 48, landLag: 12, autoCancel: [3, 36], trail: { part: 'fistF', from: 15, to: 21 }, hitboxes: [
-    hit(17, 20, 'fistF', 8, 14, 270, 20, 80),            // sweet spot: spike
-    hit(16, 16, 'fistF', 8, 12, 361, 30, 87),
-    hit(16, 20, 'elbowF', 6, 12, 361, 30, 87),
-    hit(21, 21, 'fistF', 8, 10, 361, 30, 87),
+  fair: { faf: 40, landLag: 9, autoCancel: [3, 36], trail: { part: 'fistF', from: 15, to: 21 }, hitboxes: [
+    hit(17, 20, 'fistF', 9, 14, 270, 20, 80),            // sweet spot: spike
+    hit(16, 16, 'fistF', 9, 12, 361, 30, 87),
+    hit(16, 20, 'elbowF', 7, 12, 361, 30, 87),
+    hit(21, 21, 'fistF', 9, 10, 361, 30, 87),
   ] },
-  bair: { faf: 29, landLag: 5, autoCancel: [6, 17], trail: { part: 'toeB', from: 4, to: 8 }, hitboxes: [
+  bair: { faf: 24, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 4, to: 8 }, hitboxes: [
     ...hits(6, 7, LEG_B, 10.5, 361, 12, 106, BACK),
     ...hits(8, 10, LEG_B, 7, 361, 12, 100, BACK),
   ] },
-  uair: { faf: 27, landLag: 5, autoCancel: [4, 16], trail: { part: 'toeF', from: 3, to: 10 }, hitboxes: hits(4, 8, [['toeF', 7], ['shinF', 6], ['kneeF', 5]], 7, 75, 9, 135) },
-  dair: { faf: 33, landLag: 10, autoCancel: [5, 29], hitboxes: [
+  uair: { faf: 22, landLag: 4, autoCancel: [3, 14], trail: { part: 'toeF', from: 3, to: 10 }, hitboxes: hits(3, 8, [['toeF', 5], ['shinF', 4], ['kneeF', 4]], 7, 75, 9, 135) },
+  dair: { faf: 29, landLag: 8, autoCancel: [5, 26], hitboxes: [
     spin(5, 0), spin(9, 1), spin(13, 2), spin(17, 3), spin(21, 4),
     hit(25, 26, 'chest', 15, 5.5, 60, 40, 110, { group: 5, off: [0, -4] }),
   ] },

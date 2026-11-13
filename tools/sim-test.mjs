@@ -130,7 +130,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
   let lag = -1;
   for (let i = 0; i < 80 && lag < 0; i++) { step(s, [0, 0]); if (a.state === 'land') lag = a.landLag; }
-  check('landing during forward air gives its landing lag', lag === 12, 'lag ' + lag);
+  check('landing during forward air gives its landing lag', lag === 9, 'lag ' + lag);
   s = createMatch(setup); a = s.fighters[0];
   for (let i = 0; i < 4; i++) step(s, [BTN.JUMP, 0]);
   step(s, [BTN.JUMP | BTN.ATTACK | BTN.UP, 0]);
