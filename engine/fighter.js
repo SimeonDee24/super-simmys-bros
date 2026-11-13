@@ -63,6 +63,15 @@ export function land(f, groundIndex, st) {
   f.grounded = 1;
   f.ground = groundIndex;
   f.landLag = f.fastFall ? st.hardLandLag : st.softLandLag;
+  // Moves marked landContinue keep going when he lands (e.g. Jump Shot):
+  // they just become the grounded version from here on.
+  if (f.state === 'attack' && f.move) {
+    const mv = getCharacter(f.charId).moves[f.move];
+    if (mv && mv.landContinue) {
+      f.moveAir = 0; f.fastFall = 0; f.jumpsLeft = st.airJumps; f.wallSide = 0; f.airDodged = 0;
+      return;
+    }
+  }
   if (f.state === 'attack') {
     // Landing during an aerial: its own landing lag, unless inside an auto-cancel window.
     // Landing during an air special (no autoCancel data): its landLag, or a default.

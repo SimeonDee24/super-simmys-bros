@@ -502,6 +502,7 @@ const animations = {
 //   counter      counter window: see engine/combat.js (Bluff uses it)
 //   card         draw a playing card in his hand between these frames (render only)
 //   fromLedge    started from the ledge: climbs up over `rise` frames first
+//   landContinue landing mid-move does not cancel it; it carries on grounded
 //   slide        ground move that slides: starting speed and friction
 //   endsCrouched stay crouching afterwards if down is held
 // ---------------------------------------------------------------------------
@@ -564,7 +565,7 @@ const moves = {
   // Neutral special: Jump Shot. Tap K for a short shot; hold K to charge a
   // longer, higher one (power meter over his head). The ball arcs, bounces
   // and rolls. One ball at a time.
-  jumpShot: { faf: 38, limit: 1, holdBall: [0, 13],
+  jumpShot: { faf: 38, limit: 1, holdBall: [0, 13], landContinue: true,   // keeps going if he lands mid-shot
     charge: { at: 6, max: 40 },
     spawn: { frame: 14, from: 'fistF', projectile: 'basketball' },
     hitboxes: [] },

@@ -553,4 +553,14 @@ for (const [label, runFrames] of [['running into them', 40], ['already pushing t
   for (let i = 0; i < 10; i++) { step(s, [0, 0]); if (a.state === 'holding') caught = true; }
   check('standing grab works on someone right up against you', caught);
 }
+// Jump Shot keeps going when you land in the middle of it (charging included)
+for (const hold of [0, 30]) {
+  const s = createMatch(setup); const a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  a.y -= 12 * FX; a.grounded = 0; a.ground = -1; a.state = 'air';
+  step(s, [BTN.SPECIAL, 0]);
+  let landedMid = false;
+  for (let i = 0; i < hold + 6; i++) { step(s, [BTN.SPECIAL, 0]); if (a.grounded && a.move === 'jumpShot') landedMid = true; }
+  for (let i = 0; i < 30 && !s.projectiles.length; i++) { step(s, [0, 0]); if (a.grounded && a.move === 'jumpShot') landedMid = true; }
+  check(`Jump Shot is not cancelled by landing${hold ? ' while charging' : ''}`, landedMid && s.projectiles.length === 1 && a.grounded === 1);
+}
 process.exit(fails ? 1 : 0);
