@@ -3,6 +3,10 @@ import { DEFAULT_BINDINGS } from '../engine/input.js';
 
 const KEY = 'supersimmysbros.settings.v1';
 
+// Bump this when the default controls change, so old saved bindings are
+// replaced with the new defaults once.
+const BINDINGS_VERSION = 2;   // 2: shield moved from U to I (grab to U)
+
 const DEFAULTS = {
   bindings: { ...DEFAULT_BINDINGS },
   volume: 0.6,
@@ -14,7 +18,12 @@ const DEFAULTS = {
 export function loadSettings() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { /* ignore */ }
-  return { ...DEFAULTS, ...saved, bindings: { ...DEFAULT_BINDINGS, ...(saved.bindings || {}) } };
+  const oldBindings = (saved.bindingsVersion || 1) < BINDINGS_VERSION;
+  return {
+    ...DEFAULTS, ...saved,
+    bindingsVersion: BINDINGS_VERSION,
+    bindings: { ...DEFAULT_BINDINGS, ...(oldBindings ? {} : saved.bindings || {}) },
+  };
 }
 
 export function saveSettings(settings) {

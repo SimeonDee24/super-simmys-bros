@@ -12,7 +12,7 @@ export const ACTIONS = ['left', 'right', 'up', 'down', 'jump', 'attack', 'specia
 
 export const DEFAULT_BINDINGS = {
   left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS',
-  jump: 'Space', attack: 'KeyJ', special: 'KeyK', smash: 'KeyL', shield: 'KeyU', grab: 'KeyI',
+  jump: 'Space', attack: 'KeyJ', special: 'KeyK', smash: 'KeyL', shield: 'KeyI', grab: 'KeyU',
 };
 
 // Tracks the physical keyboard. A key tapped and released between two ticks

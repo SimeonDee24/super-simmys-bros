@@ -46,7 +46,7 @@ const stats = {
   ledgeHang: px(44),       // how far the feet hang below the ledge
   ledgeMinHang: 8,         // frames before a ledge option can be chosen
   ledgeGetupFrames: 22,
-  // Ledge roll (U while hanging): climbs up, then rolls onto the stage away from the edge.
+  // Ledge roll (shield while hanging): climbs up, then rolls onto the stage away from the edge.
   ledgeRoll: { rise: 10, roll: [11, 28], speed: px(2.2), intangible: [1, 24], faf: 36 },
   ledgeJumpVel: px(5.29),
   ledgeJumpH: px(1.2),
