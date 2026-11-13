@@ -167,7 +167,7 @@ const DTILT_SWEEP = { hip: [-2, 12], torso: 10, legF: [76, -4], legB: [60, -124]
 const SLIDE = { hip: [-1, 11], torso: -38, head: -15, legF: [82, -2], legB: [65, -115], armF: [-60, 20], armB: [-80, 10], footF: 35, face: 'yell' };
 // body thrown level, both legs driven straight out behind
 const BAIR_KICK = { rot: 72, torso: 6, head: -30, legF: [-6, -8], legB: [-16, -2], armF: [60, 70], armB: [40, 80], footF: -60, footB: -60, ...FISTS, face: 'yell' };
-const UAIR_KICK = { torso: -8, head: -10, legF: [22, -4], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
+const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
 const UAIR_TUCK = { torso: 12, head: 10, legF: [70, -100], legB: [55, -95], armF: [30, 80], armB: [10, 85], ...FISTS };
 
 const animations = {
@@ -306,9 +306,9 @@ const animations = {
   // in front, over the head, to behind. rot runs from 0 to -360.
   uair: anim(false, [
     [3, { ...UAIR_TUCK, rot: 0 }],
-    [1, { ...UAIR_KICK, rot: -100 }],  // frame 3: leg up in front of the head
-    [4, { ...UAIR_KICK, rot: -140 }],  // frame 4: leg straight up
-    [6, { ...UAIR_KICK, rot: -215 }],  // frame 8: leg up behind the head
+    [2, { ...UAIR_KICK, rot: -45 }],   // frame 3: knee-up kick in front, close to the body
+    [3, { ...UAIR_KICK, rot: -130 }],  // frame 5: over the head
+    [6, { ...UAIR_KICK, rot: -215 }],  // frame 8: behind the head
     [6, { ...UAIR_TUCK, rot: -320 }],
     [2, { ...AIR, rot: -360 }],
   ], { ease: false }),
@@ -390,9 +390,9 @@ const moves = {
     ...hits(6, 7, LEG_B, 10.5, 361, 12, 106, BACK),
     ...hits(8, 10, LEG_B, 7, 361, 12, 100, BACK),
   ] },
-  // Overhead only: hits what is directly above him.
+  // A tight arc around his upper body: from close in front, over his head, to behind.
   uair: { faf: 22, landLag: 4, autoCancel: [3, 14], trail: { part: 'toeF', from: 3, to: 9 }, hitboxes:
-    hits(4, 8, [['toeF', 4], ['shinF', 3]], 7, 80, 40, 120) },
+    hits(3, 8, [['kneeF', 4], ['shinF', 4], ['toeF', 3]], 7, 80, 40, 120) },
   dair: { faf: 29, landLag: 8, autoCancel: [5, 26], hitboxes: [
     spin(5, 0), spin(9, 1), spin(13, 2), spin(17, 3), spin(21, 4),
     hit(25, 26, 'chest', 15, 5.5, 60, 40, 110, { group: 5, off: [0, -4] }),

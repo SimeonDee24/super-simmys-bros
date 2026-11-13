@@ -151,7 +151,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   check('jump pressed late in a tilt is buffered', a.state === 'jumpsquat' || a.state === 'air', a.state);
   for (let i = 0; i < 12; i++) step(s, [0, 0]);
   check('a buffered jump does not also spend the double jump', a.jumpsLeft === 1);
-  // up air hits what is directly above, and nothing level in front
+  // up air: a tight arc that hits close opponents and does not reach far up
   const uairAt = (dx, dy) => {
     const s = createMatch(setup); const [a, v] = s.fighters;
     for (const f of [a, v]) { f.y -= 80 * FX; f.grounded = 0; f.ground = -1; f.state = 'air'; f.vy = 0; }
@@ -160,8 +160,9 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
     for (let i = 0; i < 12; i++) { step(s, [0, 0]); a.vy = 0; v.vy = 0; }   // hold both in place
     return v.percent;
   };
-  for (const dy of [44, 52]) check(`up air hits an opponent directly above (${dy}px up)`, uairAt(0, dy) === 70);
-  check('up air misses an opponent level and 20px in front', uairAt(20, 0) === 0);
+  for (const dy of [20, 44]) check(`up air hits an opponent directly above (${dy}px up)`, uairAt(0, dy) === 70);
+  check('up air hits an opponent right next to him', uairAt(8, 0) === 70);
+  check('up air does not reach high overhead (58px up)', uairAt(0, 58) === 0);
   // dash attack out of a run
   s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 70 * FX;
   for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [6, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
