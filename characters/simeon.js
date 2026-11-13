@@ -215,6 +215,9 @@ const NAIR_SPIN = { torso: 10, head: 10, legF: [90, -4], legB: [60, -120], armF:
 const GUARD = { hip: [0, 2], torso: 4, head: 2, armF: [40, 110], armB: [30, 120], legF: [20, -30], legB: [-16, -22], footB: -10, ...FISTS };
 const JAB = { hip: [2, 2], torso: 12, head: 4, armF: [92, 4], armB: [30, 118], legF: [28, -26], legB: [-22, -10], footB: -15, ...FISTS, face: 'yell' };
 const CROSS = { hip: [5, 2], torso: 26, head: 10, armF: [15, 115], armB: [94, 2], legF: [40, -30], legB: [-34, -4], footB: -35, ...FISTS, face: 'yell' };
+// Forward air charge: leaning way back, knees pulled up, fist cocked behind
+// his head and the other arm reaching out to aim.
+const FAIR_CHARGE = { rot: -26, torso: -18, head: -10, armF: [205, 45], armB: [65, 20], legF: [80, -125], legB: [30, -95], footF: 20, footB: 20, ...FISTS, face: 'yell' };
 const BAIR_HIGH = { torso: 40, head: -14, legF: [40, -95], legB: [-130, -4], armF: [80, 30], armB: [40, 50], footB: -60, ...FISTS, face: 'yell' };
 const BAIR_LOW = { torso: 18, head: -6, legF: [-50, -5], legB: [-35, -110], armF: [70, 40], armB: [30, 60], footF: -40, ...FISTS, face: 'yell' };
 const BAIR_MID = { torso: 32, head: -10, legF: [35, -75], legB: [-100, -3], armF: [95, 20], armB: [-30, 40], footB: -70, ...FISTS, face: 'yell' };
@@ -472,12 +475,15 @@ const animations = {
   // down in front in a big arc.
   fair: anim(false, [
     [4, { rot: -6, torso: -6, armF: [140, 30], armB: [20, 40], legF: [30, -45], legB: [-15, -35], ...FISTS }],
-    [4, { rot: -22, torso: -16, head: -8, armF: [185, 25], armB: [55, 25], legF: [55, -80], legB: [-40, -25], footF: 20, ...FISTS }],
-    [2, { rot: -4, torso: 2, armF: [150, 5], armB: [30, 40], legF: [45, -70], legB: [-30, -30], ...FISTS, face: 'yell' }],
+    [5, { rot: -18, torso: -12, head: -6, armF: [175, 35], armB: [45, 30], legF: [55, -85], legB: [-20, -50], footF: 20, ...FISTS }],
+    [2, FAIR_CHARGE],
+    [2, { ...FAIR_CHARGE, rot: -21, torso: -14, armF: [196, 40] }],   // shudder while charging
+    [1, FAIR_CHARGE],
+    [1, { rot: -4, torso: 2, armF: [150, 5], armB: [30, 40], legF: [45, -70], legB: [-30, -30], ...FISTS, face: 'yell' }],
     [2, { rot: 14, torso: 18, armF: [95, 5], armB: [-50, 60], legF: [30, -80], legB: [-5, -70], ...FISTS, face: 'yell' }],
-    [2, { rot: 26, torso: 28, head: 12, armF: [50, 5], armB: [-40, 70], legF: [40, -110], legB: [15, -105], ...FISTS, face: 'yell' }],
-    [8, { rot: 22, torso: 30, head: 14, armF: [30, 10], armB: [-30, 70], legF: [45, -115], legB: [20, -110], ...FISTS }],
-    [9, AIR],
+    [8, { rot: 28, torso: 30, head: 12, armF: [45, 5], armB: [-40, 70], legF: [40, -110], legB: [15, -105], ...FISTS, face: 'yell' }],
+    [12, { rot: 22, torso: 30, head: 14, armF: [30, 10], armB: [-30, 70], legF: [45, -115], legB: [20, -110], ...FISTS }],
+    [14, AIR],
   ]),
   // Back air: three quick back kicks, Greninja style. High with the back
   // leg, low with the front leg, then a strong mid-height kick.
@@ -632,15 +638,14 @@ const moves = {
     ...hits(12, 15, [['toeF', 7], ['shinF', 6], ['kneeF', 5], ['chest', 8]], 7, 70, 45, 80),
     ...hits(16, 19, [['toeF', 6], ['shinF', 5], ['chest', 7]], 5, 70, 35, 70),
   ] },
-  // Kick timed like Inkling's: strongest right at the start, at the foot.
-  // Overhead punch swing. Comes out on frame 8 and never spikes: the fist
-  // knocks forward at every point of the arc. Big hitbox on the fist.
-  fair: { faf: 31, landLag: 8, autoCancel: [3, 28], trail: { part: 'fistF', from: 6, to: 13, width: 9 }, hitboxes: [
-    hit(8, 9, 'fistF', 16, 12, 361, 30, 98),
-    hit(8, 9, 'elbowF', 12, 11, 361, 30, 95),
-    hit(8, 12, 'chest', 11, 10, 361, 25, 92, { off: [11, -6] }),   // fills the arc in front of him
-    hit(10, 12, 'fistF', 15, 10, 361, 25, 92),
-    hit(10, 12, 'elbowF', 11, 9, 361, 25, 92),
+  // Charged haymaker, Banjo style: winds up and shudders, then swings over
+  // the top on frame 15 for 15% (12% late on 18-19). Never spikes.
+  fair: { faf: 51, landLag: 11, autoCancel: [3, 36], trail: { part: 'fistF', from: 13, to: 18, width: 10 }, hitboxes: [
+    hit(15, 17, 'fistF', 16, 15, 361, 32, 100),
+    hit(15, 17, 'elbowF', 12, 14, 361, 32, 98),
+    hit(15, 17, 'chest', 11, 13, 361, 30, 95, { off: [11, -6] }),   // fills the arc in front of him
+    hit(18, 19, 'fistF', 14, 12, 361, 28, 95),
+    hit(18, 19, 'elbowF', 10, 11, 361, 28, 95),
   ] },
   // Greninja's triple back kick: hits on frames 5, 7 and 11-14. The first
   // two hold the opponent in place (fixed knockback) so the third connects

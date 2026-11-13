@@ -129,7 +129,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
   let lag = -1;
   for (let i = 0; i < 80 && lag < 0; i++) { step(s, [0, 0]); if (a.state === 'land') lag = a.landLag; }
-  check('landing during forward air gives its landing lag', lag === 8, 'lag ' + lag);
+  check('landing during forward air gives its landing lag', lag === 11, 'lag ' + lag);
   s = createMatch(setup); a = s.fighters[0];
   for (let i = 0; i < 4; i++) step(s, [BTN.JUMP, 0]);
   step(s, [BTN.JUMP | BTN.ATTACK | BTN.UP, 0]);
@@ -186,8 +186,8 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   v.x = a.x + 22 * FX;
   step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
   let fairFrame = -1;
-  for (let i = 0; i < 20; i++) { step(s, [0, 0]); a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; if (fairFrame < 0 && v.percent) fairFrame = a.stateFrame; }
-  check('forward air punch: 12% on frame 8, launched forward not down', v.percent === 120 && fairFrame === 8 && v.kbAngle !== 270, `${v.percent / 10}% on ${fairFrame}, angle ${v.kbAngle}`);
+  for (let i = 0; i < 30; i++) { step(s, [0, 0]); a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; if (fairFrame < 0 && v.percent) fairFrame = a.stateFrame; }
+  check('forward air punch: 15% on frame 15, launched forward not down', v.percent === 150 && fairFrame === 15 && v.kbAngle !== 270, `${v.percent / 10}% on ${fairFrame}, angle ${v.kbAngle}`);
   // knockdown and getup attack
   s = createMatch(setup); [a, v] = s.fighters;
   v.percent = 900; v.x = a.x + 16 * FX;
