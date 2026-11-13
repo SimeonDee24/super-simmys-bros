@@ -171,6 +171,15 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   check('pressing down for a down air does not fast fall', a.fastFall === 0);
   for (let i = 0; i < 30; i++) { step(s, [0, 0]); a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; else if (v.kbAngle === 270) spiked = true; }
   check('down air spikes for 14%', spiked && v.percent === 140, v.percent / 10 + '%');
+  {
+    const t = createMatch(setup); const [b, w] = t.fighters;
+    for (const f of [b, w]) { f.y -= 90 * FX; f.grounded = 0; f.ground = -1; f.state = 'air'; f.vy = 0; }
+    w.x = b.x + 10 * FX; w.y = b.y - 22 * FX;
+    step(t, [BTN.ATTACK | BTN.DOWN, 0]);
+    let first = -1, ang = -1;
+    for (let i = 0; i < 25; i++) { step(t, [0, 0]); b.vy = 0; if (w.state !== 'hitstun') w.vy = 0; else if (first < 0) { first = b.stateFrame; ang = w.kbAngle; } }
+    check('down air body hit comes out on frame 14 and does not spike', first === 14 && ang !== 270, `frame ${first}, angle ${ang}`);
+  }
   // forward air: strongest hit at the foot on frame 10
   s = createMatch(setup); [a, v] = s.fighters;
   for (const f of [a, v]) { f.y -= 80 * FX; f.grounded = 0; f.ground = -1; f.state = 'air'; f.vy = 0; }

@@ -174,8 +174,10 @@ const FISTS = { handF: 'fist', handB: 'fist' };
 const STAND = { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6, -2] };
 const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: [-14, -18], footF: 25, footB: 35 };
 // down air: knees pulled up high, then both feet driven straight down
-const DAIR_TUCK = { hip: [0, -4], torso: 10, head: 8, legF: [80, -135], legB: [70, -130], armF: [70, 60], armB: [50, 70], footF: 20, footB: 20, ...FISTS };
-const DAIR_STOMP = { hip: [0, 2], torso: -4, head: 12, legF: [6, -2], legB: [-4, -2], armF: [150, 25], armB: [-145, -15], footF: 50, footB: 50, ...FISTS, face: 'yell' };
+// Down air: Dr. Mario style. Knees pulled up and arms tucked, then both feet
+// stomp straight down together while the arms fling up into a V.
+const DAIR_TUCK = { hip: [0, -5], torso: 8, head: 6, legF: [85, -140], legB: [75, -135], armF: [35, 70], armB: [-30, 75], footF: 20, footB: 20, ...FISTS };
+const DAIR_STOMP = { hip: [0, 3], torso: 0, head: -6, legF: [3, -1], legB: [-3, -1], armF: [95, 60], armB: [-105, -55], footF: 35, footB: 35, ...FISTS, face: 'yell' };
 const DTILT_LOW = { hip: [-1, 9], torso: 24, head: 8, legF: [62, -112], legB: [50, -108], armF: [10, 50], armB: [-10, 40] };
 // down tilt: a low karate floor sweep. Dropped onto one knee with a hand
 // down, the other leg sweeps a half circle along the floor from behind him,
@@ -498,11 +500,11 @@ const animations = {
   // Down air: a heavy double-foot stomp straight down. Slow to start,
   // spikes if the feet land the hit cleanly.
   dair: anim(false, [
-    [6, { ...AIR }],
-    [10, DAIR_TUCK],
-    [2, DAIR_STOMP], [3, DAIR_STOMP],
-    [10, { torso: 4, legF: [30, -50], legB: [15, -45], armF: [80, 40], armB: [-60, 30], footF: 20, footB: 20 }],
-    [6, AIR],
+    [5, { ...AIR, legF: [40, -70], legB: [30, -60] }],
+    [8, DAIR_TUCK], [1, DAIR_TUCK],
+    [9, DAIR_STOMP],
+    [12, { torso: 4, legF: [20, -30], legB: [8, -25], armF: [90, 40], armB: [-80, 30], footF: 25, footB: 30 }],
+    [8, AIR],
   ]),
 
   land: anim(false, [
@@ -647,9 +649,11 @@ const moves = {
     hits(3, 8, [['kneeF', 4], ['shinF', 4], ['toeF', 3]], 7, 80, 40, 120) },
   // Stomp: both feet spike on frames 16-18 (sweet spot), then a weaker
   // sideways hit on 19-21.
-  dair: { faf: 37, landLag: 12, autoCancel: [3, 34], trail: { part: 'footF', from: 15, to: 19 }, hitboxes: [
-    ...hits(16, 18, [['footF', 5], ['footB', 5], ['shinF', 4], ['shinB', 4]], 14, 270, 20, 80),
-    ...hits(19, 21, [['footF', 5], ['footB', 5], ['shinF', 4], ['shinB', 4]], 10, 361, 20, 100),
+  // Out frame 14-17. Feet and legs meteor smash; the body hits at the
+  // Sakurai angle. One hit, no late hit. Autocancels in a short hop.
+  dair: { faf: 43, landLag: 13, autoCancel: [6, 32], trail: { part: 'footF', from: 13, to: 17, straight: true }, hitboxes: [
+    ...hits(14, 17, [['footF', 6], ['footB', 6], ['shinF', 5], ['shinB', 5]], 14, 270, 25, 80),
+    hit(14, 17, 'chest', 7, 14, 361, 30, 90),
   ] },
 };
 
