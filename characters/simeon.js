@@ -93,32 +93,30 @@ const ART_SCALE = 2;
 // Face, drawn from Simeon's own photos: straight nose, defined jaw, the
 // eye and brow at the front (right) of the head.
 const HEAD = [
-  '....kkkkkkk....',
-  '..kkkkkkkkkk...',
-  '.kkkkkkkkkkkl..',
-  '.Kkkkkkkkkkkl..',
-  'KKkkkkkkkkkkl..',
-  'KKkkkkkhhhkkl..',
-  'KkKqkkkkkmeK...',
-  'KkKqqkkkkkkkl..',
-  'KkKqkkkkkkkkkl.',
-  'KKKqkkkkkkkkkkl',
-  'KKkKkkkkkkkkKK.',
-  '.KKkkkkkkkkkp..',
-  '..Kkkkkkkkkqp..',
-  '...KkkkkkkkKk..',
-  '....KKkkkkkkl..',
-  '.......KKKKK...',
+  '...kkkkkkk....',
+  '.kkkkkkkkkkk..',
+  'kKkkkkkkkkkkl.',
+  'kKkkkkkkkkkkl.',
+  'KKkkkkkkkhhhh.',
+  'KKkkkkkkkmmek.',
+  'KkKqkkkkkmeek.',
+  'KkKqkkkkkkkkkl',
+  'KKkKKkkkkkkkKl',
+  'KKkKkkkkkkkkk.',
+  '.KKkkkkkkkkpk.',
+  '.KKkkkkkkkkk..',
+  '..KKkkkkkkkk..',
+  '....KKKKKkK...',
 ];
 // change some pixels of the head: [row, column, 'letters']
 const face = (...edits) => {
   const rows = HEAD.map((r) => r.split(''));
   for (const [r, c, str] of edits) for (let i = 0; i < str.length; i++) rows[r][c + i] = str[i];
-  return { pivot: [6, 16], px: rows.map((r) => r.join('')) };
+  return { pivot: [5, 14], px: rows.map((r) => r.join('')) };
 };
 // Messy dark brown hair: wavy and full on top, a fringe falling over the
 // forehead, covering the top of the ear and the back of the head. Lines up
-// with the head (hair column = head column + 1, hair row = head row + 3).
+// with the head (hair column = head column + 1, hair row = head row + 4).
 const HAIR = [
   '...h.hh..hh..h....',
   '..hhhhhhhhhhhhhh..',
@@ -139,10 +137,10 @@ const UPPER_LEG = [];
 for (let r = 0; r < 21; r++) UPPER_LEG.push(r === 0 ? 'JJjjjji' : r === 16 ? 'JJyyjii' : r === 17 ? 'JJjjyyi' : r >= 18 ? 'JJjjiji' : 'JJjjjii');
 const parts = {
   head_neutral: face(),
-  head_smile: face([11, 11, 'q'], [12, 11, 'k']),         // closed-mouth smile: corner turned up
-  head_yell: face([5, 7, 'kkk'], [6, 7, 'hh'], [11, 10, 'rr'], [12, 10, 'rrr'], [13, 10, 'rr']),
-  head_hurt: face([6, 9, 'hhK'], [12, 11, 'rr']),
-  hair: { pivot: [7, 19], px: HAIR },
+  head_smile: face([10, 10, 'qp']),                        // closed-mouth smile: corner turned up
+  head_yell: face([4, 9, 'kkhh'], [5, 9, 'hmek'], [9, 10, 'rrk'], [10, 10, 'rrr'], [11, 10, 'rr']),
+  head_hurt: face([4, 9, 'hhkk'], [5, 9, 'kkkk'], [6, 9, 'eeek'], [10, 10, 'rr']),
+  hair: { pivot: [6, 18], px: HAIR },
   // black tee with a silver chain round his neck, hanging on his chest
   torso: {
     pivot: [6, 26],
