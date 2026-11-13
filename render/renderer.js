@@ -172,7 +172,10 @@ export class Renderer {
       if (f.state === 'respawn') this.drawRespawnPlatform(toPx(f.x), toPx(f.y), f.slot);
       const blink = f.invuln > 0 && (state.tick >> 2) & 1;
       // the fighter who got hit shakes during hitlag
-      const shake = f.hitlag > 0 && f.state === 'hitstun' ? ((f.hitlag & 1) ? 0.8 : -0.8) : 0;
+      let shake = f.hitlag > 0 && f.state === 'hitstun' ? ((f.hitlag & 1) ? 0.8 : -0.8) : 0;
+      // charging a move: he trembles, harder the longer it is held
+      const cm = f.state === 'attack' && f.move ? ch.moves[f.move] : null;
+      if (cm && cm.charge && !cm.spawn && f.charge > 0 && f.stateFrame === cm.charge.at) shake = ((state.tick & 2) ? 1 : -1) * (0.3 + (0.6 * f.charge) / cm.charge.max);
       // dodging: a pale shimmer while he cannot be hit
       const dodging = f.intangible > 0 && (f.state === 'roll' || f.state === 'spotdodge' || f.state === 'airdodge' || f.state === 'ledgeRoll' || f.state === 'ledge' || f.state === 'ledgeGetup');
       const tint = blink ? '#ffffff' : dodging && (state.tick & 2) ? '#d8f4ff' : null;
@@ -187,6 +190,7 @@ export class Renderer {
         tint ? { flash: tint } : undefined);
       if (f.state === 'shield' || f.state === 'shieldStun') this.drawShield(state, f, 0, 0);
       if (f.state === 'dizzy') this.drawDizzy(f, 0, 0);
+      this.drawProp(state, f, ch);
     }
 
     for (const f of state.fighters) this.drawTrail(f, getCharacter(f.charId), 0, 0);
@@ -204,6 +208,41 @@ export class Renderer {
       let y = 4;
       for (const line of opts.debugLines) { drawText(ctx, line, 4, y, '#ffffff', 1, 'left', '#000000'); y += 7; }
     }
+  }
+
+  // Propeller cap on his head, for moves that set `prop` (Rotor Cap). The
+  // blades spin fast while it lifts him and sputter once he is falling
+  // helpless.
+  drawProp(state, f, ch) {
+    const up = ch.specials && ch.moves[ch.specials.up];
+    if (!up || !up.prop) return;
+    const flying = f.state === 'attack' && f.move === ch.specials.up && f.stateFrame >= up.prop.from && f.stateFrame <= up.prop.to;
+    if (!flying && f.state !== 'helpless') return;
+    const s = solve(ch.skeleton, samplePose(ch.animations[f.anim] || ch.animations.idle, f.animFrame));
+    const ctx = this.ctx, a = (s.head * Math.PI) / 180;
+    ctx.save();
+    ctx.translate(f.x / FX + f.facing * (s.neck[0] / FX), f.y / FX + s.neck[1] / FX);
+    ctx.scale(f.facing, 1);
+    ctx.rotate(a);
+    ctx.translate(0, -9);                       // top of the head
+    const powered = flying && f.stateFrame >= up.fly.frame && f.stateFrame <= up.fly.frame + up.fly.frames;
+    const phase = powered ? state.tick * 1.15 : flying ? state.tick * 0.5 : state.tick * 0.16;
+    const half = 1.5 + 8.5 * Math.abs(Math.cos(phase));
+    // cap
+    ctx.fillStyle = '#100d16'; ctx.fillRect(-4, -2.5, 8.5, 3.5);
+    ctx.fillStyle = '#d2343c'; ctx.fillRect(-3.5, -2, 7.5, 2);
+    ctx.fillStyle = '#ffe14a'; ctx.fillRect(-3.5, -0.5, 7.5, 1);
+    ctx.fillStyle = '#f2777c'; ctx.fillRect(-2.5, -2, 2, 0.5);
+    // mast
+    ctx.fillStyle = '#100d16'; ctx.fillRect(-1, -6, 2, 4);
+    ctx.fillStyle = '#c9ced8'; ctx.fillRect(-0.5, -5.5, 1, 3.5);
+    // blur disc while spinning fast, then the blades
+    if (powered) { ctx.fillStyle = 'rgba(233,238,245,0.3)'; ctx.beginPath(); ctx.ellipse(0, -6, 10, 1.6, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = '#100d16'; ctx.fillRect(-half - 0.5, -7, half * 2 + 1, 2);
+    ctx.fillStyle = '#e9eef5'; ctx.fillRect(-half, -6.5, half * 2, 1);
+    ctx.fillStyle = '#868d9a'; ctx.fillRect(-half, -6.5, Math.min(2, half), 1); ctx.fillRect(half - Math.min(2, half), -6.5, Math.min(2, half), 1);
+    ctx.fillStyle = '#ffe14a'; ctx.fillRect(-0.5, -7, 1, 2);
+    ctx.restore();
   }
 
   // Soft shadow on the ground under a fighter; fainter and smaller the higher he is.
@@ -396,13 +435,19 @@ export class Renderer {
           add({ type: 'smoke', x, y: y - 20, slot: f.slot, big: f.kbSpeed > 5 * FX });
         }
       }
+      // moves marked `burst` (a misfire) go off with a bang, and rocket moves leave smoke
+      const emv = f.state === 'attack' && f.move ? getCharacter(f.charId).moves[f.move] : null;
+      if (emv && emv.burst && was.move !== f.move && known) add({ type: 'counter', x, y: y - 18 });
+      if (emv && emv.rocket && f.stateFrame >= emv.rocket.frame && f.stateFrame <= emv.rocket.frame + emv.rocket.frames && state.tick !== was.tick && (state.tick & 1) === 0) {
+        add({ type: 'smoke', x: x - f.facing * 6, y: y - 16, slot: f.slot, big: !!emv.burst });
+      }
       // KO: remember where on the screen edge he left
       if (f.state === 'dead' && was.state !== 'dead' && known) {
         const [sx0, sy0] = this.toScreen(x, y - 20);
         const sx = clamp(sx0, 0, W), sy = clamp(sy0, 0, H);
         add({ type: 'ko', sx, sy, ang: Math.atan2(H / 2 - sy, W / 2 - sx), slot: f.slot });
       }
-      this.seen[i] = { fastFall: f.fastFall, lastHitTick: f.lastHitTick, parryTick: f.parryTick, state: f.state, counterTick: f.counterTick, grounded: f.grounded, x, y, tick: state.tick };
+      this.seen[i] = { fastFall: f.fastFall, lastHitTick: f.lastHitTick, parryTick: f.parryTick, state: f.state, counterTick: f.counterTick, grounded: f.grounded, x, y, tick: state.tick, move: f.move };
     });
     const LIFE = { break: 30, parry: 22, counter: 22, ko: 50, dust: 20, smoke: 26, spark: 16, fastfall: 14 };
     this.effects = this.effects.filter((e) => state.tick >= e.tick && state.tick - e.tick < LIFE[e.type]);
@@ -494,7 +539,7 @@ export class Renderer {
   drawChargeMeter(state, f, ch, camX, camY) {
     if (f.state !== 'attack' || !f.move || !f.charge) return;
     const mv = ch.moves[f.move];
-    if (!mv.charge || f.stateFrame > mv.spawn.frame) return;
+    if (!mv.charge || f.stateFrame > (mv.spawn ? mv.spawn.frame : mv.charge.at + 1)) return;
     const ctx = this.ctx, w = 16, x = toPx(f.x) - camX - (w >> 1), y = toPx(f.y) - camY - 52;
     const full = f.charge >= mv.charge.max;
     ctx.fillStyle = '#100d16'; ctx.fillRect(x - 1, y - 1, w + 2, 5);

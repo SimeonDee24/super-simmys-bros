@@ -548,12 +548,63 @@ for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BT
   for (let i = 0; i < 14; i++) step(s, [0, 0]);
   check('grab while running is a dash grab', dg === 'dashGrab');
 }
-// Neutral special in the air while drifting or holding up (no side/up special yet)
-for (const [label, hold, wait] of [['rising and drifting', BTN.RIGHT, 6], ['falling and drifting', BTN.LEFT, 30], ['holding up', BTN.UP, 20]]) {
+// Specials by direction in the air: none = Jump Shot, sideways = Fast Break, up = Rotor Cap
+for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['holding sideways', BTN.RIGHT, 6, 'fastBreak'], ['holding up', BTN.UP, 20, 'rotorCap']]) {
   const s = createMatch(setup); const a = s.fighters[0]; s.fighters[1].x = 900 * FX;
   step(s, [BTN.JUMP, 0]); for (let i = 0; i < wait; i++) step(s, [BTN.JUMP | hold, 0]);
   step(s, [BTN.SPECIAL | hold, 0]);
-  check(`neutral special comes out in the air while ${label}`, a.move === 'jumpShot');
+  check(`special in the air while ${label} is ${want}`, a.move === want, a.move);
+}
+// Fast Break (side special): charge for distance and damage; 1 in 10 misfires
+{
+  const fb = (hold, seed, gap) => {
+    const s = createMatch({ ...setup, seed }); const [a, v] = s.fighters; a.x = 100 * FX; v.x = gap ? a.x + gap * FX : 900 * FX;
+    const x0 = a.x; let mv = '';
+    step(s, [BTN.SPECIAL | BTN.RIGHT, 0]); for (let i = 0; i < hold; i++) step(s, [BTN.SPECIAL, 0]);
+    for (let i = 0; i < 150; i++) { step(s, [0, 0]); if (a.move) mv = a.move; }
+    return { mv, dist: (a.x - x0) / FX, pct: v.percent, state: a.state, facing: a.facing };
+  };
+  let normal = 0, misSeed = 0;
+  for (let sd = 1; sd < 200 && (!normal || !misSeed); sd++) { const r = fb(0, sd, 0); if (r.mv === 'fastBreakMisfire') misSeed = misSeed || sd; else normal = normal || sd; }
+  const tap = fb(0, normal, 0), full = fb(90, normal, 0);
+  check('fast break: a tap goes a short way, a full charge much further', tap.mv === 'fastBreak' && tap.dist > 35 && full.dist > tap.dist + 50 && tap.state === 'idle', `tap ${tap.dist.toFixed(0)}px, full ${full.dist.toFixed(0)}px`);
+  const tapHit = fb(0, normal, 30), fullHit = fb(90, normal, 30);
+  check('fast break: 6% uncharged, 21% fully charged', tapHit.pct === 60 && fullHit.pct === 210, `${tapHit.pct / 10}% and ${fullHit.pct / 10}%`);
+  const mis = fb(0, misSeed, 0), misHit = fb(0, misSeed, 40);
+  check('fast break misfire: flies furthest of all and deals 25%', misSeed > 0 && mis.dist > full.dist + 40 && misHit.pct === 250, `seed ${misSeed}: ${mis.dist.toFixed(0)}px, ${misHit.pct / 10}%`);
+  let count = 0;
+  for (let sd = 1; sd <= 300; sd++) if (fb(0, sd * 7919, 0).mv === 'fastBreakMisfire') count++;
+  check('fast break misfires about 1 time in 10', count >= 15 && count <= 48, `${count} of 300`);
+  // same seed and inputs always give the same result
+  check('fast break misfire is deterministic', fb(0, misSeed, 0).dist === mis.dist);
+}
+// Rotor Cap (up special): flies up, steerable, hits above, then helpless
+{
+  let s = createMatch(setup); let [a, v] = s.fighters; v.x = 900 * FX;
+  const y0 = a.y, x0 = a.x; let top = y0, helpless = false, jumped = false;
+  step(s, [BTN.SPECIAL | BTN.UP, 0]);
+  for (let i = 0; i < 260; i++) {
+    step(s, [(i < 40 ? BTN.LEFT : 0) | (a.state === 'helpless' ? BTN.JUMP | BTN.ATTACK : 0), 0]);
+    top = Math.min(top, a.y);
+    if (a.state === 'helpless') { helpless = true; if (a.vy < -FX || a.move) jumped = true; }
+    if (helpless && a.grounded) break;
+  }
+  check('rotor cap lifts him well over 100px and can be steered', (y0 - top) / FX > 110 && a.x < x0 - 20 * FX, `${((y0 - top) / FX).toFixed(0)}px up, ${((a.x - x0) / FX).toFixed(0)}px sideways`);
+  check('rotor cap ends in a helpless fall: no jump or attack until he lands', helpless && !jumped);
+  check('landing from the helpless fall has landing lag', a.state === 'land' && a.landLag === 14, a.state + ' ' + a.landLag);
+  // blades hit someone above several times
+  s = createMatch(setup); [a, v] = s.fighters; v.x = a.x; v.y = a.y - 64 * FX; v.grounded = 0; v.ground = -1; v.state = 'air';
+  let hitsN = 0, last = 0;
+  step(s, [BTN.SPECIAL | BTN.UP, 0]);
+  for (let i = 0; i < 90; i++) { step(s, [0, 0]); if (v.percent !== last) { hitsN++; last = v.percent; } }
+  check('rotor cap blades hit an opponent above more than once, 3% each', hitsN >= 2 && v.percent === hitsN * 30, `${hitsN} hits, ${v.percent / 10}%`);
+  // recovering from below the ledge: it grabs the ledge on the way up
+  s = createMatch(setup); [a, v] = s.fighters; v.x = 900 * FX;
+  a.x = 56 * FX; a.y = 290 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.jumpsLeft = 0; a.vy = 0;
+  step(s, [BTN.SPECIAL | BTN.UP, 0]);
+  let grabbed = false;
+  for (let i = 0; i < 120 && !grabbed; i++) { step(s, [0, 0]); grabbed = a.state === 'ledge'; }
+  check('rotor cap from far below the stage reaches and grabs the ledge', grabbed, a.state + ' y ' + (a.y / FX).toFixed(0));
 }
 // Body push: no running through standing opponents, no pushing off edges, rolls still pass
 {

@@ -61,6 +61,7 @@ export const CONFIG = {
   TUMBLE_KB: 80000,         // knockback (thousandths) at which the victim tumbles
   SAKURAI: { lowKb: 60000, highKb: 88000, ground: 38, air: 45 },
   SPECIAL_LAND_LAG: 10,     // landing lag for an air special that sets none of its own
+  HELPLESS_LAND_LAG: 14,    // landing lag after falling helpless from a recovery move
   HITSTUN_LAND_LAG: 8,      // landing lag when hitting the floor during light hitstun
   // Landing while tumbling knocks you down (teching arrives with milestone 3).
   KNOCKDOWN_MIN: 18,        // frames lying down before you can choose a getup
@@ -95,7 +96,7 @@ export const CONFIG = {
 
   // --- Camera (render only, never affects the simulation) ---
   // Zoom 1 shows 480x270 world pixels. margins = room kept around the fighters.
-  CAMERA: { zoomMin: 0.62, zoomMax: 1.4, marginX: 80, marginTop: 50, marginBottom: 62, ease: 0.07, zoomEase: 0.05 },
+  CAMERA: { zoomMin: 0.62, zoomMax: 1.4, marginX: 80, marginTop: 62, marginBottom: 62, ease: 0.12, zoomEase: 0.08 },
 
   // --- Updates ---
   UPDATE_CHECK_SECONDS: 60, // how often the title screen looks for a new version

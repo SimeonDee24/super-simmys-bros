@@ -3,7 +3,7 @@
 // ledge, hitstun...) without changing how the table is driven.
 import { BTN } from './input.js';
 import { CONFIG } from '../config/config.js';
-import { FX, approach, clamp, sinDeg, cosDeg, mulTrig } from './fixed.js';
+import { FX, approach, clamp, sinDeg, cosDeg, mulTrig, rngInt } from './fixed.js';
 import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { spawnProjectile, countProjectiles } from './projectiles.js';
@@ -67,7 +67,7 @@ export function land(f, groundIndex, st) {
   // they just become the grounded version from here on.
   if (f.state === 'attack' && f.move) {
     const mv = getCharacter(f.charId).moves[f.move];
-    if (mv && mv.landContinue) {
+    if (mv && mv.landContinue && !(mv.rocket && f.stateFrame >= mv.rocket.frame) && !(mv.fly && f.stateFrame >= mv.fly.frame)) {
       f.moveAir = 0; f.fastFall = 0; f.jumpsLeft = st.airJumps; f.wallSide = 0; f.airDodged = 0;
       return;
     }
@@ -82,6 +82,8 @@ export function land(f, groundIndex, st) {
     f.landLag = CONFIG.HITSTUN_LAND_LAG;
   } else if (f.state === 'airdodge') {
     f.landLag = CONFIG.AIRDODGE_LAND_LAG;
+  } else if (f.state === 'helpless') {
+    f.landLag = CONFIG.HELPLESS_LAND_LAG;
   } else if (f.state === 'shieldBreak') {
     f.vx = 0; f.airDodged = 0; f.fastFall = 0;
     setState(f, 'dizzy', 'dizzy');
@@ -504,19 +506,7 @@ const STATES = {
   // On frame `faf` (first actionable frame) the fighter can act again.
   attack(c) {
     const { f, st } = c;
-    const mv = c.ch.moves[f.move];
-    if (mv.fromLedge && f.ledge >= 0) {
-      // Climbing up from the ledge, then stepping onto the stage.
-      const l = getStage(c.match.stageId).ledges[f.ledge];
-      const rise = mv.fromLedge.rise;
-      if (f.stateFrame <= rise) f.y = l.y * FX + Math.trunc((st.ledgeHang * (rise - f.stateFrame)) / rise);
-      else { f.y = l.y * FX; if (f.stateFrame <= rise + 4) f.x += f.facing * FX * 2; else f.ledge = -1; }
-      f.vx = 0;
-    } else if (f.moveAir) {
-      // floating moves (counters) stop the fall when they start
-      if (mv.float && f.stateFrame <= 1 && f.vy > 0) f.vy = 0;
-      airMotion(c, mv.float);
-    } else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
+    let mv = c.ch.moves[f.move];
     // Chargeable move: while the special button is held, stay on the charge
     // frame and build up charge (up to `max`).
     if (mv.charge && f.stateFrame === mv.charge.at + 1 && (c.input & BTN.SPECIAL) && f.charge < mv.charge.max) {
@@ -524,16 +514,62 @@ const STATES = {
       f.stateFrame = mv.charge.at;
       f.animFrame--;
     }
+    if (mv.fromLedge && f.ledge >= 0) {
+      // Climbing up from the ledge, then stepping onto the stage.
+      const l = getStage(c.match.stageId).ledges[f.ledge];
+      const rise = mv.fromLedge.rise;
+      if (f.stateFrame <= rise) f.y = l.y * FX + Math.trunc((st.ledgeHang * (rise - f.stateFrame)) / rise);
+      else { f.y = l.y * FX; if (f.stateFrame <= rise + 4) f.x += f.facing * FX * 2; else f.ledge = -1; }
+      f.vx = 0;
+    } else if (mv.rocket && f.stateFrame >= mv.rocket.frame) {
+      // Rocket moves: launch sideways on `frame`, faster the longer it was
+      // charged, then fly in a shallow arc with no steering.
+      if (f.stateFrame === mv.rocket.frame) {
+        // Misfire: a set chance to blast off as a different, stronger move.
+        const mis = mv.rocket.misfire;
+        if (mis && rngInt(c.match, 100) < mis.chance) {
+          f.move = mis.move; f.anim = mis.move; f.animFrame = f.stateFrame; f.hitGroups = 0;
+          mv = c.ch.moves[f.move];
+        }
+        const r = mv.rocket, max = mv.charge ? mv.charge.max : 1;
+        f.vx = f.facing * (r.speed[0] + Math.trunc(((r.speed[1] - r.speed[0]) * Math.min(f.charge, max)) / max));
+        f.vy = -r.lift;
+        f.grounded = 0; f.ground = -1; f.moveAir = 1; f.fastFall = 0;
+      } else if (f.stateFrame <= mv.rocket.frame + mv.rocket.frames) {
+        f.vx -= Math.trunc((f.vx * mv.rocket.drag) / 1000);
+        f.vy = Math.min(f.vy + Math.trunc((st.gravity * mv.rocket.gravity) / 100), st.fallSpeed);
+      } else airMotion(c);
+    } else if (mv.fly && f.stateFrame >= mv.fly.frame) {
+      // Flying moves: rise steadily for `frames`, steering left and right,
+      // then coast.
+      const fl = mv.fly;
+      if (f.stateFrame === fl.frame) { f.grounded = 0; f.ground = -1; f.moveAir = 1; f.fastFall = 0; f.vy = Math.min(f.vy, 0); }
+      f.vx = approach(f.vx, c.dir * fl.drift, fl.steer);
+      if (f.stateFrame <= fl.frame + fl.frames) f.vy = approach(f.vy, -fl.rise, fl.accel);
+      else f.vy = Math.min(f.vy + st.gravity, st.fallSpeed);
+    } else if (f.moveAir) {
+      // floating moves (counters) stop the fall when they start
+      if (mv.float && f.stateFrame <= 1 && f.vy > 0) f.vy = 0;
+      airMotion(c, mv.float);
+    } else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
     if (mv.spawn && f.stateFrame === mv.spawn.frame) spawnProjectile(c.match, f, mv);
     // combo link (jab 1 -> 2 -> 3)
     if (mv.next && (c.pressed & BTN.ATTACK) && f.stateFrame >= mv.next.from) { startMove(f, mv.next.move, false); return; }
     if (f.stateFrame < mv.faf) return;
     f.move = '';
     f.ledge = -1;
+    // Moves marked helpless leave him unable to act until he lands or grabs a ledge.
+    if (f.moveAir && mv.helpless) { setState(f, 'helpless', 'helpless'); return; }
     if (f.moveAir) { setState(f, 'air', f.vy < 0 ? 'jump' : 'fall'); STATES.air(c); return; } // act on this same frame
     if (mv.endsCrouched && (c.input & BTN.DOWN)) { setState(f, 'crouch', 'crouch'); f.animFrame = 99; }
     else setState(f, 'idle', 'idle');
     STATES[f.state](c); // act on this same frame
+  },
+
+  // Helpless fall after a recovery move: he can drift and fast fall, nothing
+  // else, until he lands or grabs a ledge.
+  helpless(c) {
+    airMotion(c);
   },
 
   // Launched or flinching. Knockback speed decays every frame; in the air,

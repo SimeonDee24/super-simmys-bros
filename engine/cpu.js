@@ -121,13 +121,17 @@ export class CpuController {
     const off = x < main.x - 1 || x > main.x + main.w + 1;
     const below = y > main.y + 2;
     if (!off && !below) return null;
-    if (me.state === 'airdodge' || me.state === 'attack' || me.state === 'jumpsquat') return 0;
     const ledge = x < main.x + main.w / 2 ? stage.ledges[0] : stage.ledges[1];
     const toStage = x < ledge.x ? 1 : -1;
+    // mid-move: just steer toward the stage (matters for the up special)
+    if (me.state === 'attack') return toStage > 0 ? BTN.RIGHT : BTN.LEFT;
+    if (me.state === 'airdodge' || me.state === 'jumpsquat') return 0;
     const dx = Math.abs(ledge.x - x), dy = y - ledge.y;   // dy > 0: below the ledge
     let m = toStage > 0 ? BTN.RIGHT : BTN.LEFT;
     // double jump once it drops to about ledge height
     if (me.jumpsLeft > 0 && me.vy >= 0 && dy > -8) return m | this.press(BTN.JUMP);
+    // out of jumps and well below the ledge: up special
+    if (me.jumpsLeft === 0 && me.state === 'air' && me.vy > 0 && dy > 30) return m | BTN.UP | this.press(BTN.SPECIAL);
     // out of jumps and still low: air dodge up toward the ledge if it can reach
     if (me.jumpsLeft === 0 && !me.airDodged && me.vy > 0 && dy > 4 && dy < 26 && dx < 34) {
       return m | BTN.UP | this.press(BTN.SHIELD);

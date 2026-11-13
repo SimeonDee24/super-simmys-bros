@@ -3,6 +3,7 @@ import { FX } from './fixed.js';
 import { enterAir, land, setState } from './fighter.js';
 import { BTN } from './input.js';
 import { CONFIG } from '../config/config.js';
+import { getCharacter } from '../characters/index.js';
 
 export function moveFighter(f, stage, st) {
   const solids = stage.solids;
@@ -63,7 +64,14 @@ export function moveFighter(f, stage, st) {
 // Automatic ledge grab: while falling, if the hands are close to a ledge.
 // Holding down prevents it.
 function tryLedgeGrab(f, stage, st) {
-  if (f.state !== 'air' || f.vy < 0 || f.ledgeCd > 0 || (f.prevIn & BTN.DOWN)) return;
+  // Normally only while falling freely. Recovery moves can allow it too
+  // (move data: ledgeGrab: { from: frame, rising: true to grab on the way up }).
+  let ok = f.state === 'air' || f.state === 'helpless', rising = false;
+  if (f.state === 'attack' && f.move) {
+    const lg = getCharacter(f.charId).moves[f.move].ledgeGrab;
+    if (lg && f.stateFrame >= lg.from) { ok = true; rising = !!lg.rising; }
+  }
+  if (!ok || (f.vy < 0 && !rising) || f.ledgeCd > 0 || (f.prevIn & BTN.DOWN)) return;
   const handY = f.y - st.ledgeHang;
   for (let i = 0; i < stage.ledges.length; i++) {
     const l = stage.ledges[i];
@@ -77,6 +85,7 @@ function tryLedgeGrab(f, stage, st) {
     f.ledgeGrabs++;
     f.tumbling = 0;
     f.airDodged = 0;
+    f.move = '';
     f.x = l.x * FX + l.dir * st.ecbHalfW;
     f.y = l.y * FX + st.ledgeHang;
     f.vx = 0; f.vy = 0;

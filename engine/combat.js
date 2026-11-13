@@ -236,6 +236,12 @@ export function resolveHits(state) {
   }
   for (const [att, vic, hit] of hits) {
     if (hit.def.counterDamage) hit.def = { ...hit.def, damage: att.counterDmg };
+    // damage that grows with how long the move was charged: chargeScale: [min, max]
+    if (hit.def.chargeScale) {
+      const mv = getCharacter(att.charId).moves[att.move], max = mv && mv.charge ? mv.charge.max : 1;
+      const [lo, hi] = hit.def.chargeScale;
+      hit.def = { ...hit.def, damage: lo + Math.trunc(((hi - lo) * Math.min(att.charge, max)) / max) };
+    }
     if (hit.counter) applyCounter(state, att, vic, hit.def, hit.counter);
     else if (hit.parry) applyParry(state, att, vic, hit.def);
     else if (hit.shield) applyShieldHit(state, att, vic, hit.def);
