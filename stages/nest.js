@@ -25,6 +25,37 @@ const C = {
   signBlue: '#2f5fa8', bannerBlue: '#0c2a66', bannerGold: '#f0bf4c', panel: '#e2a83a', panelLight: '#f5cd6b', panelShade: '#b9831f',
 };
 
+// --- Background people -----------------------------------------------------
+// Tiny generic students, muted so they never compete with the fighters.
+const CROWD = {
+  skin: ['#e8c3a0', '#d6a77f', '#b98559', '#8d5e3c', '#f1d2b6'],
+  hair: ['#2a1d17', '#3b2a20', '#5a3d27', '#141018', '#7a5233', '#c9a066'],
+  top: ['#5a6f8f', '#8a4b4b', '#4f7a5c', '#c9b48c', '#6b5a7f', '#3f4a59', '#a8735a', '#d9d4c7', '#2f2f36'],
+  legs: ['#3d4a66', '#2b2b33', '#5c5248', '#4a5a73'],
+  bag: ['#6b4d3a', '#2f3a4f', '#7a2f2f'],
+};
+const pick = (rnd, arr) => arr[Math.floor(rnd() * arr.length)];
+
+// A standing figure about 13 px tall, feet at (x, y). Some face away, some carry bags.
+function drawStander(ctx, rnd, x, y) {
+  const skin = pick(rnd, CROWD.skin), hair = pick(rnd, CROWD.hair), top = pick(rnd, CROWD.top), legs = pick(rnd, CROWD.legs);
+  const h = 12 + Math.floor(rnd() * 3);
+  const legH = Math.round(h * 0.42), bodyH = h - legH - 3;
+  ctx.fillStyle = legs; ctx.fillRect(x, y - legH, 1, legH); ctx.fillRect(x + 2, y - legH, 1, legH);
+  ctx.fillStyle = top; ctx.fillRect(x - 1, y - legH - bodyH, 5, bodyH);
+  ctx.fillStyle = skin; ctx.fillRect(x, y - h, 3, 3);
+  ctx.fillStyle = hair; ctx.fillRect(x, y - h, 3, 1);
+  if (rnd() < 0.5) ctx.fillRect(x, y - h + 1, 1, 1);        // side of the hair
+  if (rnd() < 0.35) { ctx.fillStyle = pick(rnd, CROWD.bag); ctx.fillRect(rnd() < 0.5 ? x - 2 : x + 4, y - legH - bodyH + 1, 1, bodyH); }
+}
+
+// Someone sitting at a table in a far study room: head and shoulders only.
+function drawSitter(ctx, rnd, x, y) {
+  ctx.fillStyle = pick(rnd, CROWD.top); ctx.fillRect(x - 1, y - 4, 5, 4);
+  ctx.fillStyle = pick(rnd, CROWD.skin); ctx.fillRect(x, y - 7, 3, 3);
+  ctx.fillStyle = pick(rnd, CROWD.hair); ctx.fillRect(x, y - 7, 3, 1);
+}
+
 // Far side of the atrium: stacked floors with slatted timber walls.
 function drawAtrium(ctx, t) {
   const rnd = t.rng32(31);
@@ -42,7 +73,16 @@ function drawAtrium(ctx, t) {
       ctx.fillStyle = C.farRoom; ctx.fillRect(x, fy - 36, w, 36);
       ctx.fillStyle = C.farRoomDeep; ctx.fillRect(x, fy - 12, w, 12);
       ctx.fillStyle = C.glow; ctx.fillRect(x + 4, fy - 34, w - 8, 1);
+      // a study table with a few people sitting at it
+      const tx = x + 6 + Math.floor(rnd() * Math.max(1, w - 30));
+      ctx.fillStyle = C.farRoomDeep; ctx.fillRect(tx - 2, fy - 13, 22, 2);
+      for (let k = 0, n = 1 + Math.floor(rnd() * 3); k < n; k++) drawSitter(ctx, rnd, tx + k * 7, fy - 13);
       x += w + 30 + Math.floor(rnd() * 70);
+    }
+    // people walking or chatting along the walkway in front of the rooms
+    for (let x = X0 + Math.floor(rnd() * 30); x < X1; x += 14 + Math.floor(rnd() * 46)) {
+      drawStander(ctx, rnd, x, fy);
+      if (rnd() < 0.35) drawStander(ctx, rnd, x + 5, fy);   // a pair talking
     }
     ctx.fillStyle = C.railGlass; ctx.fillRect(X0, fy - 9, X1 - X0, 9);
     ctx.fillStyle = C.rail; ctx.fillRect(X0, fy - 10, X1 - X0, 1);
@@ -67,7 +107,7 @@ function drawAtrium(ctx, t) {
 }
 
 // The Egg: a big timber-clad ovoid on a concrete stem, with a bridge to it.
-function drawEgg(ctx) {
+function drawEgg(ctx, t) {
   const cx = 338, cy = 104, rx = 60, ry = 46;
   // stem
   for (let y = cy + ry - 6; y < 340; y++) {
@@ -77,6 +117,8 @@ function drawEgg(ctx) {
     ctx.fillStyle = C.concreteShade; ctx.fillRect(cx + half - 5, y, 5, 1);
   }
   // bridge
+  const rnd = t.rng32(77);
+  for (let x = cx + 70; x < cx + 300; x += 22 + Math.floor(rnd() * 40)) drawStander(ctx, rnd, x, cy + 18);
   ctx.fillStyle = C.railGlass; ctx.fillRect(cx, cy + 9, 300, 9);
   ctx.fillStyle = C.rail; ctx.fillRect(cx, cy + 8, 300, 1);
   ctx.fillStyle = C.concrete; ctx.fillRect(cx, cy + 18, 300, 5);
@@ -165,6 +207,14 @@ function drawWalkway(ctx, stage, t) {
     if (rnd() < 0.7) { // laptop
       ctx.fillStyle = C.laptop; ctx.fillRect(x, deck - 23, 7, 6);
       ctx.fillStyle = C.screen; ctx.fillRect(x + 1, deck - 22, 5, 4);
+    }
+    // some chairs have a student in them, seen from behind, working at the counter
+    if (rnd() < 0.55) {
+      ctx.fillStyle = pick(rnd, CROWD.top); ctx.fillRect(x - 1, deck - 19, 9, 8);
+      ctx.fillStyle = pick(rnd, CROWD.skin); ctx.fillRect(x + 1, deck - 24, 5, 5);
+      ctx.fillStyle = pick(rnd, CROWD.hair); ctx.fillRect(x + 1, deck - 24, 5, 3);
+      ctx.fillRect(x + 1, deck - 21, 1, 1); ctx.fillRect(x + 5, deck - 21, 1, 1);
+      if (rnd() < 0.4) { ctx.fillStyle = '#e8e8e8'; ctx.fillRect(x + 1, deck - 22, 1, 2); ctx.fillRect(x + 5, deck - 22, 1, 2); } // headphones
     }
     // chair seen from behind
     ctx.fillStyle = C.chair; ctx.fillRect(x, deck - 13, 7, 6);
