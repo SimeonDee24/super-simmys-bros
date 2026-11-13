@@ -1,0 +1,25 @@
+{
+  "version": "0.1.0",
+  "modules": [
+    "config/config.js",
+    "config/version.js",
+    "engine/fighter.js",
+    "engine/fixed.js",
+    "engine/input.js",
+    "engine/physics.js",
+    "engine/sim.js",
+    "engine/skeleton.js",
+    "characters/index.js",
+    "characters/simeon.js",
+    "stages/cloudrest.js",
+    "stages/index.js",
+    "render/background.js",
+    "render/doll.js",
+    "render/font.js",
+    "render/renderer.js",
+    "ui/settings.js",
+    "ui/updatecheck.js",
+    "audio/sfx.js",
+    "net/handshake.js"
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "super-simmys-bros",
+  "private": true,
+  "type": "module",
+  "description": "No build step. This file only lets Node run the tools in /tools."
+}
