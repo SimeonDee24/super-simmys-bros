@@ -335,7 +335,15 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   step(s, [BTN.SHIELD | BTN.RIGHT, 0]);
   check('air dodge starts', a.state === 'airdodge' && a.airDodged === 1);
   for (let i = 0; i < 20; i++) step(s, [0, 0]);
-  check('directional air dodge travels that way', (a.x - ax) / FX > 20, `${((a.x - ax) / FX).toFixed(1)}px`);
+  check('directional air dodge travels that way', (a.x - ax) / FX > 40, `${((a.x - ax) / FX).toFixed(1)}px`);
+  {
+    const s2 = createMatch(setup); const b = s2.fighters[0];
+    b.y -= 100 * FX; b.grounded = 0; b.ground = -1; b.state = 'air'; b.vy = 0;
+    const y0 = b.y;
+    step(s2, [BTN.SHIELD, 0]); step(s2, [BTN.SHIELD | BTN.UP, 0]);   // direction one frame late
+    for (let i = 0; i < 20; i++) step(s2, [0, 0]);
+    check('air dodge direction pressed a frame late still counts (up)', b.dodgeDir === 1 && (y0 - b.y) / FX > 30, `${((y0 - b.y) / FX).toFixed(1)}px up`);
+  }
   let again = false;
   for (let i = 0; i < 40; i++) { step(s, [i % 2 ? BTN.SHIELD : 0, 0]); if (a.state === 'airdodge' && a.stateFrame < 3 && i > 0) again = true; }
   check('only one air dodge per airtime', !again);

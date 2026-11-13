@@ -54,7 +54,8 @@ const stats = {
   roll: { intangible: [4, 15], faf: 31, move: [3, 18], speed: px(2.2), turnAt: 11 },
   spotDodge: { intangible: [3, 17], faf: 27 },
   airDodge: { intangible: [3, 29], faf: 42 },                       // neutral
-  airDodgeDir: { intangible: [3, 19], faf: 48, speed: px(3.4), glide: 18 }, // with a direction
+  airDodgeDir: { intangible: [3, 19], faf: 48, speed: px(4.4), sideSpeed: px(6.2), glide: 20, lenience: 3 }, // with a direction
+  //   sideSpeed: straight left/right dodges go further than up, down or diagonal
 
   // Knockdown (missed tech)
   getupRollSpeed: px(2.4), getupRollFrames: 26,

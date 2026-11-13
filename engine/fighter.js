@@ -175,16 +175,23 @@ function tryAirDodge(c) {
   f.airDodged = 1;
   f.tumbling = 0;
   f.fastFall = 0;
+  f.dodgeDir = 0;
+  aimAirDodge(c);
+  setState(f, 'airdodge', 'airDodge');
+  return true;
+}
+
+// Point a directional air dodge using the direction held right now (8 ways).
+function aimAirDodge(c) {
+  const f = c.f;
   let dx = c.dir, dy = 0;
   if (c.input & BTN.UP) dy = -1; else if (c.input & BTN.DOWN) dy = 1;
-  f.dodgeDir = dx || dy ? 1 : 0;
-  if (f.dodgeDir) {
-    const sp = c.st.airDodgeDir.speed;
-    const k = dx && dy ? 181 : 256; // diagonal: divide by about 1.41
-    f.vx = Math.trunc((dx * sp * k) / 256);
-    f.vy = Math.trunc((dy * sp * k) / 256);
-  }
-  setState(f, 'airdodge', 'airDodge');
+  if (!dx && !dy) return false;
+  const sp = dy ? c.st.airDodgeDir.speed : c.st.airDodgeDir.sideSpeed;
+  const k = dx && dy ? 181 : 256; // diagonal: divide by about 1.41
+  f.dodgeDir = 1;
+  f.vx = Math.trunc((dx * sp * k) / 256);
+  f.vy = Math.trunc((dy * sp * k) / 256);
   return true;
 }
 
@@ -545,11 +552,15 @@ const STATES = {
   },
   airdodge(c) {
     const { f, st } = c;
+    // A direction pressed a moment after shield still counts.
+    if (!f.dodgeDir && f.stateFrame <= st.airDodgeDir.lenience) aimAirDodge(c);
     const d = f.dodgeDir ? st.airDodgeDir : st.airDodge;
     f.intangible = within(f.stateFrame, d.intangible) ? 1 : 0;
     if (f.dodgeDir && f.stateFrame <= st.airDodgeDir.glide) {
-      // directional: glide in a straight line, slowing down, no gravity
-      f.vx -= f.vx >> 3; f.vy -= f.vy >> 3;
+      // directional: glide in a straight line with no gravity, slowing
+      // gently at first and then more sharply
+      const shift = f.stateFrame <= (st.airDodgeDir.glide >> 1) ? 4 : 3;
+      f.vx -= f.vx >> shift; f.vy -= f.vy >> shift;
     } else {
       f.vx = approach(f.vx, 0, st.airFriction * 2);
       f.vy = Math.min(f.vy + st.gravity, st.fallSpeed);

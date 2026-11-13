@@ -102,6 +102,13 @@ export class Renderer {
       // dodging: a pale shimmer while he cannot be hit
       const dodging = f.intangible > 0 && (f.state === 'roll' || f.state === 'spotdodge' || f.state === 'airdodge');
       const tint = blink ? '#ffffff' : dodging && (state.tick & 2) ? '#d8f4ff' : null;
+      // directional air dodge: fading afterimages trailing behind him
+      if (f.state === 'airdodge' && f.dodgeDir && (f.vx || f.vy)) {
+        for (const [k, alpha] of [[6, 0.18], [3, 0.32]]) {
+          this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, toPx(f.x - f.vx * k) - camX, toPx(f.y - f.vy * k) - camY, f.facing,
+            { flash: '#bfeaff', alpha });
+        }
+      }
       this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, toPx(f.x) - camX + shake, toPx(f.y) - camY, f.facing,
         tint ? { flash: tint } : undefined);
       if (f.state === 'shield' || f.state === 'shieldStun') this.drawShield(state, f, camX, camY);
