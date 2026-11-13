@@ -67,4 +67,22 @@ for (const stageId of ['nest', 'cloudrest']) {
   for (let t = 0; t < 600 && !back; t++) { step(s, [0, cpu.sample(s, 1)]); if (f.grounded) back = true; if (f.state === 'dead') break; }
   check('fighter CPU recovers back to the stage', back);
 }
+// The fighter CPU defends: shields, spot dodges, rolls and air dodges all show up.
+{
+  const seen = {};
+  for (const [stageId, sa, sb] of [['nest', 31, 32], ['balcony', 41, 42], ['cloudrest', 51, 52]]) {
+    const s = createMatch(setup(stageId));
+    const cpus = [new CpuController('fighter', sa), new CpuController('fighter', sb)];
+    for (let t = 0; t < 5400; t++) {
+      step(s, [cpus[0].sample(s, 0), cpus[1].sample(s, 1)]);
+      for (const f of s.fighters) if (f.stateFrame === 1) seen[f.state] = (seen[f.state] || 0) + 1;
+      if (s.fighters.some((f) => f.state === 'out')) break;
+    }
+  }
+  const n = (k) => seen[k] || 0;
+  check('fighter CPU shields, spot dodges, rolls and air dodges',
+    n('shield') + n('shieldStun') >= 15 && n('spotdodge') >= 3 && n('roll') >= 3 && n('airdodge') >= 3,
+    `shield ${n('shield')}, blocked ${n('shieldStun')}, spot dodge ${n('spotdodge')}, roll ${n('roll')}, air dodge ${n('airdodge')}`);
+}
+
 process.exit(fails ? 1 : 0);

@@ -35,7 +35,7 @@ export function spawnProjectile(state, f, mv) {
     x: f.x + f.facing * at[0], y: f.y + at[1],
     vx: f.facing * (d.speed[0] + c * d.chargeSpeed[0]),
     vy: -(d.speed[1] + c * d.chargeSpeed[1]),
-    bounces: 0, rolling: 0, life: d.life, spent: 0, spin: 0,
+    bounces: 0, rolling: 0, life: d.life, spent: 0, spin: 0, born: state.tick | 0,
   });
 }
 

@@ -27,9 +27,14 @@ export const CPU_LEVELS = {
     fights: true,
     reaction: 10,          // frames late it sees the opponent (no reading inputs)
     thinkEvery: [3, 7],    // frames between decisions
-    shieldChance: 0.35,    // when the opponent attacks nearby
-    dodgeChance: 0.12,     // spot dodge instead of shielding
-    bluffChance: 0.08,     // Bluff (counter) instead of shielding
+    // Defence. Each threat (an attack starting nearby, a dash or jump in, a
+    // ball coming at it) gets one roll of the dice:
+    defendReaction: 5,     // frames late it notices a threat (faster than its attacks)
+    defendChance: 0.6,     // how often it defends at all, rather than ignoring the threat
+    defendMix: { shield: 5, spotDodge: 2, roll: 2, bluff: 1 },   // ...and how
+    airDodgeChance: 0.35,  // in the air: dodge an attack that is close
+    oosMix: { grab: 3, roll: 2, drop: 3, jump: 2 },             // after blocking: out of shield
+    bluffChance: 0.08,     // (kept for menus) Bluff instead of shielding
     jumpInChance: 0.3,     // approach with a short hop aerial
     shootChance: 0.18,
     grabChance: 0.15,      // grab when close (much more often if they are shielding)
@@ -55,6 +60,8 @@ export class CpuController {
     this.seen = [];         // snapshots of the opponent, for reaction delay
     this.ledgeTimer = -1;
     this.downTimer = -1;
+    this.lastThreat = null; // the last threat it judged
+    this.oosPending = false;
   }
 
   rand() { let x = this.rng; x ^= x << 13; x ^= x >>> 17; x ^= x << 5; this.rng = x | 0; return (x >>> 0) / 4294967296; }
@@ -82,7 +89,7 @@ export class CpuController {
     const stage = getStage(state.stageId);
 
     // remember what the opponent looked like, to react a little late
-    this.seen.push({ x: opp.x, y: opp.y, state: opp.state, move: opp.move, grounded: opp.grounded, facing: opp.facing, invuln: opp.invuln });
+    this.seen.push({ x: opp.x, y: opp.y, vx: opp.vx, vy: opp.vy, state: opp.state, move: opp.move, grounded: opp.grounded, facing: opp.facing, invuln: opp.invuln, start: state.tick - opp.stateFrame });
     if (this.seen.length > 30) this.seen.shift();
     const view = this.seen[Math.max(0, this.seen.length - 1 - this.cfg.reaction)];
 
@@ -103,6 +110,9 @@ export class CpuController {
     if (!this.cfg.fights) return 0;
 
     // --- fighter ---
+    const dv = this.seen[Math.max(0, this.seen.length - 1 - this.cfg.defendReaction)];
+    const def = this.defend(state, me, dv, slot);
+    if (def !== null) return def;
     if (this.queue.length) return this.queue.shift();
     if (this.wait > 0) { this.wait--; return this.hold(me); }
     this.wait = this.between(this.cfg.thinkEvery);
@@ -201,16 +211,6 @@ export class CpuController {
     }
     if (!ACTIONABLE_GROUND[me.state] && me.state !== 'shield' && me.state !== 'land') return 0;
 
-    // --- defend: they are attacking close by ---
-    if (view.state === 'attack' && adx < 40 && ady < 34) {
-      const r = this.rand();
-      if (r < c.bluffChance) return BTN.SPECIAL | BTN.DOWN;
-      if (r < c.bluffChance + c.dodgeChance) { this.queue = [BTN.SHIELD | BTN.DOWN]; return BTN.SHIELD; }
-      if (r < c.bluffChance + c.dodgeChance + c.shieldChance) {
-        this.queue = new Array(this.between([10, 20])).fill(BTN.SHIELD);
-        return BTN.SHIELD;
-      }
-    }
     if (me.state === 'shield') return 0;   // drop shield when nothing is coming
 
     // --- edgeguard: they are off the stage ---
@@ -260,6 +260,63 @@ export class CpuController {
     if (me.state === 'run' || me.state === 'dash') return toward;
     this.queue = [0, toward, toward, toward, toward];
     return toward;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Defence: shield, spot dodge, roll, Bluff, or air dodge when something is
+  // coming. Each threat is judged once (keyed by when it started), so it does
+  // not re-roll every frame. Returns null when there is nothing to react to.
+  defend(state, me, v, slot) {
+    const c = this.cfg;
+    const dx = v.x - me.x, dy = v.y - me.y, adx = Math.abs(dx) / FX, ady = Math.abs(dy) / FX;
+    const towardMe = dx > 0 ? v.vx < 0 : v.vx > 0;
+    const away = dx > 0 ? BTN.LEFT : BTN.RIGHT, toward = dx > 0 ? BTN.RIGHT : BTN.LEFT;
+
+    // Blocked something: choose an out-of-shield option once the stun ends.
+    if (me.state === 'shieldStun') { this.queue = []; this.oosPending = true; return BTN.SHIELD; }
+    if (me.state === 'shield' && this.oosPending) {
+      this.oosPending = false;
+      const pick = this.weighted(c.oosMix);
+      if (pick === 'grab' && adx < 24) { this.queue = []; return BTN.SHIELD | BTN.ATTACK; }
+      if (pick === 'roll') { this.queue = [BTN.SHIELD | away]; return BTN.SHIELD; }
+      if (pick === 'jump') { this.queue = [0, 0, 0, BTN.ATTACK | (this.rand() < 0.5 ? toward : 0)]; return BTN.JUMP; }
+      this.queue = []; return 0;
+    }
+
+    let key = null;
+    if (v.state === 'attack' && adx < 46 && ady < 40) key = 'atk' + v.start;
+    else if ((v.state === 'dash' || v.state === 'run') && towardMe && adx < 42 && ady < 20) key = 'run' + v.start;
+    else if (!v.grounded && v.state === 'air' && towardMe && adx < 34 && dy < 0 && dy > -50 * FX) key = 'jump' + v.start;
+    else {
+      // a ball heading this way
+      for (const p of state.projectiles || []) {
+        if (p.owner === slot) continue;
+        const pdx = (me.x - p.x) / FX, pdy = (me.y - 20 * FX - p.y) / FX;
+        if (Math.abs(pdx) < 60 && Math.abs(pdy) < 30 && Math.sign(pdx) === Math.sign(p.vx)) { key = 'ball' + p.born; break; }
+      }
+    }
+    if (!key || key === this.lastThreat) return null;
+    this.lastThreat = key;
+    if (this.rand() >= c.defendChance) return null;
+
+    // in the air: air dodge (away from them, or straight if they are below)
+    if (!me.grounded) {
+      if (me.state !== 'air' || me.airDodged || this.rand() >= c.airDodgeChance / c.defendChance) return null;
+      this.queue = [];
+      return BTN.SHIELD | (dy > 10 * FX ? 0 : away);
+    }
+    const ACT = { idle: 1, walk: 1, dash: 1, run: 1, brake: 1, crouch: 1, crawl: 1, land: 1, shield: 1 };
+    if (!ACT[me.state]) return null;
+    const pick = this.weighted(c.defendMix);
+    if (pick === 'bluff' && me.state !== 'shield') { this.queue = []; return BTN.SPECIAL | BTN.DOWN; }
+    if (pick === 'spotDodge') { this.queue = [BTN.SHIELD | BTN.DOWN]; return BTN.SHIELD; }
+    if (pick === 'roll') {
+      // away from them, or sometimes behind them
+      this.queue = [BTN.SHIELD | (this.rand() < 0.7 ? away : toward)];
+      return BTN.SHIELD;
+    }
+    this.queue = new Array(this.between([12, 26])).fill(BTN.SHIELD);
+    return BTN.SHIELD;
   }
 
   // Walk (or dash if far) toward an x position.
