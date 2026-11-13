@@ -215,9 +215,9 @@ const NAIR_SPIN = { torso: 10, head: 10, legF: [90, -4], legB: [60, -120], armF:
 const GUARD = { hip: [0, 2], torso: 4, head: 2, armF: [40, 110], armB: [30, 120], legF: [20, -30], legB: [-16, -22], footB: -10, ...FISTS };
 const JAB = { hip: [2, 2], torso: 12, head: 4, armF: [92, 4], armB: [30, 118], legF: [28, -26], legB: [-22, -10], footB: -15, ...FISTS, face: 'yell' };
 const CROSS = { hip: [5, 2], torso: 26, head: 10, armF: [15, 115], armB: [94, 2], legF: [40, -30], legB: [-34, -4], footB: -35, ...FISTS, face: 'yell' };
-// Forward air charge: leaning way back, knees pulled up, fist cocked behind
-// his head and the other arm reaching out to aim.
-const FAIR_CHARGE = { rot: -26, torso: -18, head: -10, armF: [205, 45], armB: [65, 20], legF: [80, -125], legB: [30, -95], footF: 20, footB: 20, ...FISTS, face: 'yell' };
+// Forward air charge (Banjo's wind-up): leaning back, punching fist cocked
+// low behind him, other arm reaching up and forward, front knee raised.
+const FAIR_CHARGE = { rot: -16, torso: -14, head: -8, armF: [295, 70], armB: [95, 10], legF: [85, -100], legB: [-8, -20], footF: 20, footB: 40, handF: 'fist', face: 'yell' };
 const BAIR_HIGH = { torso: 40, head: -14, legF: [40, -95], legB: [-130, -4], armF: [80, 30], armB: [40, 50], footB: -60, ...FISTS, face: 'yell' };
 const BAIR_LOW = { torso: 18, head: -6, legF: [-50, -5], legB: [-35, -110], armF: [70, 40], armB: [30, 60], footF: -40, ...FISTS, face: 'yell' };
 const BAIR_MID = { torso: 32, head: -10, legF: [35, -75], legB: [-100, -3], armF: [95, 20], armB: [-30, 40], footB: -70, ...FISTS, face: 'yell' };
@@ -474,13 +474,13 @@ const animations = {
   // Forward air: fist wound up behind the head, then swung over the top and
   // down in front in a big arc.
   fair: anim(false, [
-    [4, { rot: -6, torso: -6, armF: [140, 30], armB: [20, 40], legF: [30, -45], legB: [-15, -35], ...FISTS }],
-    [5, { rot: -18, torso: -12, head: -6, armF: [175, 35], armB: [45, 30], legF: [55, -85], legB: [-20, -50], footF: 20, ...FISTS }],
+    [4, { rot: -3, torso: -6, armF: [330, 40], armB: [70, 30], legF: [45, -60], legB: [-5, -30], handF: 'fist' }],
+    [5, { rot: -7, torso: -10, head: -6, armF: [310, 60], armB: [85, 15], legF: [70, -90], legB: [-8, -25], footF: 20, handF: 'fist' }],
     [2, FAIR_CHARGE],
-    [2, { ...FAIR_CHARGE, rot: -21, torso: -14, armF: [196, 40] }],   // shudder while charging
+    [2, { ...FAIR_CHARGE, rot: -19, torso: -17, armF: [290, 75] }],   // shudder while charging
     [1, FAIR_CHARGE],
-    [1, { rot: -4, torso: 2, armF: [150, 5], armB: [30, 40], legF: [45, -70], legB: [-30, -30], ...FISTS, face: 'yell' }],
-    [2, { rot: 14, torso: 18, armF: [95, 5], armB: [-50, 60], legF: [30, -80], legB: [-5, -70], ...FISTS, face: 'yell' }],
+    [1, { rot: -2, torso: -2, armF: [205, 15], armB: [60, 30], legF: [55, -75], legB: [-20, -30], ...FISTS, face: 'yell' }],
+    [2, { rot: 14, torso: 18, armF: [115, 5], armB: [-40, 50], legF: [30, -80], legB: [-5, -70], ...FISTS, face: 'yell' }],
     [8, { rot: 28, torso: 30, head: 12, armF: [45, 5], armB: [-40, 70], legF: [40, -110], legB: [15, -105], ...FISTS, face: 'yell' }],
     [12, { rot: 22, torso: 30, head: 14, armF: [30, 10], armB: [-30, 70], legF: [45, -115], legB: [20, -110], ...FISTS }],
     [14, AIR],
