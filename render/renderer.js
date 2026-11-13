@@ -353,6 +353,11 @@ export class Renderer {
     if (f.state !== 'attack' || !f.move) return;
     const tr = ch.moves[f.move].trail;
     if (!tr) return;
+    if (Array.isArray(tr)) { for (const t of tr) this.drawOneTrail(f, ch, t, camX, camY); return; }
+    this.drawOneTrail(f, ch, tr, camX, camY);
+  }
+
+  drawOneTrail(f, ch, tr, camX, camY) {
     const LEN = 6;
     const newest = Math.min(f.stateFrame, tr.to), oldest = Math.max(tr.from, f.stateFrame - LEN);
     if (newest <= oldest) return;
