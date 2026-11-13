@@ -1,5 +1,5 @@
 {
-  "version": "0.10.2",
+  "version": "0.11.0",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -7,12 +7,14 @@
     "engine/cpu.js",
     "engine/fighter.js",
     "engine/fixed.js",
+    "engine/grabs.js",
     "engine/input.js",
     "engine/physics.js",
     "engine/projectiles.js",
     "engine/sim.js",
     "engine/skeleton.js",
     "characters/index.js",
+    "characters/shared.js",
     "characters/simeon.js",
     "stages/balcony.js",
     "stages/cloudrest.js",

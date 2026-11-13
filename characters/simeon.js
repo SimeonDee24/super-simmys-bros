@@ -2,6 +2,7 @@
 // palettes and poses. The engine never mentions him by name.
 import { px } from '../engine/fixed.js';
 import { anim } from '../engine/skeleton.js';
+import { SHARED_ANIMS, SHARED_MOVES, THROWS } from './shared.js';
 
 // ---------------------------------------------------------------------------
 // Stats. Speeds are pixels per frame, accelerations pixels per frame^2.
@@ -608,9 +609,11 @@ export const SIMEON = {
   parts,
   palettes,
   outline,
-  animations,
+  // shared moves (grabs and throws) first, so his own versions win if he has any
+  animations: { ...SHARED_ANIMS, ...animations },
   defaultFace: 'smile',
-  moves,
+  moves: { ...SHARED_MOVES, ...moves },
+  throws: THROWS,
   // Which move each special input uses. Missing slots do nothing yet.
   specials: { neutral: 'jumpShot', down: 'bluff' },
 

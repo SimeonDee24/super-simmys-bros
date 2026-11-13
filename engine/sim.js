@@ -10,6 +10,7 @@ import { newFighter, updateFighter } from './fighter.js';
 import { moveFighter, checkBlastZones } from './physics.js';
 import { resolveHits } from './combat.js';
 import { stepProjectiles, resolveProjectileHits } from './projectiles.js';
+import { resolveGrabs } from './grabs.js';
 
 // setup = { stageId, players: [{ charId, alt }, { charId, alt }], stocks, seed }
 export function createMatch(setup) {
@@ -38,6 +39,7 @@ export function step(state, inputs) {
   }
   stepProjectiles(state);
   resolveHits(state);
+  resolveGrabs(state);
   resolveProjectileHits(state);
   state.tick++;
   return state;

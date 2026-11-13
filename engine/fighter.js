@@ -7,6 +7,8 @@ import { FX, approach, clamp, sinDeg, cosDeg, mulTrig } from './fixed.js';
 import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { spawnProjectile, countProjectiles } from './projectiles.js';
+import { placeHeld, releaseGrab, launchThrow, throwPos } from './grabs.js';
+import { THROWS, PUMMEL } from '../characters/shared.js';
 
 export function newFighter(slot, charId, alt, spawn, stocks) {
   const st = getCharacter(charId).stats;
@@ -31,7 +33,9 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     shieldHp: CONFIG.SHIELD_MAX, shieldStun: 0, airDodged: 0, dodgeDir: 0, mash: 0,
     parryTick: -1, shieldHitTick: -1, breakTick: -1,
     counterDmg: 0, counterTick: -1,   // counter specials
-    charge: 0,                        // chargeable moves (Jump Shot) kbAngle: 0, kbSpeed: 0, gv: 0,
+    charge: 0,                        // chargeable moves (Jump Shot)
+    // Grabs: who I am holding / who is holding me
+    holding: -1, heldBy: -1, grabTimer: 0, pummelFrame: 0, throwName: '', throwFacing: 1, releaseFrames: 0, grabTick: -1, kbAngle: 0, kbSpeed: 0, gv: 0,
     hitX: 0, hitY: 0, lastHitTick: -1, lastHitDmg: 0,
     koX: 0, koY: 0,         // where the last KO happened (pixels), for the blast effect
     invuln: 0,
@@ -110,7 +114,7 @@ export function startMove(f, name, air) {
   f.move = name;
   f.moveAir = air ? 1 : 0;
   f.hitGroups = 0;
-  f.buf &= ~(BTN.ATTACK | BTN.SPECIAL);
+  f.buf &= ~(BTN.ATTACK | BTN.SPECIAL | BTN.GRAB);
   const mv = getCharacter(f.charId).moves[name];
   if (mv.intangible) f.intangible = mv.intangible;
   f.charge = 0;
@@ -119,6 +123,17 @@ export function startMove(f, name, air) {
 
 // Ground attack button: no direction = jab, up = up tilt, down = down tilt,
 // sideways = forward tilt.
+// Grab button (U), or shield + attack. Running or dashing gives a dash grab;
+// holding the other way while running turns round into a pivot grab.
+function tryGrab(c, running = false) {
+  const f = c.f;
+  const wants = (c.pressed & BTN.GRAB) || ((c.input & BTN.SHIELD) && (c.pressed & BTN.ATTACK));
+  if (!wants) return false;
+  if (running && c.dir === -f.facing) { f.facing = -f.facing; startMove(f, 'pivotGrab', false); }
+  else startMove(f, running ? 'dashGrab' : 'grab', false);
+  return true;
+}
+
 // Special button (K). Each direction maps to a move name in the character's
 // `specials` table; a direction with no special yet does nothing.
 function trySpecial(c, air) {
@@ -138,6 +153,7 @@ function trySpecial(c, air) {
 }
 
 function tryGroundAttack(c) {
+  if (tryGrab(c)) return true;
   if (trySpecial(c, false)) return true;
   if (!(c.pressed & BTN.ATTACK)) return false;
   const f = c.f;
@@ -151,6 +167,7 @@ function tryGroundAttack(c) {
 // Air attack button: direction relative to facing picks the aerial.
 function tryAerial(c) {
   if (trySpecial(c, true)) return true;
+  if (c.pressed & BTN.GRAB) { startMove(c.f, 'nair', true); return true; }   // grab in the air: neutral air
   if (!(c.pressed & BTN.ATTACK)) return false;
   const f = c.f;
   let name = 'nair';
@@ -180,6 +197,7 @@ function airMotion(c) {
 
 // Attack while dashing or running.
 function tryDashAttack(c) {
+  if (tryGrab(c, true)) return true;
   if (trySpecial(c, false)) return true;
   if (!(c.pressed & BTN.ATTACK)) return false;
   startMove(c.f, 'dashAttack', false);
@@ -560,6 +578,7 @@ const STATES = {
     f.shieldHp -= CONFIG.SHIELD_DEPLETE;
     if (f.shieldHp <= 0) { breakShield(f); return; }
     if (c.pressed & BTN.JUMP) { f.buf &= ~BTN.JUMP; setState(f, 'jumpsquat', 'jumpsquat'); return; }
+    if ((c.pressed & BTN.ATTACK) || (c.pressed & BTN.GRAB)) { startMove(f, 'grab', false); return; }   // grab out of shield
     if (c.tap) { startRoll(c, c.tap); return; }
     if (c.pressed & BTN.DOWN) { setState(f, 'spotdodge', 'spotDodge'); STATES.spotdodge(c); return; }
     if (!(c.input & BTN.SHIELD)) setState(f, 'shieldDrop', 'idle');
@@ -595,6 +614,74 @@ const STATES = {
       f.shieldHp = CONFIG.SHIELD_BREAK_REFILL;
       setState(f, 'idle', 'idle');
     }
+  },
+
+  // --- Grabs ---
+  // Holding someone. Direction = throw that way (up / down / toward / away),
+  // attack = pummel. The victim's grab timer runs out unless he throws first.
+  holding(c) {
+    const { f, st } = c;
+    f.vx = approach(f.vx, 0, st.traction);
+    const vic = c.match.fighters[f.holding];
+    if (!vic || vic.heldBy !== f.slot || vic.state !== 'grabbed') { f.holding = -1; setState(f, 'idle', 'idle'); return; }
+    placeHeld(f, vic, CONFIG.HOLD_DISTANCE, 0);
+    vic.grabTimer--;
+    if (f.pummelFrame > 0) {
+      f.pummelFrame++;
+      if (f.pummelFrame === PUMMEL.hitFrame) {
+        vic.percent = Math.min(9999, vic.percent + PUMMEL.damage);
+        vic.lastHitTick = c.match.tick; vic.lastHitDmg = PUMMEL.damage;
+        vic.hitX = (vic.x >> 8) - f.facing * 4; vic.hitY = (vic.y >> 8) - 22;
+        f.hitlag = 2; vic.hitlag = 2;
+      }
+      if (f.pummelFrame >= PUMMEL.every) { f.pummelFrame = 0; setAnim(f, 'holding'); }
+      return;
+    }
+    if (vic.grabTimer <= 0) { releaseGrab(f, vic); return; }
+    let name = '';
+    if (c.input & BTN.UP) name = 'uthrow';
+    else if (c.input & BTN.DOWN) name = 'dthrow';
+    else if (c.dir === f.facing) name = 'fthrow';
+    else if (c.dir === -f.facing) name = 'bthrow';
+    if (name) {
+      f.throwName = name; f.throwFacing = f.facing;
+      vic.grounded = 0; vic.ground = -1;
+      setState(vic, 'thrown', 'tumble');
+      setState(f, 'throwing', THROWS[name].anim);
+      STATES.throwing(c);
+      return;
+    }
+    if (c.pressed & BTN.ATTACK) { f.pummelFrame = 1; f.anim = 'pummel'; f.animFrame = 0; }
+  },
+  throwing(c) {
+    const { f, st } = c;
+    f.vx = approach(f.vx, 0, st.traction);
+    const t = THROWS[f.throwName];
+    const vic = f.holding >= 0 ? c.match.fighters[f.holding] : null;
+    if (t.spin && t.spin.includes(f.stateFrame)) f.facing = -f.facing;   // turning round (back throw)
+    if (vic && vic.heldBy === f.slot) {
+      const [x, y] = throwPos(t, f.stateFrame);
+      placeHeld(f, vic, x, y, f.throwFacing);
+      if (f.stateFrame >= t.release) launchThrow(c.match, f, vic, t);
+    }
+    if (f.stateFrame >= t.faf) { f.facing = f.throwFacing; f.holding = -1; setState(f, 'idle', 'idle'); }
+  },
+  // Being held: mash any button or direction to break free sooner.
+  grabbed(c) {
+    const { f } = c;
+    const g = f.heldBy >= 0 ? c.match.fighters[f.heldBy] : null;
+    if (!g || (g.state !== 'holding' && g.state !== 'throwing')) {   // the grabber got hit: free
+      f.heldBy = -1;
+      if (f.grounded) setState(f, 'idle', 'idle'); else setState(f, 'air', 'fall');
+      return;
+    }
+    if (c.raw) f.grabTimer -= CONFIG.GRAB_MASH;
+  },
+  thrown() {},
+  grabRelease(c) {
+    const { f, st } = c;
+    f.vx = approach(f.vx, 0, st.traction);
+    if (f.stateFrame >= f.releaseFrames) setState(f, 'idle', 'idle');
   },
 
   // --- Dodges ---
@@ -665,7 +752,7 @@ export function updateFighter(match, f, input) {
   // As in Smash Ultimate, a buffered button that is still being held stays
   // buffered for as long as it is held, so pressing jump early during an
   // aerial and keeping it down jumps on the very first frame possible.
-  const BUFFERED = BTN.JUMP | BTN.ATTACK | BTN.SPECIAL;
+  const BUFFERED = BTN.JUMP | BTN.ATTACK | BTN.SPECIAL | BTN.GRAB;
   if (pressed & BUFFERED) { f.buf |= pressed & BUFFERED; f.bufTimer = CONFIG.BUFFER_FRAMES; }
   else if (f.buf & input) { f.buf &= input; f.bufTimer = CONFIG.BUFFER_FRAMES; }
   else if (f.bufTimer > 0 && --f.bufTimer === 0) f.buf = 0;
@@ -681,6 +768,6 @@ export function updateFighter(match, f, input) {
   if (f.state !== 'shield' && f.state !== 'shieldStun' && f.state !== 'shieldBreak' && f.state !== 'dizzy') {
     f.shieldHp = Math.min(CONFIG.SHIELD_MAX, f.shieldHp + CONFIG.SHIELD_REGEN);
   }
-  STATES[f.state]({ match, f, ch, st, input, pressed: pressed | f.buf, dir, tap, dashInput });
+  STATES[f.state]({ match, f, ch, st, input, raw: pressed, pressed: pressed | f.buf, dir, tap, dashInput });
   f.prevIn = input;
 }

@@ -38,6 +38,15 @@ export const CONFIG = {
   PARRY_WINDOW: 5,          // frames after releasing shield that still parry
   PARRY_FREEZE: 20,         // extra frames the attacker stays frozen after being parried
 
+  // --- Grabs ---
+  GRAB_TIME_BASE: 90,       // frames a grab lasts at 0%...
+  GRAB_TIME_PER_PCT: 1,     // ...plus this many frames per 1% of the victim's damage
+  GRAB_MASH: 4,             // frames taken off per button or direction pressed while held
+  GRAB_RELEASE_GRABBER: 18, // lag for the grabber when the victim breaks free
+  GRAB_RELEASE_VICTIM: 12,  // lag for the victim (less, so breaking free is rewarded)
+  GRAB_RELEASE_PUSH: 400,   // how hard they are pushed apart (1/256 px per frame)
+  HOLD_DISTANCE: 16,        // px in front of the grabber where the held opponent is
+
   // --- Air dodge ---
   AIRDODGE_LAND_LAG: 11,    // landing lag if you hit the floor during an air dodge
 

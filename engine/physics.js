@@ -86,7 +86,7 @@ function tryLedgeGrab(f, stage, st) {
   }
 }
 
-const NO_PHYSICS = { ledge: 1, ledgeGetup: 1, ledgeRoll: 1, dead: 1, out: 1, respawn: 1 };
+const NO_PHYSICS = { ledge: 1, ledgeGetup: 1, ledgeRoll: 1, dead: 1, out: 1, respawn: 1, grabbed: 1, thrown: 1 };
 
 // Crossing a blast zone is a KO: lose a stock and wait to respawn.
 // (Milestone 2 adds launch-based KOs; the rule here stays the same.)

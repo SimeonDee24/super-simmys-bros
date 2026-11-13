@@ -31,7 +31,9 @@ export const CPU_LEVELS = {
     dodgeChance: 0.12,     // spot dodge instead of shielding
     bluffChance: 0.08,     // Bluff (counter) instead of shielding
     jumpInChance: 0.3,     // approach with a short hop aerial
-    shootChance: 0.18,     // Jump Shot from mid or far range (charges a random amount)
+    shootChance: 0.18,
+    grabChance: 0.15,      // grab when close (much more often if they are shielding)
+    mashes: true,          // mashes out of grabs     // Jump Shot from mid or far range (charges a random amount)
     dashAttackChance: 0.25,
     edgeguard: true,
     ledgeWait: [6, 40],
@@ -92,6 +94,8 @@ export class CpuController {
     if (me.state === 'dizzy') return (state.tick & 1) ? BTN.ATTACK : BTN.JUMP;   // mash
     if (me.state === 'ledge') return this.onLedge(me);
     if (me.state === 'knockdown') return this.onKnockdown(me, opp);
+    if (me.state === 'grabbed') return this.cfg.mashes && (state.tick & 1) ? BTN.ATTACK : 0;
+    if (me.state === 'holding') return this.onHolding(me, stage);
     if (me.state === 'respawn') return this.cfg.fights && me.stateFrame > 40 ? BTN.DOWN : 0;
     const rec = this.recover(me, stage);
     if (rec !== null) { this.queue = []; return rec; }
@@ -129,6 +133,23 @@ export class CpuController {
       return m | BTN.UP | this.press(BTN.SHIELD);
     }
     return m;
+  }
+
+  // Holding someone: a couple of pummels, then throw them toward the nearer
+  // edge (forward or back), or up / down to start a combo at low percent.
+  onHolding(me, stage) {
+    if (me.pummelFrame > 0) return 0;
+    if (this.pummels === undefined) this.pummels = this.between([0, 2]);
+    if (this.pummels > 0 && me.stateFrame > 4) { this.pummels--; return this.press(BTN.ATTACK); }
+    if (me.stateFrame < 6) return 0;
+    this.pummels = undefined;
+    const main = stage.solids[0];
+    const toLeftEdge = me.x - main.x * FX, toRightEdge = (main.x + main.w) * FX - me.x;
+    const edgeDir = toLeftEdge < toRightEdge ? -1 : 1;
+    const r = this.rand();
+    if (r < 0.25) return BTN.UP;
+    if (r < 0.4) return BTN.DOWN;
+    return edgeDir > 0 ? BTN.RIGHT : BTN.LEFT;   // forward or back throw, whichever faces the edge
   }
 
   onLedge(me) {
@@ -202,9 +223,10 @@ export class CpuController {
     // --- they are invincible (just respawned): back off ---
     if (view.invuln > 0) return adx < 50 ? away : 0;
 
-    // --- close: attack ---
+    // --- close: attack (or grab, especially a shield) ---
     if (adx < 26 && ady < 30) {
       if (!inFront) return toward;                                   // turn around first
+      if (adx < 20 && ady < 10 && (view.state === 'shield' || this.rand() < c.grabChance)) return BTN.GRAB;
       if (dy < -22 * FX) return BTN.ATTACK | BTN.UP;                 // above: up tilt
       if (view.state === 'knockdown') return BTN.ATTACK | BTN.DOWN;  // lying down: down tilt
       const pick = this.rand();

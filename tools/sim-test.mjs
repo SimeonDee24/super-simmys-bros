@@ -458,4 +458,62 @@ for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BT
   try { step(s, [input, 0]); for (let i = 0; i < 80; i++) step(s, [0, 0]); } catch (e) { ok = false; }
   check(`${name} in the air lands safely`, ok && a.grounded === 1);
 }
+// Grabs, pummel and throws
+{
+  const near = (gap = 16) => { const s = createMatch(setup); s.fighters[1].x = s.fighters[0].x + gap * FX; s.fighters[1].facing = -1; return s; };
+  const grabbed = (s) => { step(s, [BTN.GRAB, 0]); for (let i = 0; i < 10 && s.fighters[0].state !== 'holding'; i++) step(s, [0, 0]); return s.fighters[0].state === 'holding'; };
+  let s = near(); let [a, v] = s.fighters;
+  check('standing grab catches a nearby opponent', grabbed(s) && v.state === 'grabbed' && v.heldBy === 0);
+  s = near(); [a, v] = s.fighters;
+  for (let i = 0; i < 4; i++) step(s, [0, BTN.SHIELD]);
+  check('grabs go through shields', grabbed(s));
+  s = near(60); [a, v] = s.fighters;
+  step(s, [BTN.GRAB, 0]); for (let i = 0; i < 40; i++) step(s, [0, 0]);
+  check('a missed grab has ending lag, then he can act', a.state === 'idle' && v.state === 'idle');
+  s = near(); [a, v] = s.fighters;
+  for (let i = 0; i < 3; i++) step(s, [0, BTN.SHIELD]);
+  step(s, [0, BTN.SHIELD | BTN.ATTACK]); for (let i = 0; i < 10; i++) step(s, [0, 0]);
+  check('shield + attack grabs out of shield', v.state === 'holding');
+  // pummel
+  s = near(); [a, v] = s.fighters; grabbed(s);
+  step(s, [BTN.ATTACK, 0]); for (let i = 0; i < 16; i++) step(s, [0, 0]);
+  check('pummel deals 1.3% and keeps holding', v.percent === 13 && a.state === 'holding');
+  // each throw: damage and direction
+  for (const [name, input, dmg, test] of [
+    ['forward throw', BTN.RIGHT, 80, (v, a) => v.x > a.x + 30 * FX],
+    ['back throw', BTN.LEFT, 110, (v, a) => v.x < a.x - 30 * FX],
+    ['up throw', BTN.UP, 70, (v, a) => v.y < a.y - 40 * FX],
+    ['down throw', BTN.DOWN, 50, (v, a) => v.y < a.y - 10 * FX],
+  ]) {
+    const s = near(); const [a, v] = s.fighters; grabbed(s);
+    step(s, [input, 0]);
+    let spun = false, top = v.y;
+    for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.min(top, v.y); if (a.state === 'throwing' && a.facing !== 1) spun = true; if (i === 40) break; }
+    if (name === 'down throw') v.y = top;
+    check(`${name}: ${dmg / 10}%, sends the right way${name === 'back throw' ? ', spins round' : ''}`,
+      v.percent === dmg && test(v, a) && (name !== 'back throw' || spun), `${v.percent / 10}% dx ${((v.x - a.x) / FX).toFixed(0)} dy ${((v.y - a.y) / FX).toFixed(0)}`);
+  }
+  // back throw kills at high percent near the edge
+  const { CpuController } = await import('../engine/cpu.js');
+  const backThrowKO = (pct) => {
+    const s = near(); const [a, v] = s.fighters; a.x = 116 * FX; a.facing = 1; v.x = 132 * FX; v.facing = -1; v.percent = pct * 10;
+    step(s, [BTN.GRAB, 0]); for (let i = 0; i < 10 && a.state !== 'holding'; i++) step(s, [0, 0]);
+    step(s, [BTN.LEFT, 0]);
+    const d = new CpuController('dummy', 3);   // the victim tries to recover
+    for (let i = 0; i < 400; i++) { step(s, [0, d.sample(s, 1)]); if (v.state === 'dead') return true; }
+    return false;
+  };
+  check('back throw near the edge: survivable at 90%, KOs at 150%', !backThrowKO(90) && backThrowKO(150));
+  // mashing breaks free sooner
+  const escape = (mash) => { const s = near(); grabbed(s); let t = 0; for (; t < 300 && s.fighters[1].state === 'grabbed'; t++) step(s, [0, mash && (t & 1) ? BTN.ATTACK : 0]); return t; };
+  const slow = escape(false), fast = escape(true);
+  check('grab lets go on its own, and mashing breaks out much sooner', slow >= 85 && fast < slow * 0.6, `${slow} vs ${fast} frames`);
+  // dash grab
+  s = near(70); [a, v] = s.fighters;
+  for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [5, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
+  step(s, [BTN.RIGHT | BTN.GRAB, 0]);
+  const dg = a.move;
+  for (let i = 0; i < 14; i++) step(s, [0, 0]);
+  check('grab while running is a dash grab', dg === 'dashGrab');
+}
 process.exit(fails ? 1 : 0);
