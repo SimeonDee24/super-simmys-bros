@@ -57,11 +57,20 @@ export function knockback(p10, d10, weight, bkb, kbg) {
   return Math.trunc(((a + 18000) * kbg) / 100) + bkb * 1000;
 }
 
+// Set (fixed) knockback, used by moves that must send the same distance at any
+// percent, such as the first hit of a multi-hit move:
+//   KB = ((fkb/2 + 1) * 1.4 * 200/(w+100) + 18) * growth/100 + base
+export function setKnockback(fkb, weight, bkb, kbg) {
+  const a = Math.trunc(((fkb * 500 + 1000) * 280) / (weight + 100));
+  return Math.trunc(((a + 18000) * kbg) / 100) + bkb * 1000;
+}
+
 function applyHit(state, att, vic, hit) {
   const hb = hit.def;
   const st = getCharacter(vic.charId).stats;
   vic.percent = Math.min(9999, vic.percent + hb.damage);
-  let kb = knockback(vic.percent, hb.damage, st.weight, hb.bkb, hb.kbg);
+  let kb = hb.fkb ? setKnockback(hb.fkb, st.weight, hb.bkb, hb.kbg)
+    : knockback(vic.percent, hb.damage, st.weight, hb.bkb, hb.kbg);
 
   // Launch angle. 361 = "Sakurai angle": flat at low knockback on the
   // ground, rising to 38 degrees; 45 in the air.
@@ -121,6 +130,8 @@ export function resolveHits(state) {
       for (let i = 0; i < boxes.length && !found; i++) {
         const b = boxes[i];
         if (b.def.downed && vic.state !== 'knockdown') continue;
+        if (b.def.onlyGround && !vic.grounded) continue;   // separate versions for grounded
+        if (b.def.onlyAir && vic.grounded) continue;       // and airborne targets
         for (let k = 0; k < hurt.length; k++) {
           const h = hurt[k];
           const hx1 = vic.x + h[0], hy1 = vic.y + h[1], hx2 = vic.x + h[2], hy2 = vic.y + h[3];

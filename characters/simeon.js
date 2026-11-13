@@ -389,6 +389,8 @@ const animations = {
 //                    fistF/B, handF/B, elbowF/B, toeF/B, footF/B, shinF/B, kneeF/B, hip, chest, neck
 //                  angle: 0 = straight forward, 90 = up, 270 = down (spike), 361 = automatic
 //                  extras: dir: -1 (launch backward), group (each group hits once per use),
+//                          fkb (fixed knockback: same launch at any percent),
+//                          onlyGround / onlyAir (only hits grounded / airborne targets),
 //                          off: [x, y] px, lag (fixed hitlag frames), lagMult (percent of normal hitlag)
 //                  listed first = wins when several overlap, so put sweet spots first
 //   landLag      aerials: landing lag if he lands during frames autoCancel[0] .. autoCancel[1]-1
@@ -430,11 +432,18 @@ const moves = {
   dtilt: { faf: 23, endsCrouched: true, trail: { part: 'toeF', from: 4, to: 7 }, hitboxes: [
     hit(5, 7, 'kneeF', 5, 7, 80, 30, 80), hit(5, 7, 'shinF', 5, 7, 80, 30, 80), hit(5, 7, 'toeF', 6, 5, 80, 30, 80),
   ] },
-  // Two hits, timed like Joker's: a weak knee that holds them in place,
-  // then a flying kick that launches.
-  dashAttack: { faf: 40, slide: { speed: px(2.4), friction: px(0.11) }, trail: { part: 'toeF', from: 13, to: 18 }, hitboxes: [
-    ...hits(6, 7, [['kneeF', 6], ['hip', 6]], 2, 361, 40, 0, { group: 0 }),
-    ...hits(15, 21, [['toeF', 6], ['shinF', 5], ['kneeF', 5]], 6, 45, 55, 70, { group: 1 }),
+  // Two hits, built like Joker's. Both hits always come out, whether or not
+  // the first one connects.
+  //   Hit 1 (frames 6-7): 2%, FIXED knockback, so at any percent it only
+  //     nudges the opponent forward and holds them for hit 2. Grounded and
+  //     airborne targets get separate versions (pushed along the floor vs.
+  //     popped slightly up).
+  //   Hit 2 (frames 15-21): 6% kick on the leg and foot, automatic angle,
+  //     base 60 / growth 85: the hit that actually launches.
+  dashAttack: { faf: 40, slide: { speed: px(2.4), friction: px(0.14) }, trail: { part: 'toeF', from: 13, to: 18 }, hitboxes: [
+    ...hits(6, 7, [['kneeF', 5], ['shinF', 5], ['hip', 5]], 2, 0, 0, 95, { group: 0, fkb: 50, onlyGround: true }),
+    ...hits(6, 7, [['kneeF', 5], ['shinF', 5], ['hip', 5]], 2, 30, 0, 95, { group: 0, fkb: 40, onlyAir: true }),
+    ...hits(15, 21, [['toeF', 5], ['shinF', 5], ['kneeF', 5]], 6, 361, 60, 85, { group: 1 }),
   ] },
 
   // Getup attack from lying down: kicks in front, then behind. He cannot be
