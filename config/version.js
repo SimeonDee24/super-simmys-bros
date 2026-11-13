@@ -1,6 +1,6 @@
 // The single source of truth for the game version.
 // Change it with:  node tools/release.mjs 0.1.1   (also updates version.json)
-export const GAME_VERSION = '0.11.6';
+export const GAME_VERSION = '0.12.0';
 
 // Returns 1 if a is newer than b, -1 if older, 0 if equal.
 export function compareVersions(a, b) {

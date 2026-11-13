@@ -206,6 +206,9 @@ const JS_SET = { hip: [0, 4], torso: 4, head: -10, armF: [150, 70], armB: [140, 
 const JS_RELEASE = { hip: [0, -2], torso: -4, head: -12, armF: [150, 5], armB: [120, 40], legF: [6, -4], legB: [-6, -4], footF: 20, footB: 20, handF: 'open', handB: 'open', face: 'smile' };
 // back air: knees pulled up in front of the chest (body upright), then both
 // legs shot straight out behind with the body laid flat (feet back, head forward)
+// neutral air: tucked ball, then a spin with one leg straight out
+const NAIR_TUCK = { torso: 20, head: 15, legF: [90, -140], legB: [70, -130], armF: [60, 100], armB: [40, 110], ...FISTS };
+const NAIR_SPIN = { torso: 10, head: 10, legF: [90, -4], legB: [60, -120], armF: [50, 100], armB: [30, 110], footF: 30, ...FISTS, face: 'yell' };
 const BAIR_TUCK = { rot: 15, torso: 6, head: -4, legF: [110, -150], legB: [95, -145], armF: [-30, 60], armB: [100, 40], footF: 20, footB: 20, ...FISTS };
 const BAIR_KICK = { rot: 90, torso: 0, head: -70, legF: [4, -2], legB: [-4, -2], armF: [40, 120], armB: [15, 125], footF: -90, footB: -90, ...FISTS, face: 'yell' };
 const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
@@ -436,13 +439,19 @@ const animations = {
     [8, { torso: 4, legF: [10, -30], legB: [40, -60], armF: [20, 40], armB: [-20, 40] }],
     [7, STAND],
   ]),
-  // Neutral air: one leg held out, arms spread.
+  // Neutral air: a full spinning kick. He curls up, then flips all the way
+  // round with one leg straight out, so the foot sweeps a circle around him:
+  // in front, below, behind and above.
   nair: anim(false, [
-    [3, { torso: -6, legF: [45, -60], legB: [-10, -50], armF: [30, 60], armB: [-30, 50], ...FISTS }],
-    [20, { torso: -14, legF: [78, -4], legB: [-25, -75], armF: [-55, 30], armB: [70, 30], footF: 20, ...FISTS, face: 'yell' }],
-    [8, { torso: -8, legF: [60, -20], legB: [-20, -60], armF: [-30, 40], armB: [40, 40], footF: 20 }],
-    [7, AIR],
-  ]),
+    [6, { torso: 6, legF: [50, -90], legB: [20, -80], armF: [40, 80], armB: [20, 90], ...FISTS }],
+    [6, NAIR_TUCK],
+    [2, { ...NAIR_SPIN, rot: 30 }],    // frame 12: kick comes out in front
+    [2, { ...NAIR_SPIN, rot: 120 }],
+    [2, { ...NAIR_SPIN, rot: 210 }],
+    [2, { ...NAIR_SPIN, rot: 300 }],
+    [4, { ...NAIR_TUCK, rot: 360 }],   // frame 20: all the way round
+    [8, AIR],
+  ], { ease: false }),
   // Forward air: fist wound up behind the head, then swung over the top and
   // down in front in a big arc.
   fair: anim(false, [
@@ -592,9 +601,11 @@ const moves = {
   ] },
 
   // --- Aerials ---
-  nair: { faf: 27, landLag: 4, autoCancel: [3, 26], hitboxes: [
-    ...hits(3, 5, [['toeF', 6], ['shinF', 5], ['hip', 6]], 8, 361, 20, 100),
-    ...hits(6, 24, [['toeF', 5], ['shinF', 5], ['hip', 6]], 5, 361, 10, 100),
+  // Spinning kick, timed like Joker's: comes out on frame 12, covers all the
+  // way round him, weak but sends upward at a high angle for follow-ups.
+  nair: { faf: 32, landLag: 6, autoCancel: [3, 26], trail: { part: 'toeF', from: 12, to: 20, width: 6 }, hitboxes: [
+    ...hits(12, 15, [['toeF', 7], ['shinF', 6], ['kneeF', 5], ['chest', 8]], 7, 70, 45, 80),
+    ...hits(16, 19, [['toeF', 6], ['shinF', 5], ['chest', 7]], 5, 70, 35, 70),
   ] },
   // Kick timed like Inkling's: strongest right at the start, at the foot.
   // Overhead punch swing. Comes out on frame 8 and never spikes: the fist
