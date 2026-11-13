@@ -201,7 +201,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (let i = 0; i < 60; i++) step(s, [0, 0]);
   check('dash attack: both hits land for 8%', wasDash && v.percent === 80 && a.state === 'idle', `${v.percent / 10}%`);
   // whenever the first hit connects, the second one follows, at any percent and range
-  for (const [d, pct] of [[26, 0], [38, 0], [56, 0], [32, 120], [50, 120]]) {
+  for (const [d, pct] of [[38, 0], [50, 0], [68, 0], [44, 120], [62, 120]]) {
     const s = createMatch(setup); const [a, v] = s.fighters; v.x = a.x + d * FX; v.percent = pct * 10;
     for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [6, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
     step(s, [BTN.RIGHT | BTN.ATTACK, 0]);
@@ -209,7 +209,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
     check(`dash attack links both hits (${d}px away, ${pct}%)`, v.percent - pct * 10 === 80, `${v.percent / 10 - pct}%`);
   }
   {
-    const s = createMatch(setup); const [a, v] = s.fighters; v.x = a.x + 68 * FX;
+    const s = createMatch(setup); const [a, v] = s.fighters; v.x = a.x + 80 * FX;
     for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [6, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
     step(s, [BTN.RIGHT | BTN.ATTACK, 0]);
     for (let i = 0; i < 60; i++) step(s, [0, 0]);

@@ -170,9 +170,10 @@ const DTILT_LOW = { hip: [-1, 9], torso: 24, head: 8, legF: [62, -112], legB: [5
 const DTILT_SWEEP = { hip: [-2, 12], torso: 10, legF: [76, -4], legB: [60, -124], armF: [-30, 30], armB: [-50, 20], footF: 20, face: 'yell' };
 const SLIDE = { hip: [-1, 11], torso: -38, head: -15, legF: [82, -2], legB: [65, -115], armF: [-60, 20], armB: [-80, 10], footF: 35, face: 'yell' };
 // body thrown level, both legs driven straight out behind
-// dash attack: knee driven forward, then a flying front kick
-const DA_KNEE = { hip: [2, 1], torso: 20, head: 6, legF: [95, -110], legB: [-25, -10], armF: [-50, 40], armB: [60, 60], ...FISTS, face: 'yell' };
-const DA_KICK = { hip: [1, -3], torso: -24, head: -6, legF: [88, -2], legB: [10, -90], armF: [-40, 40], armB: [-70, 30], footF: 35, ...FISTS, face: 'yell' };
+// dash attack: a low kick with the front leg, then a high kick with the other leg
+const DA_KICK1 = { hip: [1, 1], torso: -12, head: -4, legF: [84, -6], legB: [-20, -20], armF: [-40, 50], armB: [50, 60], footF: 25, ...FISTS, face: 'yell' };
+const DA_SWITCH = { hip: [1, 0], torso: -6, legF: [-10, -20], legB: [70, -110], armF: [50, 60], armB: [-40, 50], footB: 20, ...FISTS };
+const DA_KICK2 = { hip: [2, -2], torso: -20, head: -8, legF: [-18, -12], legB: [104, -4], armF: [60, 50], armB: [-50, 40], footB: 30, ...FISTS, face: 'yell' };
 // forward air: leaning back with BOTH legs thrust straight out in front
 const FAIR_TUCK = { rot: -10, torso: -6, head: 10, legF: [95, -135], legB: [85, -130], armF: [40, 100], armB: [20, 110], footF: 30, footB: 30, ...FISTS };
 const FAIR_KICK = { rot: -8, torso: -14, head: 14, legF: [92, -4], legB: [86, -8], armF: [60, 90], armB: [-20, 100], footF: 20, footB: 20, ...FISTS, face: 'yell' };
@@ -323,14 +324,16 @@ const animations = {
     [8, DTILT_LOW],
     [1, DTILT_LOW],
   ]),
-  // Dash attack: a quick knee into a leaping flying kick (two hits).
+  // Dash attack: two kicks while still travelling forward: a low kick with the
+  // front leg (hit 1), then the other leg swings through for a higher kick (hit 2).
   dashAttack: anim(false, [
-    [4, { hip: [1, 3], torso: 16, legF: [50, -70], legB: [-20, -30], armF: [-30, 60], armB: [40, 70], ...FISTS }],
-    [2, DA_KNEE], [3, DA_KNEE],
-    [6, { hip: [0, -2], torso: -6, legF: [60, -110], legB: [20, -60], armF: [40, 60], armB: [-40, 50], ...FISTS }],
-    [2, DA_KICK], [5, DA_KICK],
-    [8, { torso: 4, legF: [40, -60], legB: [-10, -30], armF: [20, 40], armB: [-20, 40] }],
-    [10, STAND],
+    [3, { hip: [1, 2], torso: 14, legF: [45, -70], legB: [-25, -30], armF: [-30, 60], armB: [40, 70], ...FISTS }],
+    [3, { hip: [1, 1], torso: 4, legF: [70, -50], legB: [-25, -25], armF: [-35, 55], armB: [45, 65], ...FISTS }],
+    [2, DA_KICK1], [4, DA_KICK1],
+    [5, DA_SWITCH],
+    [2, DA_KICK2], [6, DA_KICK2],
+    [8, { torso: 4, legF: [10, -30], legB: [40, -60], armF: [20, 40], armB: [-20, 40] }],
+    [7, STAND],
   ]),
   // Neutral air: one leg held out, arms spread.
   nair: anim(false, [
@@ -441,10 +444,10 @@ const moves = {
   //     popped slightly up).
   //   Hit 2 (frames 15-21): 6% kick on the leg and foot, automatic angle,
   //     base 60 / growth 85: the hit that actually launches.
-  dashAttack: { faf: 40, slide: { speed: px(2.4), friction: px(0.14) }, trail: { part: 'toeF', from: 13, to: 18 }, hitboxes: [
-    ...hits(6, 7, [['kneeF', 5], ['shinF', 5], ['hip', 5]], 2, 0, 0, 95, { group: 0, fkb: 50, onlyGround: true }),
-    ...hits(6, 7, [['kneeF', 5], ['shinF', 5], ['hip', 5]], 2, 30, 0, 95, { group: 0, fkb: 40, onlyAir: true }),
-    ...hits(15, 21, [['toeF', 5], ['shinF', 5], ['kneeF', 5]], 6, 361, 60, 85, { group: 1 }),
+  dashAttack: { faf: 40, slide: { speed: px(2.8), friction: px(0.07) }, trail: { part: 'toeB', from: 14, to: 20 }, hitboxes: [
+    ...hits(6, 7, [['toeF', 5], ['shinF', 5], ['kneeF', 5], ['hip', 6]], 2, 0, 0, 95, { group: 0, fkb: 60, onlyGround: true }),
+    ...hits(6, 7, [['toeF', 5], ['shinF', 5], ['kneeF', 5], ['hip', 6]], 2, 30, 0, 95, { group: 0, fkb: 45, onlyAir: true }),
+    ...hits(15, 21, [['toeB', 5], ['shinB', 5], ['kneeB', 5]], 6, 361, 60, 85, { group: 1 }),
   ] },
 
   // Getup attack from lying down: kicks in front, then behind. He cannot be
