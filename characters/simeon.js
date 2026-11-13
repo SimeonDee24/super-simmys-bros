@@ -171,12 +171,12 @@ const DTILT_SWEEP = { hip: [-2, 12], torso: 10, legF: [76, -4], legB: [60, -124]
 const SLIDE = { hip: [-1, 11], torso: -38, head: -15, legF: [82, -2], legB: [65, -115], armF: [-60, 20], armB: [-80, 10], footF: 35, face: 'yell' };
 // body thrown level, both legs driven straight out behind
 // dash attack: a low kick with the front leg, then a high kick with the other leg
-const DA_KICK1 = { hip: [1, 1], torso: -12, head: -4, legF: [84, -6], legB: [-20, -20], armF: [-40, 50], armB: [50, 60], footF: 25, ...FISTS, face: 'yell' };
-const DA_SWITCH = { hip: [1, 0], torso: -6, legF: [-10, -20], legB: [70, -110], armF: [50, 60], armB: [-40, 50], footB: 20, ...FISTS };
-const DA_KICK2 = { hip: [2, -2], torso: -20, head: -8, legF: [-18, -12], legB: [104, -4], armF: [60, 50], armB: [-50, 40], footB: 30, ...FISTS, face: 'yell' };
+const DA_KICK1 = { rot: -55, hip: [0, 4], torso: 0, head: 20, legF: [30, -4], legB: [-30, -60], armF: [60, 70], armB: [20, 80], footF: -40, ...FISTS, face: 'yell' };
+const DA_SWITCH = { rot: -60, hip: [0, 6], torso: 0, head: 22, legF: [-10, -60], legB: [55, -110], armF: [40, 80], armB: [60, 70], footB: -20, ...FISTS };
+const DA_KICK2 = { rot: -75, hip: [0, 9], torso: 0, head: 25, legF: [-25, -50], legB: [14, -4], armF: [40, 80], armB: [70, 70], footB: -60, ...FISTS, face: 'yell' };
 // forward air: leaning back with BOTH legs thrust straight out in front
-const FAIR_TUCK = { rot: -10, torso: -6, head: 10, legF: [95, -135], legB: [85, -130], armF: [40, 100], armB: [20, 110], footF: 30, footB: 30, ...FISTS };
-const FAIR_KICK = { rot: -8, torso: -14, head: 14, legF: [92, -4], legB: [86, -8], armF: [60, 90], armB: [-20, 100], footF: 20, footB: 20, ...FISTS, face: 'yell' };
+const FAIR_TUCK = { rot: -35, torso: 0, head: 15, legF: [60, -130], legB: [50, -125], armF: [70, 90], armB: [50, 100], footF: 30, footB: 30, ...FISTS };
+const FAIR_KICK = { rot: -78, torso: 0, head: 25, legF: [12, -4], legB: [6, -8], armF: [70, 80], armB: [40, 90], footF: -60, footB: -60, ...FISTS, face: 'yell' };
 // knockdown: lying on his back, and the getup attack's spinning sweep
 const LIE = { rot: -90, hip: [-8, 23], torso: 0, head: 0, armF: [20, 30], armB: [-10, 20], legF: [5, -10], legB: [-5, -6], footF: 80, footB: 80, face: 'hurt' };
 const GUA_FRONT = { rot: -30, hip: [-2, 17], torso: 0, legF: [62, -4], legB: [100, -110], armF: [-40, 30], armB: [-60, 20], footF: 40, ...FISTS, face: 'yell' };
