@@ -47,7 +47,7 @@ export function activeHitboxes(f, ch, includeSpent = false) {
   return out;
 }
 
-const UNHITTABLE = { dead: 1, out: 1, respawn: 1 };
+export const UNHITTABLE = { dead: 1, out: 1, respawn: 1 };
 
 // Smash knockback formula, in thousandths.
 //   KB = ((p/10 + p*d/20) * 200/(w+100) * 1.4 + 18) * growth/100 + base
@@ -65,7 +65,9 @@ export function setKnockback(fkb, weight, bkb, kbg) {
   return Math.trunc(((a + 18000) * kbg) / 100) + bkb * 1000;
 }
 
-function applyHit(state, att, vic, hit) {
+// `proj` is set when the hit came from a projectile: launch direction comes
+// from the projectile, and the thrower does not freeze.
+export function applyHit(state, att, vic, hit, proj = null) {
   const hb = hit.def;
   const st = getCharacter(vic.charId).stats;
   vic.percent = Math.min(9999, vic.percent + hb.damage);
@@ -84,7 +86,7 @@ function applyHit(state, att, vic, hit) {
   }
   // Hit downward while standing: bounce up off the floor instead.
   if (vic.grounded && angle > 180) { angle = 360 - angle; kb = Math.trunc((kb * 8) / 10); }
-  const dir = att.facing * (hb.dir || 1);
+  const dir = proj ? proj.dir : att.facing * (hb.dir || 1);
   const launch = dir > 0 ? angle : 180 - angle;
 
   vic.kbAngle = ((launch % 360) + 360) % 360;
@@ -93,9 +95,8 @@ function applyHit(state, att, vic, hit) {
   vic.hitstun = Math.max(1, Math.trunc((kb * CONFIG.HITSTUN_NUM) / CONFIG.HITSTUN_DEN));
   // Hitlag: short for normal moves; a move can ask for more (smash attacks will).
   const lag = lagFor(hb);
-  att.hitlag = lag;
   vic.hitlag = lag;
-  att.hitGroups |= 1 << (hb.group || 0);
+  if (!proj) { att.hitlag = lag; att.hitGroups |= 1 << (hb.group || 0); }
 
   const lifts = angle > 0 && angle < 180;
   if (lifts || !vic.grounded) { vic.grounded = 0; vic.ground = -1; }
@@ -115,7 +116,7 @@ function applyHit(state, att, vic, hit) {
 }
 
 // --- Shield ---
-const SHIELDING = { shield: 1, shieldStun: 1 };
+export const SHIELDING = { shield: 1, shieldStun: 1 };
 
 // Bubble radius shrinks as shield health runs out.
 export function shieldRadius(f) {
@@ -137,15 +138,15 @@ function lagFor(hb) {
 }
 
 // An attack hit the shield bubble.
-function applyShieldHit(state, att, vic, hb) {
+export function applyShieldHit(state, att, vic, hb, proj = null) {
   const lag = lagFor(hb);
-  att.hitlag = lag; vic.hitlag = lag;
-  att.hitGroups |= 1 << (hb.group || 0);
+  vic.hitlag = lag;
+  if (!proj) { att.hitlag = lag; att.hitGroups |= 1 << (hb.group || 0); }
   vic.shieldHitTick = state.tick;
   vic.shieldHp -= Math.trunc((hb.damage * CONFIG.SHIELD_DMG_MULT * 100) / 100);
   if (vic.shieldHp <= 0) { breakShield(vic); vic.breakTick = state.tick; return; }
   // pushed away from the attacker, and stuck in shield for a moment
-  const away = vic.x >= att.x ? 1 : -1;
+  const away = vic.x >= (proj ? proj.x : att.x) ? 1 : -1;
   vic.vx = away * (CONFIG.SHIELD_PUSH_BASE + Math.trunc((hb.damage * CONFIG.SHIELD_PUSH_PER_PCT) / 10));
   vic.shieldStun = Math.trunc((hb.damage * CONFIG.SHIELDSTUN_MULT) / 1000) + 2;
   setState(vic, 'shieldStun', 'shield');
@@ -154,11 +155,10 @@ function applyShieldHit(state, att, vic, hb) {
 
 // The defender let go of shield just before the hit: parry. No damage, and
 // the attacker is frozen for longer so the defender can punish.
-function applyParry(state, att, vic, hb) {
+export function applyParry(state, att, vic, hb, proj = null) {
   const lag = lagFor(hb);
   vic.hitlag = lag;
-  att.hitlag = lag + CONFIG.PARRY_FREEZE;
-  att.hitGroups |= 1 << (hb.group || 0);
+  if (!proj) { att.hitlag = lag + CONFIG.PARRY_FREEZE; att.hitGroups |= 1 << (hb.group || 0); }
   vic.parryTick = state.tick;
   setState(vic, 'idle', 'idle');
 }
@@ -168,24 +168,24 @@ function applyParry(state, att, vic, hb) {
 // that lands on frames a..b: no damage, both freeze, and the defender
 // switches into the `then` move, whose `counterDamage` hitboxes deal the
 // caught attack's damage x mult% (at least `min`).
-function inCounter(f) {
+export function inCounter(f) {
   if (f.state !== 'attack' || !f.move) return null;
   const c = getCharacter(f.charId).moves[f.move].counter;
   return c && f.stateFrame >= c.window[0] && f.stateFrame <= c.window[1] ? c : null;
 }
 
-function applyCounter(state, att, vic, hb, ctr) {
-  att.hitGroups |= 1 << (hb.group || 0);
+export function applyCounter(state, att, vic, hb, ctr, proj = null) {
+  if (!proj) att.hitGroups |= 1 << (hb.group || 0);
   vic.counterDmg = Math.max(ctr.min, Math.trunc((hb.damage * ctr.mult) / 100));
   vic.counterTick = state.tick;
-  vic.facing = att.x >= vic.x ? 1 : -1;
+  vic.facing = (proj ? proj.x : att.x) >= vic.x ? 1 : -1;
   const air = !vic.grounded;
   vic.move = ctr.then; vic.moveAir = air ? 1 : 0; vic.hitGroups = 0;
   setState(vic, 'attack', ctr.then);
   vic.intangible = ctr.intangible || 10;
   // freeze both; the attacker stays frozen long enough for the counter to land
   vic.hitlag = ctr.freeze;
-  att.hitlag = ctr.freeze + ctr.attackerExtra;
+  if (!proj) att.hitlag = ctr.freeze + ctr.attackerExtra;
 }
 
 // Called once per tick after everyone has moved. All hits are found first,

@@ -1,5 +1,5 @@
 {
-  "version": "0.9.0",
+  "version": "0.10.0",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -9,6 +9,7 @@
     "engine/fixed.js",
     "engine/input.js",
     "engine/physics.js",
+    "engine/projectiles.js",
     "engine/sim.js",
     "engine/skeleton.js",
     "characters/index.js",

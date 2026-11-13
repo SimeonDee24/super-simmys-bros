@@ -31,6 +31,7 @@ export const CPU_LEVELS = {
     dodgeChance: 0.12,     // spot dodge instead of shielding
     bluffChance: 0.08,     // Bluff (counter) instead of shielding
     jumpInChance: 0.3,     // approach with a short hop aerial
+    shootChance: 0.18,     // Jump Shot from mid or far range (charges a random amount)
     dashAttackChance: 0.25,
     edgeguard: true,
     ledgeWait: [6, 40],
@@ -212,6 +213,13 @@ export class CpuController {
       if (pick < 0.75) return BTN.ATTACK | BTN.DOWN;                 // down tilt
       if (pick < 0.88) { this.queue = [0, 0, 0, BTN.ATTACK]; return BTN.JUMP; } // short hop neutral air
       return BTN.ATTACK | BTN.UP;
+    }
+
+    // --- mid or far: sometimes take a Jump Shot ---
+    if (adx >= 40 && adx < 200 && inFront && this.rand() < c.shootChance) {
+      const hold = this.between([0, 40]);
+      this.queue = new Array(hold).fill(BTN.SPECIAL);
+      return BTN.SPECIAL;
     }
 
     // --- mid range: come in ---

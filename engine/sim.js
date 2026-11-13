@@ -9,6 +9,7 @@ import { getCharacter } from '../characters/index.js';
 import { newFighter, updateFighter } from './fighter.js';
 import { moveFighter, checkBlastZones } from './physics.js';
 import { resolveHits } from './combat.js';
+import { stepProjectiles, resolveProjectileHits } from './projectiles.js';
 
 // setup = { stageId, players: [{ charId, alt }, { charId, alt }], stocks, seed }
 export function createMatch(setup) {
@@ -19,6 +20,7 @@ export function createMatch(setup) {
     rng: (setup.seed || CONFIG.DEFAULT_SEED) | 0,
     stageId: setup.stageId,
     fighters: setup.players.map((p, i) => newFighter(i, p.charId, p.alt | 0, stage.spawns[i], stocks)),
+    projectiles: [],
   };
 }
 
@@ -34,7 +36,9 @@ export function step(state, inputs) {
     moveFighter(f, stage, st);
     checkBlastZones(f, stage);
   }
+  stepProjectiles(state);
   resolveHits(state);
+  resolveProjectileHits(state);
   state.tick++;
   return state;
 }

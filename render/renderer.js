@@ -117,6 +117,9 @@ export class Renderer {
 
     for (const f of state.fighters) this.drawTrail(f, getCharacter(f.charId), camX, camY);
     for (const f of state.fighters) this.drawCard(state, f, getCharacter(f.charId), camX, camY);
+    for (const f of state.fighters) this.drawHeldBall(f, getCharacter(f.charId), camX, camY);
+    for (const p of state.projectiles || []) this.drawProjectile(p, camX, camY);
+    for (const f of state.fighters) this.drawChargeMeter(state, f, getCharacter(f.charId), camX, camY);
     this.drawEffects(state, camX, camY);
     for (const f of state.fighters) if (f.state === 'dead') this.drawKoBlast(f);
     if (opts.showBoxes) this.drawBoxes(state, stage, camX, camY);
@@ -267,6 +270,56 @@ export class Renderer {
       ctx.fillRect(x - (d >> 1), y, (d >> 1) * 2 + 1, 1);
       ctx.fillRect(x, y - (d >> 1), 1, (d >> 1) * 2 + 1);
     }
+  }
+
+  // --- Basketball ---
+  // A plain orange ball with dark seams that turn as it travels.
+  drawBall(x, y, r, spin, alpha = 1) {
+    const ctx = this.ctx;
+    ctx.globalAlpha = alpha;
+    for (let dy = -r - 1; dy <= r + 1; dy++) {
+      const h = Math.floor(Math.sqrt((r + 1) * (r + 1) - dy * dy));
+      ctx.fillStyle = '#100d16'; ctx.fillRect(x - h, y + dy, h * 2 + 1, 1);
+    }
+    for (let dy = -r; dy <= r; dy++) {
+      const h = Math.floor(Math.sqrt(r * r - dy * dy));
+      ctx.fillStyle = dy < -r / 3 ? '#f2a04a' : dy > r / 3 ? '#c4621f' : '#e0812f';
+      ctx.fillRect(x - h, y + dy, h * 2 + 1, 1);
+    }
+    ctx.fillStyle = '#3a1d0e';
+    const s = ((Math.floor(spin / 512) % 4) + 4) % 4;   // seams rotate in 4 steps
+    if (s === 0 || s === 2) { ctx.fillRect(x - r, y, r * 2 + 1, 1); ctx.fillRect(x, y - r, 1, r * 2 + 1); }
+    else { for (let k = -r + 1; k < r; k++) { ctx.fillRect(x + k, y + k, 1, 1); ctx.fillRect(x + k, y - k, 1, 1); } }
+    ctx.fillStyle = '#fbd29a'; ctx.fillRect(x - (r >> 1), y - (r >> 1) - 1, 1, 1);
+    ctx.globalAlpha = 1;
+  }
+  drawProjectile(p, camX, camY) {
+    const d = getCharacter(p.charId).projectiles[p.kind];
+    const fade = p.spent ? Math.max(0.2, p.life / d.fadeFrames) : 1;
+    this.drawBall(toPx(p.x) - camX, toPx(p.y) - camY, d.r, p.spin, fade);
+  }
+  // The ball in his hands before it is released.
+  drawHeldBall(f, ch, camX, camY) {
+    if (f.state !== 'attack' || !f.move) return;
+    const mv = ch.moves[f.move];
+    if (!mv.holdBall || f.stateFrame < mv.holdBall[0] || f.stateFrame > mv.holdBall[1]) return;
+    const s = solve(ch.skeleton, samplePose(ch.animations[f.anim], f.animFrame));
+    const a = jointAt(s, 'fistF'), b = jointAt(s, 'fistB');
+    const x = toPx(f.x + f.facing * ((a[0] + b[0]) >> 1)) - camX + f.facing * 2;
+    const y = toPx(f.y + ((a[1] + b[1]) >> 1)) - camY - 3;
+    this.drawBall(x, y, ch.projectiles.basketball.r, 0);
+  }
+  // Power meter over his head while charging a shot.
+  drawChargeMeter(state, f, ch, camX, camY) {
+    if (f.state !== 'attack' || !f.move || !f.charge) return;
+    const mv = ch.moves[f.move];
+    if (!mv.charge || f.stateFrame > mv.spawn.frame) return;
+    const ctx = this.ctx, w = 16, x = toPx(f.x) - camX - (w >> 1), y = toPx(f.y) - camY - 52;
+    const full = f.charge >= mv.charge.max;
+    ctx.fillStyle = '#100d16'; ctx.fillRect(x - 1, y - 1, w + 2, 5);
+    ctx.fillStyle = '#3a3550'; ctx.fillRect(x, y, w, 3);
+    ctx.fillStyle = full ? ((state.tick >> 2) & 1 ? '#ffffff' : '#ff8a3c') : '#ffe14a';
+    ctx.fillRect(x, y, Math.max(1, Math.round((w * f.charge) / mv.charge.max)), 3);
   }
 
   // A playing card in his hand, for moves that set `card` (Bluff). Small while

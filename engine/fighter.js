@@ -6,6 +6,7 @@ import { CONFIG } from '../config/config.js';
 import { FX, approach, clamp, sinDeg, cosDeg, mulTrig } from './fixed.js';
 import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
+import { spawnProjectile, countProjectiles } from './projectiles.js';
 
 export function newFighter(slot, charId, alt, spawn, stocks) {
   const st = getCharacter(charId).stats;
@@ -29,7 +30,8 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     // Shield and dodges
     shieldHp: CONFIG.SHIELD_MAX, shieldStun: 0, airDodged: 0, dodgeDir: 0, mash: 0,
     parryTick: -1, shieldHitTick: -1, breakTick: -1,
-    counterDmg: 0, counterTick: -1,   // counter specials kbAngle: 0, kbSpeed: 0, gv: 0,
+    counterDmg: 0, counterTick: -1,   // counter specials
+    charge: 0,                        // chargeable moves (Jump Shot) kbAngle: 0, kbSpeed: 0, gv: 0,
     hitX: 0, hitY: 0, lastHitTick: -1, lastHitDmg: 0,
     koX: 0, koY: 0,         // where the last KO happened (pixels), for the blast effect
     invuln: 0,
@@ -109,6 +111,7 @@ export function startMove(f, name, air) {
   f.buf &= ~(BTN.ATTACK | BTN.SPECIAL);
   const mv = getCharacter(f.charId).moves[name];
   if (mv.intangible) f.intangible = mv.intangible;
+  f.charge = 0;
   setState(f, 'attack', name);
 }
 
@@ -125,6 +128,8 @@ function trySpecial(c, air) {
   else if (c.dir) slot = 'side';
   const name = sp[slot];
   if (!name) return false;
+  const mv = c.ch.moves[name];
+  if (mv.limit && countProjectiles(c.match, f.slot, mv.spawn.projectile) >= mv.limit) return false;
   if (slot === 'side' && c.dir) f.facing = c.dir;
   startMove(f, name, air);
   return true;
@@ -470,6 +475,14 @@ const STATES = {
       f.vx = 0;
     } else if (f.moveAir) airMotion(c);
     else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
+    // Chargeable move: while the special button is held, stay on the charge
+    // frame and build up charge (up to `max`).
+    if (mv.charge && f.stateFrame === mv.charge.at + 1 && (c.input & BTN.SPECIAL) && f.charge < mv.charge.max) {
+      f.charge++;
+      f.stateFrame = mv.charge.at;
+      f.animFrame--;
+    }
+    if (mv.spawn && f.stateFrame === mv.spawn.frame) spawnProjectile(c.match, f, mv);
     // combo link (jab 1 -> 2 -> 3)
     if (mv.next && (c.pressed & BTN.ATTACK) && f.stateFrame >= mv.next.from) { startMove(f, mv.next.move, false); return; }
     if (f.stateFrame < mv.faf) return;

@@ -406,4 +406,48 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (let i = 0; i < 30; i++) { step(s, [0, 0]); a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; if (v.move === 'bluffHit') countered = true; }
   check('Bluff works in the air', countered && v.percent === 0 && a.percent > 0);
 }
+// Jump Shot (neutral special): bouncing basketball
+{
+  const shoot = (s, hold) => { step(s, [BTN.SPECIAL, 0]); for (let i = 0; i < hold + 6; i++) step(s, [BTN.SPECIAL, 0]); for (let i = 0; i < 20 && !s.projectiles.length; i++) step(s, [0, 0]); };
+  const landAt = (hold) => {
+    const s = createMatch(setup); s.fighters[0].x = 110 * FX; s.fighters[1].x = 900 * FX;
+    shoot(s, hold);
+    for (let t = 0; t < 200; t++) { step(s, [0, 0]); const p = s.projectiles[0]; if (p && p.bounces === 1) return p.x / FX - 110; }
+    return -1;
+  };
+  const tap = landAt(0), full = landAt(40);
+  check('tap shot lands close, a charged shot lands much further', tap > 60 && tap < 130 && full > tap + 100, `tap ${tap.toFixed(0)}px, full ${full.toFixed(0)}px`);
+  // hits for 6% in the air
+  let s = createMatch(setup); let [a, v] = s.fighters; v.x = a.x + 70 * FX; v.facing = -1;
+  shoot(s, 0);
+  for (let i = 0; i < 80; i++) step(s, [0, 0]);
+  check('the ball hits for 6% in flight', v.percent === 60, `${v.percent / 10}%`);
+  // only one ball at a time
+  s = createMatch(setup); a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  shoot(s, 0);
+  for (let i = 0; i < 30; i++) step(s, [0, 0]);
+  step(s, [BTN.SPECIAL, 0]);
+  check('only one ball at a time', s.projectiles.length === 1 && a.move !== 'jumpShot');
+  // a rolling ball hits for 3%
+  s = createMatch(setup); [a, v] = s.fighters; v.x = 900 * FX; a.x = 110 * FX;
+  shoot(s, 15);
+  let rollingAt = null;
+  for (let i = 0; i < 200 && rollingAt === null; i++) { step(s, [0, 0]); const p = s.projectiles[0]; if (p && p.rolling && Math.abs(p.vx) > 0.7 * FX) rollingAt = p.x; }
+  if (rollingAt !== null) { v.x = rollingAt + 14 * FX * Math.sign(s.projectiles[0].vx); v.y = 170 * FX; v.state = 'idle'; v.grounded = 1; v.ground = 0; }
+  for (let i = 0; i < 30; i++) step(s, [0, 0]);
+  check('a rolling ball hits for 3%', rollingAt !== null && v.percent === 30, `${v.percent / 10}%`);
+  // shield blocks it, Bluff counters it
+  s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 70 * FX; v.facing = -1;
+  shoot(s, 0);
+  for (let i = 0; i < 80; i++) step(s, [0, BTN.SHIELD]);
+  check('shield blocks the ball', v.percent === 0 && v.shieldHitTick >= 0);
+  s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 70 * FX; v.facing = -1;
+  shoot(s, 0);
+  let countered = false;
+  for (let i = 0; i < 80; i++) { const p = s.projectiles[0]; const near = p && Math.abs(p.x - v.x) < 30 * FX && !v.move; step(s, [0, near ? BTN.SPECIAL | BTN.DOWN : 0]); if (v.move === 'bluffHit') countered = true; }
+  check('Bluff counters the ball', countered && v.percent === 0);
+  // deterministic
+  const run = () => { const s = createMatch(setup); shoot(s, 17); for (let i = 0; i < 150; i++) step(s, [0, 0]); return hashState(s); };
+  check('ball flight is deterministic', run() === run());
+}
 process.exit(fails ? 1 : 0);

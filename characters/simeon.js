@@ -194,6 +194,10 @@ const LEDGE_KICK = { hip: [-1, 6], torso: -10, head: -4, legF: [88, -4], legB: [
 const ROLL_BALL = { hip: [0, 12], torso: 62, head: 40, armF: [60, 110], armB: [40, 115], legF: [100, -150], legB: [90, -145], footF: 40, footB: 40, ...FISTS };
 // bluff: card held up in front of his face, other hand on his hip
 const BLUFF_HOLD = { torso: -4, head: -6, armF: [70, 95], armB: [-30, 70], legF: [8, -6], legB: [-8, -4], face: 'smile' };
+// jump shot: ball gathered at the chest, set overhead, then released up and forward
+const JS_GATHER = { hip: [0, 3], torso: 8, armF: [40, 100], armB: [30, 105], legF: [30, -55], legB: [10, -45], ...FISTS };
+const JS_SET = { hip: [0, 4], torso: 4, head: -10, armF: [150, 70], armB: [140, 80], legF: [30, -60], legB: [12, -50], ...FISTS };
+const JS_RELEASE = { hip: [0, -2], torso: -4, head: -12, armF: [150, 5], armB: [120, 40], legF: [6, -4], legB: [-6, -4], footF: 20, footB: 20, handF: 'open', handB: 'open', face: 'smile' };
 const BAIR_KICK = { rot: 72, torso: 6, head: -30, legF: [-6, -8], legB: [-16, -2], armF: [60, 70], armB: [40, 80], footF: -60, footB: -60, ...FISTS, face: 'yell' };
 const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
 const UAIR_TUCK = { torso: 12, head: 10, legF: [70, -100], legB: [55, -95], armF: [30, 80], armB: [10, 85], ...FISTS };
@@ -297,6 +301,17 @@ const animations = {
   ], { ease: true }),
 
   // --- Specials ---
+  // Jump Shot: gathers the ball, sets it overhead (held here while charging),
+  // rises onto his toes and releases it up and forward.
+  jumpShot: anim(false, [
+    [3, JS_GATHER],
+    [3, JS_SET],
+    [5, { ...JS_SET, hip: [0, 1], legF: [12, -20], legB: [0, -16] }],
+    [3, { ...JS_RELEASE, armF: [160, 30], handF: 'fist', handB: 'fist' }],
+    [8, JS_RELEASE],
+    [10, { torso: 2, armF: [60, 40], armB: [30, 40] }],
+    [6, STAND],
+  ]),
   // Bluff: holds up a playing card with a smirk, daring them to hit him.
   bluff: anim(false, [
     [4, { torso: 4, armF: [40, 80], armB: [-10, 40], ...FISTS }],
@@ -538,6 +553,13 @@ const moves = {
     hits(21, 23, [['toeF', 6], ['shinF', 5], ['kneeF', 5]], 9, 361, 90, 20) },
 
   // --- Specials ---
+  // Neutral special: Jump Shot. Tap K for a short shot; hold K to charge a
+  // longer, higher one (power meter over his head). The ball arcs, bounces
+  // and rolls. One ball at a time.
+  jumpShot: { faf: 38, limit: 1, holdBall: [0, 13],
+    charge: { at: 6, max: 40 },
+    spawn: { frame: 14, from: 'fistF', projectile: 'basketball' },
+    hitboxes: [] },
   // Down special: Bluff (counter). If he is hit on frames 5-26 he takes no
   // damage and flips the card back at them for 1.2x the damage (at least 8%).
   bluff: { faf: 46, counter: { window: [5, 26], mult: 120, min: 80, then: 'bluffHit', freeze: 10, attackerExtra: 8, intangible: 12 },
@@ -590,5 +612,22 @@ export const SIMEON = {
   defaultFace: 'smile',
   moves,
   // Which move each special input uses. Missing slots do nothing yet.
-  specials: { down: 'bluff' },
+  specials: { neutral: 'jumpShot', down: 'bluff' },
+
+  // Projectiles his moves can create (see engine/projectiles.js).
+  // Speeds are pixels per frame; charge adds chargeSpeed per frame charged.
+  projectiles: {
+    basketball: {
+      r: 4, hitPad: 1,                         // ball radius, plus a little extra hit reach
+      speed: [px(2.0), px(2.6)],               // tap shot: [sideways, upward]
+      chargeSpeed: [px(0.045), px(0.035)],      // added per charged frame (max 40)
+      gravity: px(0.16), maxFall: px(4),
+      bounce: 140, bounceKeepX: 170,           // keeps 140/256 of its fall speed and 170/256 of its sideways speed per bounce
+      minBounce: px(0.7), maxBounces: 2,       // then it rolls
+      rollFriction: px(0.06), minRollSpeed: px(0.3),
+      life: 300, fadeFrames: 30, popUp: px(1.8),
+      hit: { damage: 60, angle: 361, bkb: 30, kbg: 70 },      // 6% in flight
+      rollHit: { damage: 30, angle: 361, bkb: 20, kbg: 50 },  // 3% while rolling
+    },
+  },
 };
