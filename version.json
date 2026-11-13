@@ -1,5 +1,5 @@
 {
-  "version": "0.1.3",
+  "version": "0.2.0",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -11,6 +11,8 @@
     "engine/skeleton.js",
     "characters/index.js",
     "characters/simeon.js",
+    "stages/balcony.js",
+    "stages/cloudrest.js",
     "stages/index.js",
     "stages/nest.js",
     "render/background.js",

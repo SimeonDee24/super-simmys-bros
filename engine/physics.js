@@ -8,7 +8,7 @@ export function moveFighter(f, stage, st) {
   const solids = stage.solids;
   const hw = st.ecbHalfW, h = st.ecbHeight;
 
-  if (f.state === 'ledge' || f.state === 'ledgeGetup') return; // position is set by the state
+  if (NO_PHYSICS[f.state]) return; // position is set by the state
 
   if (f.grounded) {
     f.x += f.vx;
@@ -75,21 +75,22 @@ function tryLedgeGrab(f, stage, st) {
   }
 }
 
-// Milestone 1: crossing a blast zone just puts the fighter back on the
-// respawn point. Milestone 2 turns this into a real KO (stock loss,
-// explosion effect, respawn platform).
-export function checkBlastZones(f, stage, st) {
+const NO_PHYSICS = { ledge: 1, ledgeGetup: 1, dead: 1, out: 1, respawn: 1 };
+
+// Crossing a blast zone is a KO: lose a stock and wait to respawn.
+// (Milestone 2 adds launch-based KOs; the rule here stays the same.)
+export function checkBlastZones(f, stage) {
+  if (f.state === 'dead' || f.state === 'out' || f.state === 'respawn') return;
   const b = stage.blast;
   if (f.x < b.left * FX || f.x > b.right * FX || f.y < b.top * FX || f.y > b.bottom * FX) {
     f.falls++;
-    f.x = stage.respawn.x * FX;
-    f.y = stage.respawn.y * FX;
+    f.stocks--;
+    f.koX = Math.max(0, Math.min(CONFIG.SCREEN_W, f.x >> 8));
+    f.koY = Math.max(0, Math.min(CONFIG.SCREEN_H, f.y >> 8));
     f.vx = 0; f.vy = 0;
     f.fastFall = 0;
-    f.jumpsLeft = st.airJumps;
-    f.invuln = CONFIG.RESPAWN_INVULN;
     f.grounded = 0; f.ground = -1;
     f.ledge = -1; f.ledgeCd = 0;
-    setState(f, 'air', 'fall');
+    setState(f, 'dead', 'fall');
   }
 }

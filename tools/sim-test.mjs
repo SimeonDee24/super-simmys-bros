@@ -63,9 +63,11 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   step(s, [BTN.LEFT, 0]); step(s, [0, 0]);
   let fell = false;
   for (let i = 0; i < 400; i++) { step(s, [BTN.LEFT, 0]); if (f.falls > 0) { fell = true; break; } }
-  check('running off the stage leads to a respawn', fell);
-  for (let i = 0; i < 200; i++) step(s, [0, 0]);
-  check('lands back on the stage after respawn', f.grounded === 1 && f.y === 170 * FX);
+  check('running off the stage is a KO and costs a stock', fell && f.stocks === 2 && f.state === 'dead');
+  for (let i = 0; i < 100; i++) step(s, [0, 0]);
+  check('reappears on the respawn platform, invincible', f.state === 'respawn' && f.invuln > 0 && f.y === 90 * FX, f.state);
+  for (let i = 0; i < 300; i++) step(s, [0, 0]);
+  check('leaves the platform by itself and lands on the stage', f.grounded === 1 && f.y === 170 * FX, f.state);
 }
 // Wall contact under the ledge is detected (needed for wall jumps later).
 {
@@ -91,5 +93,20 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (let i = 0; i < 10; i++) step(s2, [0, 0]);
   step(s2, [BTN.DOWN, 0]);
   check('down lets go of the ledge', g.state === 'air' && g.ledgeCd > 0);
+}
+// Crawl, and running out of stocks.
+{
+  const s = createMatch(setup); const f = s.fighters[0];
+  for (let i = 0; i < 20; i++) step(s, [BTN.DOWN | BTN.RIGHT, 0]);
+  check('down + direction crawls slowly', f.state === 'crawl' && f.vx > 0 && f.vx < 1.2 * FX, 'vx ' + (f.vx / FX).toFixed(2));
+  const s2 = createMatch({ ...setup, stocks: 1 }); const g = s2.fighters[0];
+  step(s2, [BTN.LEFT, 0]);
+  for (let i = 0; i < 600; i++) step(s2, [BTN.LEFT, 0]);
+  check('last stock lost = out of the match', g.state === 'out' && g.stocks === 0, g.state);
+}
+// Every stage loads and has the pieces the engine needs.
+{
+  const { STAGES } = await import('../stages/index.js');
+  check('3 stages registered with collision, ledges and art', STAGES.length === 3 && STAGES.every((st) => st.solids.length && st.ledges.length === 2 && typeof st.art.draw === 'function'));
 }
 process.exit(fails ? 1 : 0);

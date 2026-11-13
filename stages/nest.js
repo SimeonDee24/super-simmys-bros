@@ -1,4 +1,4 @@
-// Stage 1: The Nest. An indoor walkway high in a timber-and-concrete student
+// Stage: The Nest. An indoor walkway high in a timber-and-concrete student
 // union atrium, with the Egg in the background.
 // All numbers are whole pixels on the 480x270 screen.
 //

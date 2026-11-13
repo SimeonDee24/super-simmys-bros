@@ -21,6 +21,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     wallSide: 0,            // -1 / 1 while touching a wall in the air (for wall jumps)
     prevIn: 0, tapDir: 0, tapTimer: 0,
     percent: 0, stocks, falls: 0,
+    koX: 0, koY: 0,         // where the last KO happened (pixels), for the blast effect
     invuln: 0,
   };
 }
@@ -134,6 +135,51 @@ const STATES = {
     f.vx = approach(f.vx, 0, st.traction);
     if (tryJump(c)) return;
     if (!(c.input & BTN.DOWN)) setState(f, 'idle', 'idle');
+    else if (c.dir) { f.facing = c.dir; setState(f, 'crawl', 'crawl'); }
+  },
+
+  // Walking while crouched.
+  crawl(c) {
+    const { f, st } = c;
+    if (tryJump(c)) return;
+    if (!(c.input & BTN.DOWN)) { setState(f, c.dir ? 'walk' : 'idle', c.dir ? 'walk' : 'idle'); return; }
+    if (!c.dir) { setState(f, 'crouch', 'crouch'); f.animFrame = 99; return; } // stay down, skip the crouch-down blend
+    f.facing = c.dir;
+    f.vx = approach(f.vx, c.dir * st.crawlSpeed, st.walkAccel);
+  },
+
+  // KO'd: gone until the respawn delay passes. Out of stocks = out for good.
+  dead(c) {
+    const { f } = c;
+    if (f.stateFrame < CONFIG.KO_RESPAWN_DELAY) return;
+    if (f.stocks <= 0) { setState(f, 'out', 'idle'); return; }
+    const stage = getStage(c.match.stageId);
+    f.x = (stage.respawn.x + (f.slot === 0 ? -1 : 1) * CONFIG.RESPAWN_SLOT_OFFSET) * FX;
+    f.y = (stage.respawn.y - CONFIG.RESPAWN_DROP_PX) * FX;
+    f.facing = f.slot === 0 ? 1 : -1;
+    f.invuln = 2;
+    setState(f, 'respawn', 'idle');
+  },
+  out() {},
+
+  // Standing on the respawn platform as it floats down. Invincible. Any
+  // movement input (or waiting too long) leaves the platform.
+  respawn(c) {
+    const { f, st } = c;
+    const stage = getStage(c.match.stageId);
+    const D = CONFIG.RESPAWN_DESCEND;
+    const left = Math.max(0, D - f.stateFrame);
+    f.y = stage.respawn.y * FX - Math.trunc((CONFIG.RESPAWN_DROP_PX * FX * left) / D);
+    f.invuln = 2;
+    if (f.stateFrame < D) return;
+    const wants = c.dir || (c.pressed & BTN.JUMP) || (c.input & BTN.DOWN);
+    if (wants || f.stateFrame >= D + CONFIG.RESPAWN_PLATFORM_FRAMES) {
+      f.invuln = CONFIG.RESPAWN_INVULN;
+      f.jumpsLeft = st.airJumps;
+      f.vx = 0;
+      if (c.pressed & BTN.JUMP) { f.vy = -st.jumpVel; enterAir(f, 'jump'); }
+      else { f.vy = 0; enterAir(f, 'fall'); }
+    }
   },
 
   // Jump startup. Leaving the ground: JUMP still held = full hop, released = short hop.

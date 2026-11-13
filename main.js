@@ -18,15 +18,18 @@ const renderer = new Renderer(document.getElementById('game'));
 const keyboard = new Keyboard();
 ['F1', 'F2', 'Escape', 'Tab'].forEach((k) => keyboard.blocked.add(k));
 
-let screen = 'title';
-let match = null;       // { state, sources, recorder }
+let screen = 'title';   // 'title' | 'stageSelect' | 'match'
+let match = null;       // { state, sources, recorder, endTimer }
+// Stage select tiles: every stage, then Random.
+const stageTiles = [...STAGES.map((stage) => ({ stage })), { random: true }];
+let stageIndex = 0;
 let paused = false;
 let updateMessage = null;
 let fps = 0, fpsFrames = 0, fpsTime = 0;
 
-function startMatch() {
+function startMatch(stage = STAGES[0]) {
   const state = createMatch({
-    stageId: STAGES[0].id,
+    stageId: stage.id,
     players: [{ charId: CHARACTERS[0].id, alt: 0 }, { charId: CHARACTERS[0].id, alt: 1 }],
     stocks: CONFIG.DEFAULT_STOCKS,
     seed: CONFIG.DEFAULT_SEED,
@@ -35,7 +38,9 @@ function startMatch() {
     state,
     sources: [new KeyboardSource(keyboard, settings.bindings), new IdleSource()],
     recorder: new InputRecorder(),
+    endTimer: 0,
   };
+  renderer.resetEffects();
   paused = false;
   screen = 'match';
 }
@@ -45,6 +50,11 @@ function tick() {
     const inputs = match.sources.map((s, i) => s.sample(match.state, i));
     match.recorder.push(inputs);
     step(match.state, inputs);
+    // Someone is out of stocks: show GAME!, then leave. (The victory screen
+    // replaces this in milestone 5.)
+    if (match.state.fighters.some((f) => f.state === 'out') && ++match.endTimer >= CONFIG.GAME_END_FRAMES) {
+      screen = 'stageSelect'; match = null;
+    }
   }
   keyboard.endTick();
 }
@@ -54,6 +64,7 @@ function render() {
     renderer.drawTitle(STAGES[0], { charId: CHARACTERS[0].id, updateMessage });
     return;
   }
+  if (screen === 'stageSelect') { renderer.drawStageSelect(stageTiles, stageIndex); return; }
   const opts = { showBoxes: settings.showBoxes };
   if (settings.showDebug) {
     const f = match.state.fighters[0];
@@ -63,15 +74,16 @@ function render() {
     ];
   }
   renderer.drawMatch(match.state, opts);
+  if (match.endTimer > 0) renderer.drawBanner('GAME!');
   if (paused) {
     renderer.drawPause([
       'PAUSED',
-      'ESC  RESUME        Q  QUIT TO TITLE',
+      'ESC  RESUME        Q  QUIT TO STAGE SELECT',
       '',
       'MOVE  W A S D      DOUBLE-TAP A / D TO DASH AND RUN',
       'JUMP  SPACE        TAP = SHORT HOP, HOLD = FULL HOP',
       'FAST FALL  TAP S AT OR AFTER THE TOP OF A JUMP',
-      'CROUCH  HOLD S',
+      'CROUCH  HOLD S    (HOLD S + A / D TO CRAWL)',
       'LEDGE  GRABBED AUTOMATICALLY WHEN FALLING NEXT TO IT',
       '       TOWARD STAGE = GET UP, SPACE = JUMP, S = DROP',
       '',
@@ -87,13 +99,39 @@ window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   sfx.unlock();
   if (screen === 'title') {
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.code !== 'F5' && e.code !== 'F12') startMatch();
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.code !== 'F5' && e.code !== 'F12') screen = 'stageSelect';
+    return;
+  }
+  if (screen === 'stageSelect') {
+    const n = stageTiles.length;
+    if (e.code === 'KeyA' || e.code === 'ArrowLeft') stageIndex = (stageIndex + n - 1) % n;
+    else if (e.code === 'KeyD' || e.code === 'ArrowRight') stageIndex = (stageIndex + 1) % n;
+    else if (e.code === 'KeyJ' || e.code === 'Enter' || e.code === 'Space') chooseStage(stageIndex);
+    else if (e.code === 'Escape') screen = 'title';
     return;
   }
   if (e.code === 'Escape') paused = !paused;
-  else if (e.code === 'KeyQ' && paused) { screen = 'title'; match = null; }
+  else if (e.code === 'KeyQ' && paused) { screen = 'stageSelect'; match = null; }
   else if (e.code === 'F1') { settings.showDebug = !settings.showDebug; saveSettings(settings); }
   else if (e.code === 'F2') { settings.showBoxes = !settings.showBoxes; saveSettings(settings); }
+});
+
+function chooseStage(i) {
+  stageIndex = i;
+  const t = stageTiles[i];
+  // Random picks outside the simulation, so Math.random is fine here.
+  startMatch(t.stage || STAGES[Math.floor(Math.random() * STAGES.length)]);
+}
+
+// Mouse: click a stage tile to pick it.
+renderer.canvas.addEventListener('click', (e) => {
+  if (screen !== 'stageSelect') return;
+  const b = renderer.canvas.getBoundingClientRect();
+  const x = ((e.clientX - b.left) / b.width) * CONFIG.SCREEN_W, y = ((e.clientY - b.top) / b.height) * CONFIG.SCREEN_H;
+  stageTiles.forEach((_, i) => {
+    const r = renderer.stageTileRect(i, stageTiles.length);
+    if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) chooseStage(i);
+  });
 });
 
 // --- Update check (title screen only) ---
@@ -119,4 +157,4 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // Handy for testing from the browser console.
-window.__game = { get match() { return match; }, settings, renderer, startMatch };
+window.__game = { get match() { return match; }, get screen() { return screen; }, settings, renderer, startMatch };

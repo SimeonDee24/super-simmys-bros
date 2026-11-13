@@ -26,7 +26,13 @@ export const CONFIG = {
 
   // --- Match rules ---
   DEFAULT_STOCKS: 3,
-  RESPAWN_INVULN: 120,      // frames of invincibility after respawning
+  KO_RESPAWN_DELAY: 55,     // frames between the KO blast and reappearing
+  RESPAWN_DESCEND: 30,      // frames the respawn platform takes to float down
+  RESPAWN_DROP_PX: 60,      // how far above its resting spot the platform starts
+  RESPAWN_PLATFORM_FRAMES: 180, // max frames you can stay on the platform
+  RESPAWN_SLOT_OFFSET: 26,  // px each player's platform sits from the centre
+  RESPAWN_INVULN: 120,      // frames of invincibility after leaving the platform
+  GAME_END_FRAMES: 150,     // how long GAME! shows before leaving the match
 
   // --- Camera (render only, never affects the simulation) ---
   CAMERA: { maxPanX: 14, maxPanY: 8, followDiv: 8, ease: 0.08 },

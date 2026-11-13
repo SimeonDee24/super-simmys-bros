@@ -13,6 +13,7 @@ const stats = {
   // Ground
   walkSpeed: px(2.0),
   walkAccel: px(0.25),
+  crawlSpeed: px(0.9),     // walking while crouched
   dashSpeed: px(3.1),      // initial dash burst
   dashFrames: 11,          // length of the initial dash
   runSpeed: px(2.8),
@@ -25,16 +26,16 @@ const stats = {
 
   // Jumps
   jumpSquat: 3,            // frames on the ground before leaving it
-  jumpVel: px(4.45),       // full hop  (about 55 px high)
-  shortHopVel: px(3.37),   // short hop (about 31 px high)
-  doubleJumpVel: px(4.57),
+  jumpVel: px(4.95),       // full hop  (about 55 px high)
+  shortHopVel: px(3.68),   // short hop (about 31 px high)
+  doubleJumpVel: px(5.05),
   doubleJumpH: px(1.6),    // sideways speed when double jumping with a direction held
   doubleJumpAnimFrames: 18,
   jumpMaxH: px(2.9),       // sideways speed kept when jumping out of a run
   airJumps: 1,
 
   // Air
-  gravity: px(0.18),
+  gravity: px(0.23),
   fallSpeed: px(3.2),
   fastFallSpeed: px(4.9),
   airSpeed: px(2.7),
@@ -45,7 +46,7 @@ const stats = {
   ledgeHang: px(44),       // how far the feet hang below the ledge
   ledgeMinHang: 8,         // frames before a ledge option can be chosen
   ledgeGetupFrames: 22,
-  ledgeJumpVel: px(4.68),
+  ledgeJumpVel: px(5.29),
   ledgeJumpH: px(1.2),
 
   // Landing
@@ -166,6 +167,10 @@ const animations = {
   crouch: anim(false, [
     [3, { hip: [0, 3], torso: 10, armF: [8, 20], armB: [-6, 16], legF: [30, -55], legB: [10, -45] }],
     [1, { hip: [-1, 9], torso: 28, head: 10, armF: [20, 60], armB: [5, 55], legF: [62, -118], legB: [48, -108] }],
+  ]),
+  crawl: anim(true, [
+    [8, { hip: [-1, 9], torso: 30, head: 10, armF: [28, 60], armB: [0, 55], legF: [74, -118], legB: [40, -104] }],
+    [8, { hip: [-1, 9], torso: 30, head: 10, armF: [6, 55], armB: [22, 60], legF: [52, -112], legB: [60, -114] }],
   ]),
   jumpsquat: anim(false, [
     [2, { hip: [0, 2], torso: 8, armF: [-15, 15], armB: [-25, 10], legF: [25, -45], legB: [5, -35] }],

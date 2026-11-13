@@ -28,7 +28,7 @@ export function step(state, inputs) {
     const st = getCharacter(f.charId).stats;
     updateFighter(state, f, inputs[i] | 0);
     moveFighter(f, stage, st);
-    checkBlastZones(f, stage, st);
+    checkBlastZones(f, stage);
   }
   state.tick++;
   return state;
