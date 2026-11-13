@@ -224,6 +224,15 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
     for (let i = 0; i < 60; i++) step(s, [0, 0]);
     check('dash attack kick still comes out when the first hit misses', v.percent === 60, `${v.percent / 10}%`);
   }
+  {
+    const t = createMatch(setup); const [b, w] = t.fighters;
+    for (const f of [b, w]) { f.y -= 90 * FX; f.grounded = 0; f.ground = -1; f.state = 'air'; f.vy = 0; f.vx = 0; }
+    b.facing = 1; w.x = b.x - 16 * FX;
+    step(t, [BTN.ATTACK | BTN.LEFT, 0]);
+    const hitsAt = []; let last = 0;
+    for (let i = 0; i < 30; i++) { step(t, [0, 0]); b.vy = 0; b.vx = 0; if (w.state !== 'hitstun') { w.vy = 0; w.vx = 0; } if (w.percent !== last) { hitsAt.push(b.stateFrame); last = w.percent; } }
+    check('back air: three kicks land on frames 5, 7 and 11 for 11.5%', w.percent === 115 && hitsAt.join() === '5,7,11', `${w.percent / 10}% on ${hitsAt}`);
+  }
   // high percent back air sends far enough to KO
   s = near(); [a, v] = s.fighters;
   v.percent = 1500; a.facing = -1; a.x = 360 * FX; v.x = 376 * FX;

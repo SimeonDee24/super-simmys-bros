@@ -21,6 +21,9 @@ const hit = (from, to, at, r, damage, angle, bkb, kbg, extra = {}) => ({
 const hits = (from, to, parts, damage, angle, bkb, kbg, extra) =>
   parts.map(([at, r]) => hit(from, to, at, r, damage, angle, bkb, kbg, extra));
 
+const BACK = { dir: -1 };
+const BAIR_TUCK = { rot: 15, torso: 6, head: -4, legF: [110, -150], legB: [95, -145], armF: [-30, 60], armB: [100, 40], footF: 20, footB: 20, ...FISTS };
+const BAIR_KICK = { rot: 90, torso: 0, head: -70, legF: [4, -2], legB: [-4, -2], armF: [40, 120], armB: [15, 125], footF: -90, footB: -90, ...FISTS, face: 'yell' };
 const SLIDE = { hip: [-1, 11], torso: -38, head: -15, legF: [82, -2], legB: [65, -115], armF: [-60, 20], armB: [-80, 10], footF: 35, face: 'yell' };
 
 export const LIBRARY = {
@@ -55,6 +58,25 @@ export const LIBRARY = {
     move: { faf: 33, slide: { speed: px(3.0), friction: px(0.07) }, hitboxes: [
       ...hits(6, 9, [['toeF', 6], ['shinF', 5], ['hip', 5]], 8, 60, 60, 55),
       ...hits(10, 25, [['toeF', 5], ['shinF', 5], ['hip', 5]], 6, 110, 50, 40),
+    ] },
+  },
+
+  // Back air: knees tucked to the chest, then both legs blast straight out
+  // behind him with his body flat (Simeon, v0.10 – v0.13). Out frame 6,
+  // 12% clean (frames 6-8), 8% late (frames 9-11). Strong KO move.
+  bair_doubleKick: {
+    slot: 'bair',
+    anim: anim(false, [
+      [2, { rot: 5, torso: 6, legF: [60, -100], legB: [50, -105], armF: [20, 60], armB: [60, 60], ...FISTS }],
+      [3, BAIR_TUCK],
+      [1, BAIR_TUCK],
+      [4, BAIR_KICK], [3, BAIR_KICK],
+      [7, { rot: 45, torso: 6, legF: [30, -50], legB: [20, -60], armF: [40, 60], armB: [30, 70] }],
+      [6, AIR],
+    ]),
+    move: { faf: 22, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 5, to: 9, width: 7, straight: true }, hitboxes: [
+      ...hits(6, 8, [['toeB', 8], ['toeF', 8], ['shinB', 7], ['kneeB', 6]], 12, 361, 15, 105, BACK),
+      ...hits(9, 11, [['toeB', 7], ['toeF', 7], ['shinB', 6], ['kneeB', 5]], 8, 361, 15, 100, BACK),
     ] },
   },
 };

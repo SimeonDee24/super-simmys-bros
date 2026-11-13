@@ -215,8 +215,9 @@ const NAIR_SPIN = { torso: 10, head: 10, legF: [90, -4], legB: [60, -120], armF:
 const GUARD = { hip: [0, 2], torso: 4, head: 2, armF: [40, 110], armB: [30, 120], legF: [20, -30], legB: [-16, -22], footB: -10, ...FISTS };
 const JAB = { hip: [2, 2], torso: 12, head: 4, armF: [92, 4], armB: [30, 118], legF: [28, -26], legB: [-22, -10], footB: -15, ...FISTS, face: 'yell' };
 const CROSS = { hip: [5, 2], torso: 26, head: 10, armF: [15, 115], armB: [94, 2], legF: [40, -30], legB: [-34, -4], footB: -35, ...FISTS, face: 'yell' };
-const BAIR_TUCK = { rot: 15, torso: 6, head: -4, legF: [110, -150], legB: [95, -145], armF: [-30, 60], armB: [100, 40], footF: 20, footB: 20, ...FISTS };
-const BAIR_KICK = { rot: 90, torso: 0, head: -70, legF: [4, -2], legB: [-4, -2], armF: [40, 120], armB: [15, 125], footF: -90, footB: -90, ...FISTS, face: 'yell' };
+const BAIR_HIGH = { torso: 40, head: -14, legF: [40, -95], legB: [-130, -4], armF: [80, 30], armB: [40, 50], footB: -60, ...FISTS, face: 'yell' };
+const BAIR_LOW = { torso: 18, head: -6, legF: [-50, -5], legB: [-35, -110], armF: [70, 40], armB: [30, 60], footF: -40, ...FISTS, face: 'yell' };
+const BAIR_MID = { torso: 32, head: -10, legF: [35, -75], legB: [-100, -3], armF: [95, 20], armB: [-30, 40], footB: -70, ...FISTS, face: 'yell' };
 const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
 const UAIR_TUCK = { torso: 12, head: 10, legF: [70, -100], legB: [55, -95], armF: [30, 80], armB: [10, 85], ...FISTS };
 
@@ -470,22 +471,23 @@ const animations = {
   // Forward air: fist wound up behind the head, then swung over the top and
   // down in front in a big arc.
   fair: anim(false, [
-    [4, { torso: -6, armF: [140, 30], armB: [-40, 50], legF: [20, -30], legB: [-10, -30], ...FISTS }],
-    [4, { torso: -18, head: -8, armF: [215, 20], armB: [-50, 60], legF: [28, -45], legB: [-15, -35], ...FISTS }],
-    [2, { torso: 4, armF: [150, 5], armB: [-40, 60], legF: [20, -30], legB: [-15, -35], ...FISTS, face: 'yell' }],
-    [2, { torso: 22, armF: [95, 5], armB: [-30, 60], legF: [10, -20], legB: [-25, -40], ...FISTS, face: 'yell' }],
-    [2, { torso: 34, head: 12, armF: [50, 5], armB: [-25, 55], legF: [10, -20], legB: [-25, -40], ...FISTS, face: 'yell' }],
-    [8, { torso: 38, head: 15, armF: [25, 5], armB: [-20, 50], legF: [10, -20], legB: [-25, -40], ...FISTS }],
+    [4, { rot: -6, torso: -6, armF: [140, 30], armB: [20, 40], legF: [30, -45], legB: [-15, -35], ...FISTS }],
+    [4, { rot: -22, torso: -16, head: -8, armF: [185, 25], armB: [55, 25], legF: [55, -80], legB: [-40, -25], footF: 20, ...FISTS }],
+    [2, { rot: -4, torso: 2, armF: [150, 5], armB: [30, 40], legF: [45, -70], legB: [-30, -30], ...FISTS, face: 'yell' }],
+    [2, { rot: 14, torso: 18, armF: [95, 5], armB: [-50, 60], legF: [30, -80], legB: [-5, -70], ...FISTS, face: 'yell' }],
+    [2, { rot: 26, torso: 28, head: 12, armF: [50, 5], armB: [-40, 70], legF: [40, -110], legB: [15, -105], ...FISTS, face: 'yell' }],
+    [8, { rot: 22, torso: 30, head: 14, armF: [30, 10], armB: [-30, 70], legF: [45, -115], legB: [20, -110], ...FISTS }],
     [9, AIR],
   ]),
-  // Back air: knees in, then both legs blast straight out behind him with his
-  // body flat, like a horizontal double kick.
+  // Back air: three quick back kicks, Greninja style. High with the back
+  // leg, low with the front leg, then a strong mid-height kick.
   bair: anim(false, [
-    [2, { rot: 5, torso: 6, legF: [60, -100], legB: [50, -105], armF: [20, 60], armB: [60, 60], ...FISTS }],
-    [3, BAIR_TUCK],          // frame 2: knees pulled up in front of his chest
-    [1, BAIR_TUCK],          // frame 5: still tucked
-    [4, BAIR_KICK], [3, BAIR_KICK],   // frame 6: legs blasted straight back, body flat
-    [7, { rot: 45, torso: 6, legF: [30, -50], legB: [20, -60], armF: [40, 60], armB: [30, 70] }],
+    [3, { torso: 14, head: 4, legF: [40, -80], legB: [-30, -95], armF: [60, 60], armB: [30, 70], footF: 20, ...FISTS }],
+    [2, BAIR_HIGH], [1, BAIR_HIGH],
+    [1, BAIR_LOW], [2, BAIR_LOW],
+    [1, { torso: 20, legF: [35, -85], legB: [-55, -120], armF: [70, 50], armB: [20, 60], ...FISTS }],
+    [4, BAIR_MID], [8, BAIR_MID],
+    [12, { torso: 10, legF: [20, -40], legB: [-40, -50], armF: [60, 40], armB: [-20, 30] }],
     [6, AIR],
   ]),
   // Up air: a full backflip with one leg extended, so the foot sweeps from
@@ -640,10 +642,13 @@ const moves = {
     hit(10, 12, 'fistF', 15, 10, 361, 25, 92),
     hit(10, 12, 'elbowF', 11, 9, 361, 25, 92),
   ] },
-  // Both legs out behind: big hitboxes along both legs, strong clean hit.
-  bair: { faf: 22, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 5, to: 9, width: 7, straight: true }, hitboxes: [
-    ...hits(6, 8, [['toeB', 8], ['toeF', 8], ['shinB', 7], ['kneeB', 6]], 12, 361, 15, 105, BACK),
-    ...hits(9, 11, [['toeB', 7], ['toeF', 7], ['shinB', 6], ['kneeB', 5]], 8, 361, 15, 100, BACK),
+  // Greninja's triple back kick: hits on frames 5, 7 and 11-14. The first
+  // two hold the opponent in place (fixed knockback) so the third connects
+  // and launches. 3% + 2.5% + 6%.
+  bair: { faf: 40, landLag: 10, autoCancel: [4, 34], trail: { part: 'toeB', from: 10, to: 13, width: 7, straight: true }, hitboxes: [
+    ...hits(5, 5, [['toeB', 7], ['shinB', 6], ['kneeB', 5]], 3, 20, 0, 100, { ...BACK, group: 0, fkb: 30 }),
+    ...hits(7, 7, [['toeF', 7], ['shinF', 6], ['kneeF', 5]], 2.5, 20, 0, 100, { ...BACK, group: 1, fkb: 30 }),
+    ...hits(11, 14, [['toeB', 8], ['shinB', 7], ['kneeB', 6]], 6, 361, 40, 140, { ...BACK, group: 2 }),
   ] },
   // A tight arc around his upper body: from close in front, over his head, to behind.
   uair: { faf: 20, landLag: 4, autoCancel: [3, 14], trail: { part: 'toeF', from: 3, to: 9 }, hitboxes:
