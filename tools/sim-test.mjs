@@ -125,12 +125,11 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   check('up tilt pops the opponent into the air', a.move === '' && v.percent === 55 && lifted);
   // an aerial with landing lag, and an auto-cancelled one
   s = createMatch(setup); a = s.fighters[0];
-  step(s, [BTN.JUMP, 0]);
-  for (let i = 0; i < 3; i++) step(s, [0, 0]); // short hop
+  a.y -= 24 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; // falling from just above the floor
   step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
   let lag = -1;
   for (let i = 0; i < 80 && lag < 0; i++) { step(s, [0, 0]); if (a.state === 'land') lag = a.landLag; }
-  check('landing during forward air gives its landing lag', lag === 9, 'lag ' + lag);
+  check('landing during forward air gives its landing lag', lag === 8, 'lag ' + lag);
   s = createMatch(setup); a = s.fighters[0];
   for (let i = 0; i < 4; i++) step(s, [BTN.JUMP, 0]);
   step(s, [BTN.JUMP | BTN.ATTACK | BTN.UP, 0]);
@@ -172,13 +171,35 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   check('pressing down for a down air does not fast fall', a.fastFall === 0);
   for (let i = 0; i < 30; i++) { step(s, [0, 0]); a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; else if (v.kbAngle === 270) spiked = true; }
   check('down air spikes for 14%', spiked && v.percent === 140, v.percent / 10 + '%');
+  // forward air: strongest hit at the foot on frame 10
+  s = createMatch(setup); [a, v] = s.fighters;
+  for (const f of [a, v]) { f.y -= 80 * FX; f.grounded = 0; f.ground = -1; f.state = 'air'; f.vy = 0; }
+  v.x = a.x + 22 * FX;
+  step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
+  let fairFrame = -1;
+  for (let i = 0; i < 20; i++) { step(s, [0, 0]); a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; if (fairFrame < 0 && v.percent) fairFrame = a.stateFrame; }
+  check('forward air foot hit: 12% on frame 10', v.percent === 120 && fairFrame === 10, `${v.percent / 10}% on ${fairFrame}`);
+  // knockdown and getup attack
+  s = createMatch(setup); [a, v] = s.fighters;
+  v.percent = 900; v.x = a.x + 16 * FX;
+  step(s, [BTN.ATTACK | BTN.UP, 0]);
+  let downed = false;
+  for (let i = 0; i < 200 && !downed; i++) { step(s, [0, 0]); downed = v.state === 'knockdown'; }
+  check('landing while tumbling knocks you down', downed, v.state);
+  a.x = v.x + 14 * FX; a.facing = -1; a.state = 'idle'; a.move = '';
+  for (let i = 0; i < 20; i++) step(s, [0, 0]);
+  const before = a.percent;
+  step(s, [0, BTN.ATTACK]);
+  check('getup attack makes him intangible', v.move === 'getupAttack' && v.intangible > 0);
+  for (let i = 0; i < 40; i++) step(s, [0, 0]);
+  check('getup attack hits a nearby opponent for 7%', a.percent - before === 70, (a.percent - before) / 10 + '%');
   // dash attack out of a run
-  s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 70 * FX;
+  s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 44 * FX;
   for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [6, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
   step(s, [BTN.RIGHT | BTN.ATTACK, 0]);
   const wasDash = a.move === 'dashAttack';
   for (let i = 0; i < 60; i++) step(s, [0, 0]);
-  check('attack while dashing slides in and hits', wasDash && v.percent > 0 && a.state === 'idle', `${v.percent / 10}%`);
+  check('dash attack: both hits land for 8%', wasDash && v.percent === 80 && a.state === 'idle', `${v.percent / 10}%`);
   // high percent back air sends far enough to KO
   s = near(); [a, v] = s.fighters;
   v.percent = 1500; a.facing = -1; a.x = 360 * FX; v.x = 376 * FX;

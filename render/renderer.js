@@ -277,7 +277,7 @@ export class Renderer {
       if (f.state === 'dead' || f.state === 'out') continue;
       for (const b of hurtboxes(ch.skeleton, s, f.facing)) {
         rect(toPx(f.x + b[0]) - camX, toPx(f.y + b[1]) - camY, toPx(f.x + b[2]) - camX + 1, toPx(f.y + b[3]) - camY + 1,
-          f.invuln > 0 ? '#5a8cff' : '#ffe14a');
+          f.invuln > 0 || f.intangible > 0 ? '#5a8cff' : '#ffe14a');
       }
       rect(toPx(f.x - st.ecbHalfW) - camX, toPx(f.y - st.ecbHeight) - camY, toPx(f.x + st.ecbHalfW) - camX, toPx(f.y) - camY, '#ffffff');
       for (const b of activeHitboxes(f, ch, true)) {

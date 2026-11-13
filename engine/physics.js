@@ -14,8 +14,8 @@ export function moveFighter(f, stage, st) {
     f.x += f.vx;
     const g = solids[f.ground];
     const gl = g.x * FX, gr = (g.x + g.w) * FX;
-    if (f.state === 'attack') {
-      // Ground attacks stop at the edge instead of sliding off.
+    if (f.state === 'attack' || f.state === 'getupRoll') {
+      // Ground attacks and rolls stop at the edge instead of sliding off.
       if (f.x < gl) { f.x = gl; f.vx = 0; } else if (f.x > gr) { f.x = gr; f.vx = 0; }
     } else if (f.x < gl || f.x > gr) {
       // Walked, slid or was knocked off the edge.
@@ -71,6 +71,7 @@ function tryLedgeGrab(f, stage, st) {
     if (out < -CONFIG.LEDGE_INSIDE_X * FX || out > CONFIG.LEDGE_REACH_X * FX) continue;
     if (Math.abs(handY - l.y * FX) > CONFIG.LEDGE_REACH_Y * FX) continue;
     f.ledge = i;
+    f.tumbling = 0;
     f.x = l.x * FX + l.dir * st.ecbHalfW;
     f.y = l.y * FX + st.ledgeHang;
     f.vx = 0; f.vy = 0;
@@ -100,6 +101,7 @@ export function checkBlastZones(f, stage) {
     f.fastFall = 0;
     f.grounded = 0; f.ground = -1;
     f.ledge = -1; f.ledgeCd = 0;
+    f.tumbling = 0; f.intangible = 0;
     setState(f, 'dead', 'fall');
   }
 }

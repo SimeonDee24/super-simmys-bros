@@ -93,6 +93,7 @@ function applyHit(state, att, vic, hit) {
   const lifts = angle > 0 && angle < 180;
   if (lifts || !vic.grounded) { vic.grounded = 0; vic.ground = -1; }
   vic.fastFall = 0;
+  vic.tumbling = 0;
   vic.ledge = -1;
   vic.move = '';
   vic.facing = dir > 0 ? -1 : 1; // face the attacker
@@ -113,7 +114,7 @@ export function resolveHits(state) {
     const boxes = activeHitboxes(att, getCharacter(att.charId));
     if (!boxes.length) continue;
     for (const vic of state.fighters) {
-      if (vic === att || vic.invuln > 0 || UNHITTABLE[vic.state]) continue;
+      if (vic === att || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state]) continue;
       const vch = getCharacter(vic.charId);
       const hurt = hurtboxes(vch.skeleton, fighterSolve(vic, vch), vic.facing);
       let found = null;

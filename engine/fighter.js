@@ -25,7 +25,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     // Attacks
     move: '', moveAir: 0, hitGroups: 0,
     // Being hit
-    hitlag: 0, hitstun: 0, kbAngle: 0, kbSpeed: 0, gv: 0,
+    hitlag: 0, hitstun: 0, intangible: 0, tumbling: 0, kbAngle: 0, kbSpeed: 0, gv: 0,
     hitX: 0, hitY: 0, lastHitTick: -1, lastHitDmg: 0,
     koX: 0, koY: 0,         // where the last KO happened (pixels), for the blast effect
     invuln: 0,
@@ -58,7 +58,14 @@ export function land(f, groundIndex, st) {
     const mv = getCharacter(f.charId).moves[f.move];
     if (f.stateFrame >= mv.autoCancel[0] && f.stateFrame < mv.autoCancel[1]) f.landLag = mv.landLag;
   } else if (f.state === 'hitstun') {
-    f.landLag = CONFIG.HITSTUN_LAND_LAG; // knockdown and teching arrive with milestone 3
+    f.landLag = CONFIG.HITSTUN_LAND_LAG;
+  }
+  if (f.tumbling || (f.state === 'hitstun' && f.anim === 'tumble')) {
+    // Hit the floor while tumbling: knocked down.
+    f.tumbling = 0;
+    f.hitstun = 0; f.fastFall = 0; f.jumpsLeft = st.airJumps; f.wallSide = 0; f.vx = 0;
+    setState(f, 'knockdown', 'lie');
+    return;
   }
   f.move = '';
   f.hitstun = 0;
@@ -73,6 +80,8 @@ export function startMove(f, name, air) {
   f.moveAir = air ? 1 : 0;
   f.hitGroups = 0;
   f.buf &= ~BTN.ATTACK;
+  const mv = getCharacter(f.charId).moves[name];
+  if (mv.intangible) f.intangible = mv.intangible;
   setState(f, 'attack', name);
 }
 
@@ -277,12 +286,14 @@ const STATES = {
       f.anim = 'djump'; f.animFrame = 0;
     }
     const attacked = tryAerial(c);
+    if (attacked || (c.pressed & BTN.JUMP)) f.tumbling = 0;
     // The down press that starts a down air does not also fast fall.
     if (attacked) c.pressed &= ~BTN.DOWN;
     airMotion(c);
     if (attacked) return;
 
-    if (!(f.anim === 'djump' && f.animFrame < st.doubleJumpAnimFrames)) {
+    if (f.tumbling) { /* keep the tumble animation */ }
+    else if (!(f.anim === 'djump' && f.animFrame < st.doubleJumpAnimFrames)) {
       setAnim(f, f.vy < 0 ? 'jump' : 'fall');
     }
   },
@@ -357,8 +368,43 @@ const STATES = {
     if (f.stateFrame >= f.hitstun) {
       f.hitstun = 0;
       if (f.grounded) setState(f, 'idle', 'idle');
-      else setState(f, 'air', 'fall');
+      else if (f.anim === 'tumble') {
+        // Hitstun is over but he keeps tumbling until he acts. Landing like
+        // this is a knockdown.
+        f.vy = Math.min(f.vy, st.fallSpeed); // momentum carries over
+        f.tumbling = 1;
+        setState(f, 'air', 'tumble');
+      } else setState(f, 'air', 'fall');
     }
+  },
+
+  // Lying on the floor after a missed tech. Attack = getup attack,
+  // left/right = roll that way, jump or up = stand up.
+  knockdown(c) {
+    const { f, st } = c;
+    f.vx = approach(f.vx, 0, st.traction);
+    if (f.stateFrame < CONFIG.KNOCKDOWN_MIN) return;
+    if (c.pressed & BTN.ATTACK) { startMove(f, 'getupAttack', false); return; }
+    if (c.dir) {
+      f.facing = c.dir;
+      f.intangible = CONFIG.GETUP_INTANGIBLE;
+      setState(f, 'getupRoll', 'getupRoll');
+      return;
+    }
+    if ((c.pressed & BTN.JUMP) || (c.input & BTN.UP) || f.stateFrame >= CONFIG.KNOCKDOWN_MAX) {
+      f.buf &= ~BTN.JUMP;
+      f.intangible = CONFIG.GETUP_INTANGIBLE;
+      setState(f, 'getupStand', 'getupStand');
+    }
+  },
+  getupStand(c) {
+    c.f.vx = 0;
+    if (c.f.stateFrame >= CONFIG.GETUP_STAND_FRAMES) setState(c.f, 'idle', 'idle');
+  },
+  getupRoll(c) {
+    const { f, st } = c;
+    f.vx = f.stateFrame < st.getupRollFrames - 4 ? f.facing * st.getupRollSpeed : 0;
+    if (f.stateFrame >= st.getupRollFrames) { f.vx = 0; setState(f, 'idle', 'idle'); }
   },
 
   land(c) {
@@ -402,6 +448,7 @@ export function updateFighter(match, f, input) {
   f.animFrame++;
   if (f.invuln > 0) f.invuln--;
   if (f.ledgeCd > 0) f.ledgeCd--;
+  if (f.intangible > 0) f.intangible--;
   STATES[f.state]({ match, f, ch, st, input, pressed: pressed | f.buf, dir, tap, dashInput });
   f.prevIn = input;
 }

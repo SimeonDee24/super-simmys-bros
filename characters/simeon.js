@@ -49,6 +49,9 @@ const stats = {
   ledgeJumpVel: px(5.29),
   ledgeJumpH: px(1.2),
 
+  // Knockdown (missed tech)
+  getupRollSpeed: px(2.4), getupRollFrames: 26,
+
   // Landing
   softLandLag: 2,
   hardLandLag: 4,          // after a fast fall
@@ -167,6 +170,15 @@ const DTILT_LOW = { hip: [-1, 9], torso: 24, head: 8, legF: [62, -112], legB: [5
 const DTILT_SWEEP = { hip: [-2, 12], torso: 10, legF: [76, -4], legB: [60, -124], armF: [-30, 30], armB: [-50, 20], footF: 20, face: 'yell' };
 const SLIDE = { hip: [-1, 11], torso: -38, head: -15, legF: [82, -2], legB: [65, -115], armF: [-60, 20], armB: [-80, 10], footF: 35, face: 'yell' };
 // body thrown level, both legs driven straight out behind
+// dash attack: knee driven forward, then a flying front kick
+const DA_KNEE = { hip: [2, 1], torso: 20, head: 6, legF: [95, -110], legB: [-25, -10], armF: [-50, 40], armB: [60, 60], ...FISTS, face: 'yell' };
+const DA_KICK = { hip: [1, -3], torso: -24, head: -6, legF: [88, -2], legB: [10, -90], armF: [-40, 40], armB: [-70, 30], footF: 35, ...FISTS, face: 'yell' };
+// forward air: leg whipped forward, foot at about hip height
+const FAIR_KICK = { torso: -26, head: -6, legF: [100, -6], legB: [-30, -50], armF: [-30, 60], armB: [60, 40], footF: 30, ...FISTS, face: 'yell' };
+// knockdown: lying on his back, and the getup attack's spinning sweep
+const LIE = { rot: -90, hip: [-2, 15], torso: 0, head: 0, armF: [20, 30], armB: [-10, 20], legF: [5, -10], legB: [-5, -6], footF: 80, footB: 80, face: 'hurt' };
+const GUA_FRONT = { rot: -70, hip: [0, 13], torso: 10, legF: [80, -4], legB: [30, -90], armF: [-30, 40], armB: [60, 30], footF: 40, ...FISTS, face: 'yell' };
+const GUA_BACK = { rot: -70, hip: [0, 13], torso: 10, legF: [30, -90], legB: [-140, -4], armF: [-30, 40], armB: [60, 30], footB: -40, ...FISTS, face: 'yell' };
 const BAIR_KICK = { rot: 72, torso: 6, head: -30, legF: [-6, -8], legB: [-16, -2], armF: [60, 70], armB: [40, 80], footF: -60, footB: -60, ...FISTS, face: 'yell' };
 const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
 const UAIR_TUCK = { torso: 12, head: 10, legF: [70, -100], legB: [55, -95], armF: [30, 80], armB: [10, 85], ...FISTS };
@@ -227,6 +239,31 @@ const animations = {
     [7, { hip: [0, -3], torso: -70, head: -40, armF: [120, 40], armB: [-120, -30], legF: [95, -70], legB: [35, -40], footF: 30, footB: 40, face: 'hurt' }],
   ]),
 
+  // --- Knockdown and getting up ---
+  lie: anim(false, [[3, { ...LIE, hip: [-2, 12] }], [1, LIE]]),
+  getupStand: anim(false, [
+    [8, LIE],
+    [10, { rot: -40, hip: [0, 9], torso: 20, legF: [70, -120], legB: [55, -110], armF: [40, 60], armB: [20, 60] }],
+    [6, { hip: [0, 6], torso: 16, legF: [48, -90], legB: [32, -80], armF: [20, 40], armB: [0, 40] }],
+    [1, STAND],
+  ]),
+  getupRoll: anim(false, [
+    [4, LIE],
+    [7, { rot: 0, hip: [0, 10], torso: 40, head: 30, legF: [80, -130], legB: [70, -125], armF: [60, 80], armB: [40, 80] }],
+    [7, { rot: 180, hip: [0, -4], torso: 40, head: 30, legF: [80, -130], legB: [70, -125], armF: [60, 80], armB: [40, 80] }],
+    [7, { rot: 360, hip: [0, 8], torso: 30, head: 20, legF: [70, -120], legB: [60, -110], armF: [40, 60], armB: [20, 60] }],
+    [1, STAND],
+  ]),
+  getupAttack: anim(false, [
+    [10, LIE],
+    [7, { rot: -75, hip: [0, 12], torso: 10, legF: [50, -80], legB: [20, -60], armF: [-20, 40], armB: [40, 40], ...FISTS }],
+    [2, GUA_FRONT],
+    [2, { rot: -70, hip: [0, 13], torso: 10, legF: [-40, -40], legB: [-60, -40], armF: [-30, 40], armB: [60, 30], ...FISTS, face: 'yell' }],
+    [2, GUA_BACK], [2, GUA_BACK],
+    [10, { hip: [0, 6], torso: 16, legF: [48, -90], legB: [32, -80], armF: [20, 40], armB: [0, 40] }],
+    [5, STAND],
+  ]),
+
   // --- Attacks. A pose is fully reached at the frame equal to the sum of
   // the frame counts before it, so line that up with the move's active frames.
   // Repeating a pose holds it. ---
@@ -273,12 +310,14 @@ const animations = {
     [8, DTILT_LOW],
     [1, DTILT_LOW],
   ]),
-  // Dash attack: feet-first slide.
+  // Dash attack: a quick knee into a leaping flying kick (two hits).
   dashAttack: anim(false, [
-    [6, { hip: [0, 6], torso: -18, legF: [70, -30], legB: [40, -70], armF: [-40, 30], armB: [-60, 20] }],
-    [18, SLIDE], [3, SLIDE],
-    [5, { hip: [0, 7], torso: 4, legF: [55, -95], legB: [40, -90], armF: [10, 40], armB: [-10, 40] }],
-    [1, STAND],
+    [4, { hip: [1, 3], torso: 16, legF: [50, -70], legB: [-20, -30], armF: [-30, 60], armB: [40, 70], ...FISTS }],
+    [2, DA_KNEE], [3, DA_KNEE],
+    [6, { hip: [0, -2], torso: -6, legF: [60, -110], legB: [20, -60], armF: [40, 60], armB: [-40, 50], ...FISTS }],
+    [2, DA_KICK], [5, DA_KICK],
+    [8, { torso: 4, legF: [40, -60], legB: [-10, -30], armF: [20, 40], armB: [-20, 40] }],
+    [10, STAND],
   ]),
   // Neutral air: one leg held out, arms spread.
   nair: anim(false, [
@@ -287,14 +326,13 @@ const animations = {
     [8, { torso: -8, legF: [60, -20], legB: [-20, -60], armF: [-30, 40], armB: [40, 40], footF: 20 }],
     [7, AIR],
   ]),
-  // Forward air: fist wound up behind the head, then swung over and down.
+  // Forward air: a leaning kick that swings the foot forward and down.
   fair: anim(false, [
-    [8, { torso: -10, armF: [150, 30], armB: [-40, 50], legF: [20, -30], legB: [-10, -30], ...FISTS }],
-    [8, { torso: -20, head: -8, armF: [215, 20], armB: [-50, 60], legF: [28, -45], legB: [-15, -35], ...FISTS }],
-    [2, { torso: 8, armF: [130, 5], armB: [-40, 60], legF: [20, -30], legB: [-15, -35], ...FISTS, face: 'yell' }],
-    [2, { torso: 28, armF: [75, 5], armB: [-30, 60], legF: [10, -20], legB: [-25, -40], ...FISTS, face: 'yell' }],
-    [8, { torso: 40, head: 15, armF: [30, 5], armB: [-20, 50], legF: [10, -20], legB: [-25, -40], ...FISTS }],
-    [12, AIR],
+    [6, { torso: -6, legF: [-30, -90], legB: [-10, -40], armF: [40, 60], armB: [-30, 60], footF: 30, ...FISTS }],
+    [4, { torso: -16, legF: [-50, -110], legB: [-20, -40], armF: [70, 50], armB: [-40, 70], footF: 40, ...FISTS }],
+    [2, FAIR_KICK], [3, FAIR_KICK],
+    [8, { torso: 6, legF: [30, -40], legB: [-15, -35], armF: [30, 40], armB: [-20, 50], footF: 20 }],
+    [9, AIR],
   ]),
   // Back air: dropkick, body level with both legs thrust out behind.
   bair: anim(false, [
@@ -344,6 +382,7 @@ const animations = {
 //   trail        swipe arc drawn behind a body part while the move is out:
 //                  { part, from, to } (frames), so the hitbox is easy to see
 //   next         combo link: pressing attack from frame `from` starts `move`
+//   intangible   cannot be hit during frames 1..intangible
 //   slide        ground move that slides: starting speed and friction
 //   endsCrouched stay crouching afterwards if down is held
 // ---------------------------------------------------------------------------
@@ -373,9 +412,18 @@ const moves = {
   dtilt: { faf: 23, endsCrouched: true, trail: { part: 'toeF', from: 4, to: 7 }, hitboxes: [
     hit(5, 7, 'kneeF', 5, 7, 80, 30, 80), hit(5, 7, 'shinF', 5, 7, 80, 30, 80), hit(5, 7, 'toeF', 6, 5, 80, 30, 80),
   ] },
-  dashAttack: { faf: 33, slide: { speed: px(3.0), friction: px(0.07) }, hitboxes: [
-    ...hits(6, 9, [['toeF', 6], ['shinF', 5], ['hip', 5]], 8, 60, 60, 55),
-    ...hits(10, 25, [['toeF', 5], ['shinF', 5], ['hip', 5]], 6, 110, 50, 40),
+  // Two hits, timed like Joker's: a weak knee that holds them in place,
+  // then a flying kick that launches.
+  dashAttack: { faf: 40, slide: { speed: px(2.4), friction: px(0.11) }, trail: { part: 'toeF', from: 13, to: 18 }, hitboxes: [
+    ...hits(6, 7, [['kneeF', 6], ['hip', 6]], 2, 361, 40, 0, { group: 0 }),
+    ...hits(15, 21, [['toeF', 6], ['shinF', 5], ['kneeF', 5]], 6, 45, 55, 70, { group: 1 }),
+  ] },
+
+  // Getup attack from lying down: kicks in front, then behind. He cannot be
+  // hit while getting up (see `intangible`).
+  getupAttack: { faf: 40, intangible: 23, trail: { part: 'toeF', from: 16, to: 20 }, hitboxes: [
+    ...hits(18, 19, [['toeF', 6], ['shinF', 5]], 7, 361, 80, 50),
+    ...hits(22, 23, [['toeB', 6], ['shinB', 5]], 7, 361, 80, 50, BACK),
   ] },
 
   // --- Aerials ---
@@ -383,11 +431,11 @@ const moves = {
     ...hits(3, 5, [['toeF', 6], ['shinF', 5], ['hip', 6]], 8, 361, 20, 100),
     ...hits(6, 24, [['toeF', 5], ['shinF', 5], ['hip', 6]], 5, 361, 10, 100),
   ] },
-  fair: { faf: 40, landLag: 9, autoCancel: [3, 36], trail: { part: 'fistF', from: 15, to: 21 }, hitboxes: [
-    hit(17, 20, 'fistF', 9, 14, 270, 20, 80),            // sweet spot: spike
-    hit(16, 16, 'fistF', 9, 12, 361, 30, 87),
-    hit(16, 20, 'elbowF', 7, 12, 361, 30, 87),
-    hit(21, 21, 'fistF', 9, 10, 361, 30, 87),
+  // Kick timed like Inkling's: strongest right at the start, at the foot.
+  fair: { faf: 34, landLag: 8, autoCancel: [3, 28], trail: { part: 'toeF', from: 9, to: 14 }, hitboxes: [
+    hit(10, 11, 'toeF', 6, 12, 361, 30, 98),
+    ...hits(10, 11, [['shinF', 5], ['kneeF', 4]], 10, 361, 25, 95),
+    ...hits(12, 14, [['toeF', 5], ['shinF', 5], ['kneeF', 4]], 8, 361, 20, 90),
   ] },
   bair: { faf: 24, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 4, to: 8 }, hitboxes: [
     ...hits(6, 7, LEG_B, 10.5, 361, 12, 106, BACK),
