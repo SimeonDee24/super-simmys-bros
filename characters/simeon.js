@@ -449,18 +449,19 @@ const animations = {
     [8, { torso: 4, legF: [10, -30], legB: [40, -60], armF: [20, 40], armB: [-20, 40] }],
     [7, STAND],
   ]),
-  // Neutral air: a full spinning kick. He curls up, then flips all the way
-  // round with one leg straight out, so the foot sweeps a circle around him:
-  // in front, below, behind and above.
+  // Neutral air: a spinning kick that starts straight out in front, then
+  // spins 450 degrees: up over his head, round behind him, underneath, back
+  // to the front and up again. The spin then winds down while he tucks.
   nair: anim(false, [
     [6, { torso: 6, legF: [50, -90], legB: [20, -80], armF: [40, 80], armB: [20, 90], ...FISTS }],
-    [6, NAIR_TUCK],
-    [2, { ...NAIR_SPIN, rot: 30 }],    // frame 12: kick comes out in front
-    [2, { ...NAIR_SPIN, rot: 120 }],
-    [2, { ...NAIR_SPIN, rot: 210 }],
-    [2, { ...NAIR_SPIN, rot: 300 }],
-    [4, { ...NAIR_TUCK, rot: 360 }],   // frame 20: all the way round
-    [8, AIR],
+    [6, { ...NAIR_TUCK, legF: [80, -60] }],
+    [2, { ...NAIR_SPIN, rot: 0 }],       // frame 12: leg straight out in front
+    [2, { ...NAIR_SPIN, rot: -112 }],    // frame 14: over his head
+    [2, { ...NAIR_SPIN, rot: -225 }],    // frame 16: behind / below
+    [2, { ...NAIR_SPIN, rot: -337 }],    // frame 18: back round to the front
+    [6, { ...NAIR_SPIN, rot: -450 }],    // frame 20: up again (450 degrees)
+    [6, { ...NAIR_TUCK, rot: -630 }],    // spin carries on, slowing, as he tucks
+    [6, { ...AIR, rot: -720 }],          // upright again
   ], { ease: false }),
   // Forward air: fist wound up behind the head, then swung over the top and
   // down in front in a big arc.
