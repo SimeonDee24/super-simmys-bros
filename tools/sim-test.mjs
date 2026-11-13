@@ -115,7 +115,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
   let firstHit = -1;
   for (let i = 0; i < 60; i++) { step(s, [0, 0]); if (firstHit < 0 && v.percent > 0) firstHit = a.stateFrame; }
-  check('forward tilt hits for 7% on frame 5', v.percent === 70 && firstHit === 5, `${v.percent / 10}% on frame ${firstHit}`);
+  check('forward tilt (one-two) lands both punches for 12%, first on frame 4', v.percent === 120 && firstHit === 4, `${v.percent / 10}% on frame ${firstHit}`);
   check('both fighters recover afterwards', a.state === 'idle' && v.state === 'idle' && v.x > a.x + 16 * FX);
   // up tilt launches upward
   s = near(); [a, v] = s.fighters;
@@ -381,7 +381,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
   let countered = false;
   for (let i = 0; i < 40; i++) { step(s, [0, 0]); if (v.move === 'bluffHit') countered = true; }
-  check('Bluff catches a hit: no damage, counters for 1.2x', countered && v.percent === 0 && a.percent === 84, `simeon ${v.percent / 10}%, attacker ${a.percent / 10}%`);
+  check('Bluff catches a hit: no damage, counters back (at least 8%)', countered && v.percent === 0 && a.percent === 80, `simeon ${v.percent / 10}%, attacker ${a.percent / 10}%`);
   // a weak hit still gets at least 8%
   s = near(); [a, v] = s.fighters;
   step(s, [0, BTN.SPECIAL | BTN.DOWN]);
@@ -395,7 +395,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (let i = 0; i < 30; i++) step(s, [0, 0]);
   step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
   for (let i = 0; i < 10; i++) step(s, [0, 0]);
-  check('after the counter window ends, Bluff can be hit', v.percent === 70 && a.percent === 0);
+  check('after the counter window ends, Bluff can be hit', v.percent > 0 && a.percent === 0);
   // works in the air
   s = near(); [a, v] = s.fighters;
   for (const f of [a, v]) { f.y -= 50 * FX; f.grounded = 0; f.ground = -1; f.state = 'air'; f.vy = 0; }

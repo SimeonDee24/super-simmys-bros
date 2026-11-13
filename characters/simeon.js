@@ -176,7 +176,6 @@ const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: 
 // down air: knees pulled up high, then both feet driven straight down
 const DAIR_TUCK = { hip: [0, -4], torso: 10, head: 8, legF: [80, -135], legB: [70, -130], armF: [70, 60], armB: [50, 70], footF: 20, footB: 20, ...FISTS };
 const DAIR_STOMP = { hip: [0, 2], torso: -4, head: 12, legF: [6, -2], legB: [-4, -2], armF: [150, 25], armB: [-145, -15], footF: 50, footB: 50, ...FISTS, face: 'yell' };
-const FTILT_KICK = { hip: [-1, 0], torso: -14, legF: [92, -2], legB: [-6, -4], armF: [-45, 25], armB: [45, 35], footF: 30, ...FISTS, face: 'yell' };
 const DTILT_LOW = { hip: [-1, 9], torso: 24, head: 8, legF: [62, -112], legB: [50, -108], armF: [10, 50], armB: [-10, 40] };
 // down tilt: a low karate floor sweep. Dropped onto one knee with a hand
 // down, the other leg sweeps a half circle along the floor from behind him,
@@ -209,6 +208,10 @@ const JS_RELEASE = { hip: [0, -2], torso: -4, head: -12, armF: [150, 5], armB: [
 // neutral air: tucked ball, then a spin with one leg straight out
 const NAIR_TUCK = { torso: 20, head: 15, legF: [90, -140], legB: [70, -130], armF: [60, 100], armB: [40, 110], ...FISTS };
 const NAIR_SPIN = { torso: 10, head: 10, legF: [90, -4], legB: [60, -120], armF: [50, 100], armB: [30, 110], footF: 30, ...FISTS, face: 'yell' };
+// forward tilt (one-two): boxing guard, lead jab, rear cross
+const GUARD = { hip: [0, 2], torso: 4, head: 2, armF: [40, 110], armB: [30, 120], legF: [20, -30], legB: [-16, -22], footB: -10, ...FISTS };
+const JAB = { hip: [2, 2], torso: 12, head: 4, armF: [92, 4], armB: [30, 118], legF: [28, -26], legB: [-22, -10], footB: -15, ...FISTS, face: 'yell' };
+const CROSS = { hip: [5, 2], torso: 26, head: 10, armF: [15, 115], armB: [94, 2], legF: [40, -30], legB: [-34, -4], footB: -35, ...FISTS, face: 'yell' };
 const BAIR_TUCK = { rot: 15, torso: 6, head: -4, legF: [110, -150], legB: [95, -145], armF: [-30, 60], armB: [100, 40], footF: 20, footB: 20, ...FISTS };
 const BAIR_KICK = { rot: 90, torso: 0, head: -70, legF: [4, -2], legB: [-4, -2], armF: [40, 120], armB: [15, 125], footF: -90, footB: -90, ...FISTS, face: 'yell' };
 const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
@@ -399,13 +402,20 @@ const animations = {
     [10, { torso: -4, legF: [40, -50], armF: [-20, 40], armB: [30, 50] }],
     [6, STAND],
   ]),
-  // Forward tilt: leaning-back roundhouse kick.
+  // Forward tilt: a boxer's one-two. Guard up, a quick lead jab, then he
+  // turns his hips and shoulders and steps through with a full cross from
+  // the back hand, back heel lifting as his weight goes forward.
   ftilt: anim(false, [
-    [5, { hip: [-1, 1], torso: -4, legF: [40, -85], legB: [-4, -10], armF: [-30, 60], armB: [35, 70], ...FISTS }],
-    [3, FTILT_KICK], [3, FTILT_KICK],
-    [7, { torso: -6, legF: [45, -55], armF: [-25, 35], armB: [30, 45] }],
-    [4, STAND],
-  ]),
+    [2, GUARD],
+    [2, { ...GUARD, hip: [-1, 2], torso: 0, armF: [30, 115] }],                         // tiny load
+    [2, JAB],                                                                          // frame 4: jab lands
+    [3, { ...JAB, armF: [60, 70], armB: [45, 100], torso: 8 }],                        // jab snaps back, rear hand loads
+    [2, { ...GUARD, hip: [1, 2], torso: 2, armB: [10, 120], legB: [-22, -14] }],       // hips coil
+    [3, CROSS],                                                                        // frame 11: cross fully out
+    [6, { ...CROSS, hip: [4, 2], torso: 18, armB: [80, 20] }],
+    [6, { ...GUARD, hip: [2, 1] }],
+    [1, STAND],
+  ], { ease: true }),
   // Up tilt: rising uppercut, from a low wind-up to a fist straight overhead.
   utilt: anim(false, [
     [4, { hip: [0, 4], torso: 14, armF: [15, 95], armB: [-25, 60], legF: [32, -58], legB: [14, -48], ...FISTS }],
@@ -547,7 +557,15 @@ const moves = {
   jab3: { faf: 26, trail: { part: 'toeF', from: 2, to: 5 }, hitboxes: [...hits(3, 5, LEG_F, 4, 361, 35, 110), low(3, 5, 6, 4, 361, 35, 110, 14)] },
 
   // --- Tilts ---
-  ftilt: { faf: 18, trail: { part: 'toeF', from: 3, to: 7 }, hitboxes: [...hits(5, 7, LEG_F, 7, 361, 8, 100), low(5, 7, 7, 7, 361, 8, 100, 15)] },
+  // One-two, built like Little Mac's: a fast jab that holds them in place
+  // (fixed knockback), then a strong cross. Both hits always come out, and
+  // he steps forward through the move.
+  ftilt: { faf: 24, slide: { speed: px(1.4), friction: px(0.1) }, trail: { part: 'fistB', from: 9, to: 13, straight: true, width: 5 }, hitboxes: [
+    ...hits(4, 5, [['fistF', 6], ['elbowF', 5]], 4, 0, 0, 95, { fkb: 40, group: 0 }),
+    low(4, 5, 7, 4, 0, 0, 95, 15),
+    ...hits(10, 12, [['fistB', 7], ['elbowB', 6]], 8, 361, 45, 100, { group: 1 }),
+    low(10, 12, 7, 8, 361, 45, 100, 18),
+  ] },
   utilt: { faf: 23, trail: { part: 'fistF', from: 4, to: 11 }, hitboxes: [
     ...hits(5, 11, [['fistF', 8], ['elbowF', 6]], 5.5, 96, 62, 105),
     hit(5, 8, 'chest', 6, 5.5, 96, 62, 105, { off: [5, 0] }),   // close to the body on the way up

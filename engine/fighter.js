@@ -172,7 +172,7 @@ function tryGroundAttack(c) {
   const f = c.f;
   if (c.input & BTN.UP) startMove(f, 'utilt', false);
   else if (c.input & BTN.DOWN) startMove(f, 'dtilt', false);
-  else if (c.dir) { f.facing = c.dir; startMove(f, 'ftilt', false); }
+  else if (c.dir) { f.facing = c.dir; startMove(f, 'ftilt', false); f.vx = f.facing * c.ch.moves.ftilt.slide.speed; }
   else startMove(f, 'jab1', false);
   return true;
 }
