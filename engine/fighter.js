@@ -61,8 +61,10 @@ export function land(f, groundIndex, st) {
   f.landLag = f.fastFall ? st.hardLandLag : st.softLandLag;
   if (f.state === 'attack') {
     // Landing during an aerial: its own landing lag, unless inside an auto-cancel window.
+    // Landing during an air special (no autoCancel data): its landLag, or a default.
     const mv = getCharacter(f.charId).moves[f.move];
-    if (f.stateFrame >= mv.autoCancel[0] && f.stateFrame < mv.autoCancel[1]) f.landLag = mv.landLag;
+    if (!mv || !mv.autoCancel) f.landLag = mv && mv.landLag !== undefined ? mv.landLag : CONFIG.SPECIAL_LAND_LAG;
+    else if (f.stateFrame >= mv.autoCancel[0] && f.stateFrame < mv.autoCancel[1]) f.landLag = mv.landLag;
   } else if (f.state === 'hitstun') {
     f.landLag = CONFIG.HITSTUN_LAND_LAG;
   } else if (f.state === 'airdodge') {

@@ -158,11 +158,20 @@ setInterval(lookForUpdate, CONFIG.UPDATE_CHECK_SECONDS * 1000);
 // --- Fixed-timestep loop ---
 const STEP_MS = 1000 / CONFIG.TICK_RATE;
 let last = performance.now(), acc = 0;
+// If something ever throws, report it once and keep the game loop alive
+// instead of freezing the page.
+let lastError = '';
+function safely(fn) {
+  try { fn(); } catch (e) {
+    const msg = String(e && e.stack || e);
+    if (msg !== lastError) { lastError = msg; console.error(e); }
+  }
+}
 function frame(now) {
   acc += Math.min(now - last, STEP_MS * CONFIG.MAX_CATCHUP_TICKS);
   last = now;
-  while (acc >= STEP_MS) { tick(); acc -= STEP_MS; }
-  render();
+  while (acc >= STEP_MS) { safely(tick); acc -= STEP_MS; }
+  safely(render);
   fpsFrames++;
   if (now - fpsTime >= 1000) { fps = fpsFrames; fpsFrames = 0; fpsTime = now; }
   requestAnimationFrame(frame);

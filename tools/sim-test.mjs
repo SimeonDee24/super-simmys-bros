@@ -450,4 +450,12 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   const run = () => { const s = createMatch(setup); shoot(s, 17); for (let i = 0; i < 150; i++) step(s, [0, 0]); return hashState(s); };
   check('ball flight is deterministic', run() === run());
 }
+// Air specials can land without crashing (this used to freeze the game)
+for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BTN.SPECIAL]]) {
+  const s = createMatch(setup); const a = s.fighters[0];
+  a.y -= 16 * FX; a.grounded = 0; a.ground = -1; a.state = 'air';
+  let ok = true;
+  try { step(s, [input, 0]); for (let i = 0; i < 80; i++) step(s, [0, 0]); } catch (e) { ok = false; }
+  check(`${name} in the air lands safely`, ok && a.grounded === 1);
+}
 process.exit(fails ? 1 : 0);

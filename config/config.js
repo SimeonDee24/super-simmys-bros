@@ -51,6 +51,7 @@ export const CONFIG = {
   HITLAG_MAX: 20,           // (a hitbox can scale its own with lagMult, e.g. 200 for smashes)
   TUMBLE_KB: 80000,         // knockback (thousandths) at which the victim tumbles
   SAKURAI: { lowKb: 60000, highKb: 88000, ground: 38, air: 45 },
+  SPECIAL_LAND_LAG: 10,     // landing lag for an air special that sets none of its own
   HITSTUN_LAND_LAG: 8,      // landing lag when hitting the floor during light hitstun
   // Landing while tumbling knocks you down (teching arrives with milestone 3).
   KNOCKDOWN_MIN: 18,        // frames lying down before you can choose a getup
