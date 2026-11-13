@@ -59,9 +59,9 @@ export const CONFIG = {
   GETUP_STAND_FRAMES: 25,
 
   // --- Ledges ---
-  LEDGE_REACH_X: 16,        // px outside the ledge where it can be grabbed
+  LEDGE_REACH_X: 20,        // px outside the ledge where it can be grabbed
   LEDGE_INSIDE_X: 2,        // px past the ledge (over the stage) that still grab
-  LEDGE_REACH_Y: 14,        // px above/below the ledge the hands can be
+  LEDGE_REACH_Y: 18,        // px above/below the ledge the hands can be
   LEDGE_REGRAB_FRAMES: 30,  // frames after letting go before regrabbing
 
   // --- Match rules ---
