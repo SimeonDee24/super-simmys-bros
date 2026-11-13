@@ -92,6 +92,7 @@ function render() {
       '',
       'ATTACK  J    ON THE GROUND: W = UP TILT, S = DOWN TILT, ELSE FORWARD TILT',
       '             IN THE AIR: NEUTRAL, FORWARD, BACK, W = UP, S = DOWN AIR',
+      '             WHILE DASHING OR RUNNING: DASH ATTACK',
     ]);
   }
 }

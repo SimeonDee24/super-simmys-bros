@@ -114,6 +114,14 @@ function airMotion(c) {
   else f.vy = Math.min(f.vy + st.gravity, st.fallSpeed);
 }
 
+// Attack while dashing or running.
+function tryDashAttack(c) {
+  if (!(c.pressed & BTN.ATTACK)) return false;
+  startMove(c.f, 'dashAttack', false);
+  c.f.vx = c.f.facing * c.ch.moves.dashAttack.slide.speed;
+  return true;
+}
+
 function tryJump(c) {
   if (c.pressed & BTN.JUMP) { setState(c.f, 'jumpsquat', 'jumpsquat'); return true; }
   return false;
@@ -154,7 +162,7 @@ const STATES = {
   // in that direction (dash dancing).
   dash(c) {
     const { f, st } = c;
-    if (tryJump(c)) return;
+    if (tryDashAttack(c) || tryJump(c)) return;
     if (c.tap === -f.facing) { startDash(c, c.tap); return; }
     f.vx = f.facing * st.dashSpeed;
     if (f.stateFrame >= st.dashFrames) {
@@ -165,7 +173,7 @@ const STATES = {
 
   run(c) {
     const { f, st } = c;
-    if (tryJump(c) || toCrouch(c)) return;
+    if (tryDashAttack(c) || tryJump(c) || toCrouch(c)) return;
     if (c.dir === f.facing) f.vx = approach(f.vx, f.facing * st.runSpeed, st.runAccel);
     else if (c.dir === -f.facing) { f.facing = -f.facing; setState(f, 'turn', 'brake'); }
     else setState(f, 'brake', 'brake');
@@ -314,7 +322,7 @@ const STATES = {
     const { f, st } = c;
     const mv = c.ch.moves[f.move];
     if (f.moveAir) airMotion(c);
-    else f.vx = approach(f.vx, 0, st.traction);
+    else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
     if (f.stateFrame < mv.faf) return;
     f.move = '';
     if (f.moveAir) { setState(f, 'air', f.vy < 0 ? 'jump' : 'fall'); return; }

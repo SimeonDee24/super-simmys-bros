@@ -23,9 +23,9 @@ export const CONFIG = {
   KB_SPEED_NUM: 1344, KB_SPEED_DEN: 100000,   // = 0.0525 px per knockback unit
   KB_DECAY: 23,             // launch speed lost per frame (1/256 px) = 0.09 px
   HITSTUN_NUM: 4, HITSTUN_DEN: 10000,         // hitstun frames = knockback * 0.4
-  HITLAG_BASE: 5,           // freeze frames on any hit...
-  HITLAG_PER_DMG: 65,       // ...plus 0.65 frames per 1% damage
-  HITLAG_MAX: 20,
+  HITLAG_BASE: 3,           // freeze frames on any hit...
+  HITLAG_PER_DMG: 35,       // ...plus 0.35 frames per 1% damage
+  HITLAG_MAX: 20,           // (a hitbox can scale its own with lagMult, e.g. 200 for smashes)
   TUMBLE_KB: 80000,         // knockback (thousandths) at which the victim tumbles
   SAKURAI: { lowKb: 60000, highKb: 88000, ground: 38, air: 45 },
   HITSTUN_LAND_LAG: 8,      // landing lag when hitting the floor during hitstun

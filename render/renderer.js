@@ -246,7 +246,13 @@ export class Renderer {
       }
       rect(toPx(f.x - st.ecbHalfW) - camX, toPx(f.y - st.ecbHeight) - camY, toPx(f.x + st.ecbHalfW) - camX, toPx(f.y) - camY, '#ffffff');
       for (const b of activeHitboxes(f, ch, true)) {
-        rect(toPx(b.x1) - camX, toPx(b.y1) - camY, toPx(b.x2) - camX + 1, toPx(b.y2) - camY + 1, '#ff2a2a');
+        const cx = toPx(b.cx) - camX, cy = toPx(b.cy) - camY, r = b.r >> 8;
+        for (let dy = -r; dy <= r; dy++) {
+          const h = Math.floor(Math.sqrt(r * r - dy * dy));
+          ctx.fillStyle = '#ff2a2a';
+          ctx.globalAlpha = 0.35; ctx.fillRect(cx - h, cy + dy, h * 2 + 1, 1);
+          ctx.globalAlpha = 1; ctx.fillRect(cx - h, cy + dy, 1, 1); ctx.fillRect(cx + h, cy + dy, 1, 1);
+        }
       }
     }
   }

@@ -1,7 +1,7 @@
 // Attacks hitting fighters: hitboxes, damage, knockback, hitstun and hitlag.
 // Integer math only. Percent and damage are stored in TENTHS of a percent
 // (damage: 70 means 7.0%), knockback in thousandths of a Smash knockback unit.
-import { FX } from './fixed.js';
+import { FX, sinDeg, cosDeg, mulTrig } from './fixed.js';
 import { CONFIG } from '../config/config.js';
 import { samplePose, solve, hurtboxes } from './skeleton.js';
 import { getCharacter } from '../characters/index.js';
@@ -13,16 +13,19 @@ export function fighterSolve(f, ch) {
 }
 
 // Body points a hitbox can be attached to, so it follows the animation.
+// A point n pixels past the end of a limb (past the wrist or ankle).
+const tip = (limb, n) => [limb.c[0] + mulTrig(n * FX, sinDeg(limb.low)), limb.c[1] + mulTrig(n * FX, cosDeg(limb.low))];
+const mid = (p, q) => [(p[0] + q[0]) >> 1, (p[1] + q[1]) >> 1];
 const JOINT = {
-  handF: (s) => s.armF.c, elbowF: (s) => s.armF.b,
-  handB: (s) => s.armB.c, elbowB: (s) => s.armB.b,
-  footF: (s) => s.legF.c, kneeF: (s) => s.legF.b,
-  footB: (s) => s.legB.c, kneeB: (s) => s.legB.b,
-  hip: (s) => s.hip, neck: (s) => s.neck,
+  fistF: (s) => tip(s.armF, 2), handF: (s) => s.armF.c, elbowF: (s) => s.armF.b,
+  fistB: (s) => tip(s.armB, 2), handB: (s) => s.armB.c, elbowB: (s) => s.armB.b,
+  toeF: (s) => tip(s.legF, 3), footF: (s) => s.legF.c, shinF: (s) => mid(s.legF.b, s.legF.c), kneeF: (s) => s.legF.b,
+  toeB: (s) => tip(s.legB, 3), footB: (s) => s.legB.c, shinB: (s) => mid(s.legB.b, s.legB.c), kneeB: (s) => s.legB.b,
+  hip: (s) => s.hip, neck: (s) => s.neck, chest: (s) => mid(s.hip, s.neck),
 };
 
 // Hitboxes that are out on this exact frame of the fighter's current move,
-// as world rectangles in fixed-point.
+// as circles in world fixed-point: { cx, cy, r, def }.
 export function activeHitboxes(f, ch, includeSpent = false) {
   if (f.state !== 'attack' || !f.move) return [];
   const mv = ch.moves[f.move];
@@ -37,7 +40,7 @@ export function activeHitboxes(f, ch, includeSpent = false) {
     const ox = hb.off ? hb.off[0] * FX : 0, oy = hb.off ? hb.off[1] * FX : 0;
     const r = hb.r * FX;
     const cx = f.x + f.facing * (j[0] + ox), cy = f.y + j[1] + oy;
-    out.push({ x1: cx - r, y1: cy - r, x2: cx + r, y2: cy + r, def: hb });
+    out.push({ cx, cy, r, def: hb });
   }
   return out;
 }
@@ -77,8 +80,10 @@ function applyHit(state, att, vic, hit) {
   vic.kbSpeed = Math.trunc((kb * CONFIG.KB_SPEED_NUM) / CONFIG.KB_SPEED_DEN);
   vic.gv = 0;
   vic.hitstun = Math.max(1, Math.trunc((kb * CONFIG.HITSTUN_NUM) / CONFIG.HITSTUN_DEN));
-  const lag = hb.lag !== undefined ? hb.lag
-    : Math.min(CONFIG.HITLAG_MAX, CONFIG.HITLAG_BASE + Math.trunc((hb.damage * CONFIG.HITLAG_PER_DMG) / 1000));
+  // Hitlag: short for normal moves; a move can ask for more (smash attacks will).
+  let lag = CONFIG.HITLAG_BASE + Math.trunc((hb.damage * CONFIG.HITLAG_PER_DMG) / 1000);
+  lag = Math.min(CONFIG.HITLAG_MAX, Math.trunc((lag * (hb.lagMult || 100)) / 100));
+  if (hb.lag !== undefined) lag = hb.lag;
   att.hitlag = lag;
   vic.hitlag = lag;
   att.hitGroups |= 1 << (hb.group || 0);
@@ -115,12 +120,12 @@ export function resolveHits(state) {
         for (let k = 0; k < hurt.length; k++) {
           const h = hurt[k];
           const hx1 = vic.x + h[0], hy1 = vic.y + h[1], hx2 = vic.x + h[2], hy2 = vic.y + h[3];
-          if (b.x1 < hx2 && b.x2 > hx1 && b.y1 < hy2 && b.y2 > hy1) {
-            found = {
-              def: b.def,
-              px: (Math.max(b.x1, hx1) + Math.min(b.x2, hx2)) >> 9,
-              py: (Math.max(b.y1, hy1) + Math.min(b.y2, hy2)) >> 9,
-            };
+          // circle against rectangle: nearest point of the hurtbox to the hitbox centre
+          const nx = b.cx < hx1 ? hx1 : b.cx > hx2 ? hx2 : b.cx;
+          const ny = b.cy < hy1 ? hy1 : b.cy > hy2 ? hy2 : b.cy;
+          const dx = b.cx - nx, dy = b.cy - ny;
+          if (dx * dx + dy * dy <= b.r * b.r) {
+            found = { def: b.def, px: nx >> 8, py: ny >> 8 };
             break;
           }
         }

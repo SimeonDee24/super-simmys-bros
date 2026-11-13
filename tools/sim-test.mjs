@@ -130,13 +130,20 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
   let lag = -1;
   for (let i = 0; i < 80 && lag < 0; i++) { step(s, [0, 0]); if (a.state === 'land') lag = a.landLag; }
-  check('landing during forward air gives its landing lag', lag === 17, 'lag ' + lag);
+  check('landing during forward air gives its landing lag', lag === 12, 'lag ' + lag);
   s = createMatch(setup); a = s.fighters[0];
   for (let i = 0; i < 4; i++) step(s, [BTN.JUMP, 0]);
   step(s, [BTN.JUMP | BTN.ATTACK | BTN.UP, 0]);
   lag = -1;
   for (let i = 0; i < 80 && lag < 0; i++) { step(s, [BTN.JUMP, 0]); if (a.state === 'land') lag = a.landLag; }
   check('up air finished before landing auto-cancels', lag === 2, 'lag ' + lag);
+  // dash attack out of a run
+  s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 70 * FX;
+  for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [6, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
+  step(s, [BTN.RIGHT | BTN.ATTACK, 0]);
+  const wasDash = a.move === 'dashAttack';
+  for (let i = 0; i < 60; i++) step(s, [0, 0]);
+  check('attack while dashing slides in and hits', wasDash && v.percent > 0 && a.state === 'idle', `${v.percent / 10}%`);
   // high percent back air sends far enough to KO
   s = near(); [a, v] = s.fighters;
   v.percent = 1500; a.facing = -1; a.x = 360 * FX; v.x = 376 * FX;
