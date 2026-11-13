@@ -76,14 +76,15 @@ export function startMove(f, name, air) {
   setState(f, 'attack', name);
 }
 
-// Ground attack button: up = up tilt, down = down tilt, sideways = forward tilt.
-// (No direction also gives forward tilt until the jab is added.)
+// Ground attack button: no direction = jab, up = up tilt, down = down tilt,
+// sideways = forward tilt.
 function tryGroundAttack(c) {
   if (!(c.pressed & BTN.ATTACK)) return false;
   const f = c.f;
   if (c.input & BTN.UP) startMove(f, 'utilt', false);
   else if (c.input & BTN.DOWN) startMove(f, 'dtilt', false);
-  else { if (c.dir) f.facing = c.dir; startMove(f, 'ftilt', false); }
+  else if (c.dir) { f.facing = c.dir; startMove(f, 'ftilt', false); }
+  else startMove(f, 'jab1', false);
   return true;
 }
 
@@ -328,6 +329,8 @@ const STATES = {
     const mv = c.ch.moves[f.move];
     if (f.moveAir) airMotion(c);
     else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
+    // combo link (jab 1 -> 2 -> 3)
+    if (mv.next && (c.pressed & BTN.ATTACK) && f.stateFrame >= mv.next.from) { startMove(f, mv.next.move, false); return; }
     if (f.stateFrame < mv.faf) return;
     f.move = '';
     if (f.moveAir) { setState(f, 'air', f.vy < 0 ? 'jump' : 'fall'); return; }

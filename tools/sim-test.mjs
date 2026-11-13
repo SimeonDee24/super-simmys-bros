@@ -112,7 +112,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   const near = () => { const s = createMatch(setup); s.fighters[1].x = s.fighters[0].x + 16 * FX; return s; };
   // forward tilt
   let s = near(); let [a, v] = s.fighters;
-  step(s, [BTN.ATTACK, 0]);
+  step(s, [BTN.ATTACK | BTN.RIGHT, 0]);
   let firstHit = -1;
   for (let i = 0; i < 60; i++) { step(s, [0, 0]); if (firstHit < 0 && v.percent > 0) firstHit = a.stateFrame; }
   check('forward tilt hits for 7% on frame 5', v.percent === 70 && firstHit === 5, `${v.percent / 10}% on frame ${firstHit}`);
@@ -139,13 +139,13 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   check('up air finished before landing auto-cancels', lag === 2, 'lag ' + lag);
   // buffering: double-tap and a jump pressed during a tilt's last frames come out at once
   s = createMatch(setup); a = s.fighters[0]; s.fighters[1].x = 900 * FX;
-  step(s, [BTN.ATTACK, 0]);
-  for (let i = 0; i < 13; i++) step(s, [0, 0]);
+  step(s, [BTN.ATTACK | BTN.UP, 0]);
+  for (let i = 0; i < 19; i++) step(s, [0, 0]);
   for (const m of [BTN.RIGHT, 0, 0, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT, BTN.RIGHT]) step(s, [m, 0]);
   check('double-tap during a tilt dashes on the first free frame', a.state === 'dash' && a.stateFrame <= 2, a.state + ' ' + a.stateFrame);
   s = createMatch(setup); a = s.fighters[0]; s.fighters[1].x = 900 * FX;
-  step(s, [BTN.ATTACK, 0]);
-  for (let i = 0; i < 15; i++) step(s, [0, 0]);
+  step(s, [BTN.ATTACK | BTN.UP, 0]);
+  for (let i = 0; i < 21; i++) step(s, [0, 0]);
   step(s, [BTN.JUMP, 0]);
   for (let i = 0; i < 6; i++) step(s, [0, 0]);
   check('jump pressed late in a tilt is buffered', a.state === 'jumpsquat' || a.state === 'air', a.state);
@@ -160,6 +160,15 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
     for (let i = 0; i < 12; i++) step(s, [BTN.UP, 0]);
     check(`up air hits a level opponent ${gap}px in front`, v.percent === 70, `${v.percent / 10}%`);
   }
+  // jab combo: three presses give all three hits
+  s = near(); [a, v] = s.fighters;
+  const seen = [];
+  for (let i = 0; i < 70; i++) { step(s, [i % 6 === 0 && i < 30 ? BTN.ATTACK : 0, 0]); if (a.move && seen.at(-1) !== a.move) seen.push(a.move); }
+  check('jab 1-2-3 links and all three hit', seen.join() === 'jab1,jab2,jab3' && v.percent === 79, seen.join() + ' ' + v.percent / 10 + '%');
+  s = near(); [a, v] = s.fighters;
+  step(s, [BTN.ATTACK, 0]);
+  for (let i = 0; i < 40; i++) step(s, [0, 0]);
+  check('one press is a single jab', v.percent === 22 && a.state === 'idle', v.percent / 10 + '%');
   // dash attack out of a run
   s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 70 * FX;
   for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [6, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);

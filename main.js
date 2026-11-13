@@ -90,7 +90,8 @@ function render() {
       'F1  DEBUG INFO AND STATE HASH',
       'F2  HITBOXES (RED), HURTBOXES (YELLOW), LEDGE BOXES',
       '',
-      'ATTACK  J    ON THE GROUND: W = UP TILT, S = DOWN TILT, ELSE FORWARD TILT',
+      'ATTACK  J    ON THE GROUND: JAB (PRESS AGAIN FOR 1-2-3), A / D = FORWARD TILT,',
+      '             W = UP TILT, S = DOWN TILT',
       '             IN THE AIR: NEUTRAL, FORWARD, BACK, W = UP, S = DOWN AIR',
       '             WHILE DASHING OR RUNNING: DASH ATTACK',
     ]);

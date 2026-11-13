@@ -229,6 +229,26 @@ const animations = {
   // --- Attacks. A pose is fully reached at the frame equal to the sum of
   // the frame counts before it, so line that up with the move's active frames.
   // Repeating a pose holds it. ---
+  // Jab combo: lead punch, cross with the other hand, then a kick.
+  jab1: anim(false, [
+    [2, { torso: 4, armF: [30, 95], armB: [-10, 70], ...FISTS }],
+    [4, { hip: [1, 0], torso: 10, armF: [88, 4], armB: [-25, 80], legF: [12, -6], legB: [-12, -4], ...FISTS, face: 'yell' }],
+    [9, { torso: 6, armF: [50, 60], armB: [-15, 70], ...FISTS }],
+    [1, STAND],
+  ]),
+  jab2: anim(false, [
+    [2, { torso: 8, armF: [60, 50], armB: [20, 95], ...FISTS }],
+    [4, { hip: [1, 0], torso: 12, armF: [20, 100], armB: [90, 4], legF: [12, -6], legB: [-12, -4], ...FISTS, face: 'yell' }],
+    [10, { torso: 6, armF: [40, 70], armB: [30, 70], ...FISTS }],
+    [1, STAND],
+  ]),
+  jab3: anim(false, [
+    [3, { torso: -4, legF: [40, -60], armF: [-20, 40], armB: [30, 50], ...FISTS }],
+    [3, { torso: -12, legF: [86, -4], legB: [-8, -6], armF: [-40, 30], armB: [40, 40], footF: 30, ...FISTS, face: 'yell' }],
+    [3, { torso: -12, legF: [86, -4], legB: [-8, -6], armF: [-40, 30], armB: [40, 40], footF: 30, ...FISTS, face: 'yell' }],
+    [10, { torso: -4, legF: [40, -50], armF: [-20, 40], armB: [30, 50] }],
+    [6, STAND],
+  ]),
   // Forward tilt: leaning-back roundhouse kick.
   ftilt: anim(false, [
     [5, { hip: [-1, 1], torso: -4, legF: [40, -85], legB: [-4, -10], armF: [-30, 60], armB: [35, 70], ...FISTS }],
@@ -319,6 +339,7 @@ const animations = {
 //   landLag      aerials: landing lag if he lands during frames autoCancel[0] .. autoCancel[1]-1
 //   trail        swipe arc drawn behind a body part while the move is out:
 //                  { part, from, to } (frames), so the hitbox is easy to see
+//   next         combo link: pressing attack from frame `from` starts `move`
 //   slide        ground move that slides: starting speed and friction
 //   endsCrouched stay crouching afterwards if down is held
 // ---------------------------------------------------------------------------
@@ -335,6 +356,11 @@ const ARM_F = [['fistF', 7], ['elbowF', 5]];
 const spin = (frame, group) => hit(frame, frame + 1, 'chest', 14, 1.4, 85, 20, 10, { group, off: [0, -4], lag: 2 });
 
 const moves = {
+  // --- Jab combo: press attack again to continue into the next hit ---
+  jab1: { faf: 16, next: { move: 'jab2', from: 5 }, hitboxes: hits(2, 3, [['fistF', 5], ['elbowF', 4]], 2.2, 361, 22, 15) },
+  jab2: { faf: 18, next: { move: 'jab3', from: 5 }, hitboxes: hits(2, 3, [['fistB', 5], ['elbowB', 4]], 1.7, 361, 22, 15) },
+  jab3: { faf: 26, trail: { part: 'toeF', from: 2, to: 5 }, hitboxes: hits(3, 5, LEG_F, 4, 361, 35, 110) },
+
   // --- Tilts ---
   ftilt: { faf: 22, trail: { part: 'toeF', from: 3, to: 7 }, hitboxes: hits(5, 7, LEG_F, 7, 361, 8, 100) },
   utilt: { faf: 28, trail: { part: 'fistF', from: 4, to: 11 }, hitboxes: [
