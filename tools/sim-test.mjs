@@ -243,6 +243,19 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (let i = 0; i < 200; i++) { step(s, [0, 0]); if (i < 15) { a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; } if (v.state === 'dead') ko = true; }
   check('back air at 150% near the edge KOs', ko, 'victim stocks ' + v.stocks);
 }
+// Bluff in the air floats: falls much slower than normal
+{
+  const fall = (btns) => {
+    const s = createMatch(setup); const a = s.fighters[0];
+    a.y -= 120 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.vy = 3 * FX;
+    const y0 = a.y;
+    step(s, [btns, 0]);
+    for (let i = 0; i < 20; i++) step(s, [0, 0]);
+    return { dy: (a.y - y0) / FX, move: a.move };
+  };
+  const normal = fall(0), bluff = fall(BTN.SPECIAL | BTN.DOWN);
+  check('bluff in the air falls much slower', bluff.move === 'bluff' && bluff.dy * 3 < normal.dy, `bluff ${bluff.dy.toFixed(1)}px vs normal ${normal.dy.toFixed(1)}px`);
+}
 // Every stage loads and has the pieces the engine needs.
 {
   const { STAGES } = await import('../stages/index.js');

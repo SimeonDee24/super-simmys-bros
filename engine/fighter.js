@@ -192,8 +192,9 @@ function tryAerial(c) {
   return true;
 }
 
-// Shared air movement: drift, fast fall, gravity.
-function airMotion(c) {
+// Shared air movement: drift, fast fall, gravity. `float` (from a move's
+// data) slows the fall: { gravity, fall } as percents of normal, no fast fall.
+function airMotion(c, float) {
   const { f, st } = c;
   if (c.dir) {
     const target = c.dir * st.airSpeed;
@@ -201,6 +202,11 @@ function airMotion(c) {
     f.vx = approach(f.vx, target, slower ? st.airAccel : st.airFriction);
   } else {
     f.vx = approach(f.vx, 0, st.airFriction);
+  }
+  if (float) {
+    f.fastFall = 0;
+    f.vy = Math.min(f.vy + Math.trunc((st.gravity * float.gravity) / 100), Math.trunc((st.fallSpeed * float.fall) / 100));
+    return;
   }
   // Fast fall: tap down at or after the peak
   if ((c.pressed & BTN.DOWN) && f.vy >= 0 && !f.fastFall) f.fastFall = 1;
@@ -506,8 +512,11 @@ const STATES = {
       if (f.stateFrame <= rise) f.y = l.y * FX + Math.trunc((st.ledgeHang * (rise - f.stateFrame)) / rise);
       else { f.y = l.y * FX; if (f.stateFrame <= rise + 4) f.x += f.facing * FX * 2; else f.ledge = -1; }
       f.vx = 0;
-    } else if (f.moveAir) airMotion(c);
-    else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
+    } else if (f.moveAir) {
+      // floating moves (counters) stop the fall when they start
+      if (mv.float && f.stateFrame <= 1 && f.vy > 0) f.vy = 0;
+      airMotion(c, mv.float);
+    } else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
     // Chargeable move: while the special button is held, stay on the charge
     // frame and build up charge (up to `max`).
     if (mv.charge && f.stateFrame === mv.charge.at + 1 && (c.input & BTN.SPECIAL) && f.charge < mv.charge.max) {

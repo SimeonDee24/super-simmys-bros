@@ -629,9 +629,10 @@ const moves = {
     hitboxes: [] },
   // Down special: Bluff (counter). If he is hit on frames 5-26 he takes no
   // damage and flips the card back at them for 1.2x the damage (at least 8%).
-  bluff: { faf: 46, counter: { window: [5, 26], mult: 120, min: 80, then: 'bluffHit', freeze: 10, attackerExtra: 8, intangible: 12 },
+  // In the air, Bluff floats: the fall stops and he drifts down slowly.
+  bluff: { faf: 46, float: { gravity: 25, fall: 30 }, counter: { window: [5, 26], mult: 120, min: 80, then: 'bluffHit', freeze: 10, attackerExtra: 8, intangible: 12 },
     card: { from: 3, to: 34, size: 'small' }, hitboxes: [] },
-  bluffHit: { faf: 30, card: { from: 0, to: 14, size: 'big' }, trail: { part: 'fistF', from: 2, to: 8, width: 7 }, hitboxes: [
+  bluffHit: { faf: 30, float: { gravity: 25, fall: 30 }, card: { from: 0, to: 14, size: 'big' }, trail: { part: 'fistF', from: 2, to: 8, width: 7 }, hitboxes: [
     hit(4, 7, 'fistF', 13, 0, 361, 60, 70, { counterDamage: true }),
     hit(4, 7, 'chest', 10, 0, 361, 60, 70, { counterDamage: true, off: [10, -4] }),
   ] },
