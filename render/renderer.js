@@ -358,7 +358,9 @@ export class Renderer {
     if (newest <= oldest) return;
     const a = ch.animations[f.anim];
     const pts = [];
-    for (let fr = newest; fr >= oldest; fr--) {
+    // arc trails sample between frames so a fast swing draws a smooth curve
+    const stepF = tr.arc ? 0.25 : 1;
+    for (let fr = newest; fr >= oldest - 1e-6; fr -= stepF) {
       const j = jointAt(solve(ch.skeleton, samplePose(a, fr)), tr.part);
       pts.push([toPx(f.x + f.facing * j[0]) - camX, toPx(f.y + j[1]) - camY]);
     }

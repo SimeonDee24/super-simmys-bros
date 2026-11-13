@@ -641,7 +641,7 @@ const moves = {
   // Charged haymaker, Banjo style: winds up and shudders with the fist low
   // behind him, then swings it up and over in a wide arc with the arm
   // straight, knuckles out, on frame 15 for 15% (12% late). Never spikes.
-  fair: { faf: 51, landLag: 11, autoCancel: [3, 36], trail: { part: 'fistF', from: 13, to: 18, width: 10 }, hitboxes: [
+  fair: { faf: 51, landLag: 11, autoCancel: [3, 36], trail: { part: 'fistF', from: 13.5, to: 19, width: 11, arc: true }, hitboxes: [
     hit(15, 17, 'fistF', 16, 15, 361, 32, 100),
     hit(15, 17, 'elbowF', 12, 14, 361, 32, 98),
     hit(15, 17, 'chest', 11, 13, 361, 30, 95, { off: [11, -6] }),   // fills the arc in front of him
