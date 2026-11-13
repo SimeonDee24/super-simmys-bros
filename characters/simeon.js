@@ -199,9 +199,9 @@ const BLUFF_HOLD = { torso: -4, head: -6, armF: [70, 95], armB: [-30, 70], legF:
 const JS_GATHER = { hip: [0, 3], torso: 8, armF: [40, 100], armB: [30, 105], legF: [30, -55], legB: [10, -45], ...FISTS };
 const JS_SET = { hip: [0, 4], torso: 4, head: -10, armF: [150, 70], armB: [140, 80], legF: [30, -60], legB: [12, -50], ...FISTS };
 const JS_RELEASE = { hip: [0, -2], torso: -4, head: -12, armF: [150, 5], armB: [120, 40], legF: [6, -4], legB: [-6, -4], footF: 20, footB: 20, handF: 'open', handB: 'open', face: 'smile' };
-// back air: knees pulled in to the chest, then both legs shot straight out
-// behind with the body laid flat (feet back, head forward)
-const BAIR_TUCK = { rot: 90, torso: 0, head: -70, legF: [178, -176], legB: [172, -172], armF: [40, 120], armB: [15, 125], footF: -90, footB: -90, ...FISTS };
+// back air: knees pulled up in front of the chest (body upright), then both
+// legs shot straight out behind with the body laid flat (feet back, head forward)
+const BAIR_TUCK = { rot: 15, torso: 6, head: -4, legF: [110, -150], legB: [95, -145], armF: [-30, 60], armB: [100, 40], footF: 20, footB: 20, ...FISTS };
 const BAIR_KICK = { rot: 90, torso: 0, head: -70, legF: [4, -2], legB: [-4, -2], armF: [40, 120], armB: [15, 125], footF: -90, footB: -90, ...FISTS, face: 'yell' };
 const UAIR_KICK = { torso: -8, head: -10, legF: [55, -105], legB: [70, -105], armF: [-20, 70], armB: [-45, 60], footF: 40, ...FISTS, face: 'yell' };
 const UAIR_TUCK = { torso: 12, head: 10, legF: [70, -100], legB: [55, -95], armF: [30, 80], armB: [10, 85], ...FISTS };
@@ -446,9 +446,10 @@ const animations = {
   // Back air: knees in, then both legs blast straight out behind him with his
   // body flat, like a horizontal double kick.
   bair: anim(false, [
-    [4, { rot: 30, torso: 8, legF: [60, -100], legB: [50, -105], armF: [40, 80], armB: [30, 90], ...FISTS }],
-    [2, BAIR_TUCK],
-    [4, BAIR_KICK], [3, BAIR_KICK],
+    [2, { rot: 5, torso: 6, legF: [60, -100], legB: [50, -105], armF: [20, 60], armB: [60, 60], ...FISTS }],
+    [3, BAIR_TUCK],          // frame 2: knees pulled up in front of his chest
+    [1, BAIR_TUCK],          // frame 5: still tucked
+    [4, BAIR_KICK], [3, BAIR_KICK],   // frame 6: legs blasted straight back, body flat
     [7, { rot: 45, torso: 6, legF: [30, -50], legB: [20, -60], armF: [40, 60], armB: [30, 70] }],
     [6, AIR],
   ]),
@@ -592,7 +593,7 @@ const moves = {
     hit(10, 12, 'elbowF', 11, 9, 361, 25, 92),
   ] },
   // Both legs out behind: big hitboxes along both legs, strong clean hit.
-  bair: { faf: 22, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 3, to: 9, width: 7, straight: true }, hitboxes: [
+  bair: { faf: 22, landLag: 4, autoCancel: [6, 15], trail: { part: 'toeB', from: 5, to: 9, width: 7, straight: true }, hitboxes: [
     ...hits(6, 8, [['toeB', 8], ['toeF', 8], ['shinB', 7], ['kneeB', 6]], 12, 361, 15, 105, BACK),
     ...hits(9, 11, [['toeB', 7], ['toeF', 7], ['shinB', 6], ['kneeB', 5]], 8, 361, 15, 100, BACK),
   ] },
