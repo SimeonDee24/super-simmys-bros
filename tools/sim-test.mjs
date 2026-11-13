@@ -581,4 +581,30 @@ for (const hold of [0, 30]) {
   for (let i = 0; i < 200 && second < 0; i++) { step(s, [BTN.RIGHT, 0]); if (f.state === 'ledge') second = f.intangible; if (f.grounded) break; }
   check('grabbing the ledge gives intangibility, less on a regrab', first >= CONFIG.LEDGE_INTANGIBLE[0] - 1 && safe && second > 0 && second < first, `first ${first}, regrab ${second}`);
 }
+// Move library: saved moves still work when plugged into a character
+{
+  const { LIBRARY, useMoves } = await import('../characters/library.js');
+  const { getCharacter } = await import('../characters/index.js');
+  const ch = getCharacter('simeon');
+  const saved = { anims: { ...ch.animations }, moves: { ...ch.moves } };
+  const lib = useMoves({ nair: 'nair_heldKick', dashAttack: 'dashAttack_slide' });
+  Object.assign(ch.animations, lib.animations); Object.assign(ch.moves, lib.moves);
+  try {
+    let s = createMatch(setup); let [a, v] = s.fighters;
+    for (const f of [a, v]) { f.y -= 60 * FX; f.grounded = 0; f.ground = -1; f.state = 'air'; f.vy = 0; }
+    v.x = a.x + 22 * FX;
+    step(s, [BTN.ATTACK, 0]);
+    let first = -1;
+    for (let i = 0; i < 10; i++) { step(s, [0, 0]); a.vy = 0; if (v.state !== 'hitstun') v.vy = 0; if (first < 0 && v.percent) first = a.stateFrame; }
+    check('library: held-kick neutral air comes out on frame 3 for 8%', v.percent === 80 && first === 3, `${v.percent / 10}% on ${first}`);
+    s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 70 * FX;
+    for (const [n, m] of [[1, BTN.RIGHT], [2, 0], [6, BTN.RIGHT]]) for (let i = 0; i < n; i++) step(s, [m, 0]);
+    step(s, [BTN.RIGHT | BTN.ATTACK, 0]);
+    for (let i = 0; i < 60; i++) step(s, [0, 0]);
+    check('library: slide dash attack slides in and hits', v.percent > 0 && a.state === 'idle', `${v.percent / 10}%`);
+    check('library entries name the slot they belong to', Object.values(LIBRARY).every((e) => e.slot && e.anim && e.move));
+  } finally {
+    for (const k of Object.keys(lib.moves)) { ch.animations[k] = saved.anims[k]; ch.moves[k] = saved.moves[k]; }
+  }
+}
 process.exit(fails ? 1 : 0);
