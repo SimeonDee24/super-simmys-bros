@@ -225,4 +225,20 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   for (let i = 0; i < 60; i++) step(s, [0, 0]);
   check('ledge attack climbs onto the stage and hits for 9%', f.state === 'idle' && f.grounded && f.y === 170 * FX && f.x > 100 * FX && v.percent === 90, `${v.percent / 10}% x ${f.x / FX}`);
 }
+// Knocked-down opponents lie on the floor and can be hit by jab and tilts
+{
+  const { CHARACTERS } = await import('../characters/index.js');
+  const { samplePose, solve, hurtboxes } = await import('../engine/skeleton.js');
+  const ch = CHARACTERS[0];
+  const hb = hurtboxes(ch.skeleton, solve(ch.skeleton, samplePose(ch.animations.lie, 10)), 1);
+  const bottom = Math.max(...hb.map((b) => b[3])) / FX, top = Math.min(...hb.map((b) => b[1])) / FX;
+  check('lying down sits on the floor', bottom <= 1 && bottom >= -2 && top > -18, `from ${top.toFixed(1)} to ${bottom.toFixed(1)}`);
+  for (const [name, input] of [['jab', BTN.ATTACK], ['forward tilt', BTN.ATTACK | BTN.RIGHT], ['up tilt', BTN.ATTACK | BTN.UP], ['down tilt', BTN.ATTACK | BTN.DOWN]]) {
+    const s = createMatch(setup); const [a, v] = s.fighters;
+    v.x = a.x + 22 * FX; v.state = 'knockdown'; v.anim = 'lie'; v.animFrame = 10; v.stateFrame = 0;
+    step(s, [input, 0]);
+    for (let i = 0; i < 12; i++) step(s, [input & ~BTN.ATTACK, 0]);
+    check(`${name} hits a knocked-down opponent`, v.percent > 0, `${v.percent / 10}%`);
+  }
+}
 process.exit(fails ? 1 : 0);

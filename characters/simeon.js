@@ -176,9 +176,9 @@ const DA_KICK = { hip: [1, -3], torso: -24, head: -6, legF: [88, -2], legB: [10,
 // forward air: leg whipped forward, foot at about hip height
 const FAIR_KICK = { torso: -26, head: -6, legF: [100, -6], legB: [-30, -50], armF: [-30, 60], armB: [60, 40], footF: 30, ...FISTS, face: 'yell' };
 // knockdown: lying on his back, and the getup attack's spinning sweep
-const LIE = { rot: -90, hip: [-2, 15], torso: 0, head: 0, armF: [20, 30], armB: [-10, 20], legF: [5, -10], legB: [-5, -6], footF: 80, footB: 80, face: 'hurt' };
-const GUA_FRONT = { rot: -70, hip: [0, 13], torso: 10, legF: [80, -4], legB: [30, -90], armF: [-30, 40], armB: [60, 30], footF: 40, ...FISTS, face: 'yell' };
-const GUA_BACK = { rot: -70, hip: [0, 13], torso: 10, legF: [30, -90], legB: [-140, -4], armF: [-30, 40], armB: [60, 30], footB: -40, ...FISTS, face: 'yell' };
+const LIE = { rot: -90, hip: [-8, 23], torso: 0, head: 0, armF: [20, 30], armB: [-10, 20], legF: [5, -10], legB: [-5, -6], footF: 80, footB: 80, face: 'hurt' };
+const GUA_FRONT = { rot: -30, hip: [-2, 17], torso: 0, legF: [62, -4], legB: [100, -110], armF: [-40, 30], armB: [-60, 20], footF: 40, ...FISTS, face: 'yell' };
+const GUA_BACK = { rot: -30, hip: [-2, 17], torso: 0, legF: [100, -110], legB: [-128, -4], armF: [-40, 30], armB: [-60, 20], footB: -40, ...FISTS, face: 'yell' };
 // ledge attack: a low kick out onto the stage from a crouch
 const LEDGE_KICK = { hip: [-1, 6], torso: -10, head: -4, legF: [88, -4], legB: [40, -100], armF: [-40, 40], armB: [30, 50], footF: 30, ...FISTS, face: 'yell' };
 const BAIR_KICK = { rot: 72, torso: 6, head: -30, legF: [-6, -8], legB: [-16, -2], armF: [60, 70], armB: [40, 80], footF: -60, footB: -60, ...FISTS, face: 'yell' };
@@ -242,7 +242,7 @@ const animations = {
   ]),
 
   // --- Knockdown and getting up ---
-  lie: anim(false, [[3, { ...LIE, hip: [-2, 12] }], [1, LIE]]),
+  lie: anim(false, [[3, { ...LIE, hip: [-8, 19] }], [1, LIE]]),
   getupStand: anim(false, [
     [8, LIE],
     [10, { rot: -40, hip: [0, 9], torso: 20, legF: [70, -120], legB: [55, -110], armF: [40, 60], armB: [20, 60] }],
@@ -258,9 +258,9 @@ const animations = {
   ]),
   getupAttack: anim(false, [
     [10, LIE],
-    [7, { rot: -75, hip: [0, 12], torso: 10, legF: [50, -80], legB: [20, -60], armF: [-20, 40], armB: [40, 40], ...FISTS }],
+    [7, { rot: -45, hip: [-4, 19], torso: 0, legF: [100, -110], legB: [90, -100], armF: [-40, 30], armB: [-60, 20], ...FISTS }],
     [2, GUA_FRONT],
-    [2, { rot: -70, hip: [0, 13], torso: 10, legF: [-40, -40], legB: [-60, -40], armF: [-30, 40], armB: [60, 30], ...FISTS, face: 'yell' }],
+    [2, { rot: -30, hip: [-2, 17], torso: 0, legF: [100, -110], legB: [100, -110], armF: [-40, 30], armB: [-60, 20], ...FISTS, face: 'yell' }],
     [2, GUA_BACK], [2, GUA_BACK],
     [10, { hip: [0, 6], torso: 16, legF: [48, -90], legB: [32, -80], armF: [20, 40], armB: [0, 40] }],
     [5, STAND],
@@ -383,7 +383,8 @@ const animations = {
 // Moves. Hit timing and damage follow a mid-weight all-rounder; the recovery
 // after each move is shortened so normal attacks feel quick.
 //   faf          first frame he can act again
-//   hitboxes     hit(firstFrame, lastFrame, bodyPart, radiusPx, damage%, angle, baseKB, KBgrowth, extras)
+//   hitboxes     (low(...) = extra hitbox that only hits knocked-down opponents)
+//                hit(firstFrame, lastFrame, bodyPart, radiusPx, damage%, angle, baseKB, KBgrowth, extras)
 //                  Hitboxes are circles that follow a body part:
 //                    fistF/B, handF/B, elbowF/B, toeF/B, footF/B, shinF/B, kneeF/B, hip, chest, neck
 //                  angle: 0 = straight forward, 90 = up, 270 = down (spike), 361 = automatic
@@ -406,21 +407,25 @@ const hit = (from, to, at, r, damage, angle, bkb, kbg, extra = {}) => ({
 const hits = (from, to, parts, damage, angle, bkb, kbg, extra) =>
   parts.map(([at, r]) => hit(from, to, at, r, damage, angle, bkb, kbg, extra));
 const BACK = { dir: -1 };
+// Extra low hitbox that only hits opponents lying on the floor, so grounded
+// moves can hit someone who is knocked down. off is measured from the hip.
+const low = (from, to, r, damage, angle, bkb, kbg, x) => hit(from, to, 'hip', r, damage, angle, bkb, kbg, { downed: true, off: [x, 16] });
 const LEG_F = [['toeF', 6], ['shinF', 5], ['kneeF', 5]];
 const LEG_B = [['toeB', 6], ['shinB', 5], ['kneeB', 5], ['toeF', 5]];
 const ARM_F = [['fistF', 7], ['elbowF', 5]];
 
 const moves = {
   // --- Jab combo: press attack again to continue into the next hit ---
-  jab1: { faf: 16, next: { move: 'jab2', from: 5 }, hitboxes: hits(2, 3, [['fistF', 5], ['elbowF', 4]], 2.2, 361, 22, 15) },
-  jab2: { faf: 18, next: { move: 'jab3', from: 5 }, hitboxes: hits(2, 3, [['fistB', 5], ['elbowB', 4]], 1.7, 361, 22, 15) },
-  jab3: { faf: 26, trail: { part: 'toeF', from: 2, to: 5 }, hitboxes: hits(3, 5, LEG_F, 4, 361, 35, 110) },
+  jab1: { faf: 16, next: { move: 'jab2', from: 5 }, hitboxes: [...hits(2, 3, [['fistF', 5], ['elbowF', 4]], 2.2, 361, 22, 15), low(2, 3, 6, 2.2, 361, 22, 15, 12)] },
+  jab2: { faf: 18, next: { move: 'jab3', from: 5 }, hitboxes: [...hits(2, 3, [['fistB', 5], ['elbowB', 4]], 1.7, 361, 22, 15), low(2, 3, 6, 1.7, 361, 22, 15, 12)] },
+  jab3: { faf: 26, trail: { part: 'toeF', from: 2, to: 5 }, hitboxes: [...hits(3, 5, LEG_F, 4, 361, 35, 110), low(3, 5, 6, 4, 361, 35, 110, 14)] },
 
   // --- Tilts ---
-  ftilt: { faf: 22, trail: { part: 'toeF', from: 3, to: 7 }, hitboxes: hits(5, 7, LEG_F, 7, 361, 8, 100) },
+  ftilt: { faf: 22, trail: { part: 'toeF', from: 3, to: 7 }, hitboxes: [...hits(5, 7, LEG_F, 7, 361, 8, 100), low(5, 7, 7, 7, 361, 8, 100, 15)] },
   utilt: { faf: 28, trail: { part: 'fistF', from: 4, to: 11 }, hitboxes: [
     ...hits(5, 11, [['fistF', 8], ['elbowF', 6]], 5.5, 96, 62, 105),
     hit(5, 8, 'chest', 6, 5.5, 96, 62, 105, { off: [5, 0] }),   // close to the body on the way up
+    low(5, 7, 7, 5.5, 96, 62, 105, 10),
   ] },
   dtilt: { faf: 23, endsCrouched: true, trail: { part: 'toeF', from: 4, to: 7 }, hitboxes: [
     hit(5, 7, 'kneeF', 5, 7, 80, 30, 80), hit(5, 7, 'shinF', 5, 7, 80, 30, 80), hit(5, 7, 'toeF', 6, 5, 80, 30, 80),

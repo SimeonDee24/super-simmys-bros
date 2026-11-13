@@ -120,6 +120,7 @@ export function resolveHits(state) {
       let found = null;
       for (let i = 0; i < boxes.length && !found; i++) {
         const b = boxes[i];
+        if (b.def.downed && vic.state !== 'knockdown') continue;
         for (let k = 0; k < hurt.length; k++) {
           const h = hurt[k];
           const hx1 = vic.x + h[0], hy1 = vic.y + h[1], hx2 = vic.x + h[2], hy2 = vic.y + h[3];
