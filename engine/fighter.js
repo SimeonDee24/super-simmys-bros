@@ -6,6 +6,7 @@ import { CONFIG } from '../config/config.js';
 import { FX, approach, clamp, sinDeg, cosDeg, mulTrig, rngInt } from './fixed.js';
 import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
+import { onPlatform } from './physics.js';
 import { spawnProjectile, countProjectiles } from './projectiles.js';
 import { placeHeld, releaseGrab, launchThrow, throwPos } from './grabs.js';
 import { THROWS, PUMMEL } from '../characters/shared.js';
@@ -34,7 +35,8 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     parryTick: -1, shieldHitTick: -1, breakTick: -1,
     counterDmg: 0, counterTick: -1,   // counter specials
     charge: 0,                        // chargeable moves (Jump Shot)
-    airUsed: 0,                       // 1 once a once-per-jump special has been used in the air
+    airUsed: 0,
+    dropThru: 0,                      // frames left falling through a platform                       // 1 once a once-per-jump special has been used in the air
     // Grabs: who I am holding / who is holding me
     holding: -1, heldBy: -1, grabTimer: 0, pummelFrame: 0, throwName: '', throwFacing: 1, releaseFrames: 0, grabTick: -1, kbAngle: 0, kbSpeed: 0, gv: 0,
     hitX: 0, hitY: 0, lastHitTick: -1, lastHitDmg: 0,
@@ -852,6 +854,8 @@ const STATES = {
 
 // Advance one fighter by one tick using only its previous state and this
 // frame's input bitmask.
+const DROPPABLE = { idle: 1, walk: 1, dash: 1, run: 1, brake: 1, crouch: 1, crawl: 1, land: 1 };
+
 export function updateFighter(match, f, input) {
   const ch = getCharacter(f.charId);
   const st = ch.stats;
@@ -888,6 +892,13 @@ export function updateFighter(match, f, input) {
   if (f.intangible > 0) f.intangible--;
   if (f.state !== 'shield' && f.state !== 'shieldStun' && f.state !== 'shieldBreak' && f.state !== 'dizzy') {
     f.shieldHp = Math.min(CONFIG.SHIELD_MAX, f.shieldHp + CONFIG.SHIELD_REGEN);
+  }
+  // Standing on a pass-through platform: tapping down (on its own) drops through it.
+  if ((pressed & BTN.DOWN) && !(input & (BTN.ATTACK | BTN.SPECIAL | BTN.GRAB | BTN.SHIELD | BTN.JUMP)) && DROPPABLE[f.state] && onPlatform(getStage(match.stageId), f)) {
+    f.dropThru = CONFIG.PLATFORM_DROP_FRAMES;
+    f.y += FX;
+    enterAir(f, 'fall');
+    f.vy = FX;
   }
   STATES[f.state]({ match, f, ch, st, input, raw: pressed, pressed: pressed | f.buf, dir, tap, dashInput });
   f.prevIn = input;

@@ -203,6 +203,9 @@ export class CpuController {
     const main = stage.solids[0];
     const oppOff = view.x < main.x * FX || view.x > (main.x + main.w) * FX || view.y > main.y * FX + 4 * FX;
 
+    // --- on a platform with them well below: drop through ---
+    if (me.grounded && me.ground >= stage.solids.length && dy > 24 * FX && adx < 70) return this.press(BTN.DOWN);
+
     // --- in the air: pick an aerial when close ---
     if (!me.grounded) {
       if (me.state !== 'air') return 0;

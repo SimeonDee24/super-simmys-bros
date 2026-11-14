@@ -62,6 +62,7 @@ export const CONFIG = {
   SAKURAI: { lowKb: 60000, highKb: 88000, ground: 38, air: 45 },
   SPECIAL_LAND_LAG: 10,     // landing lag for an air special that sets none of its own
   HELPLESS_LAND_LAG: 14,    // landing lag after falling helpless from a recovery move
+  PLATFORM_DROP_FRAMES: 12, // frames a fighter falls through a platform after tapping down on it
   HITSTUN_LAND_LAG: 8,      // landing lag when hitting the floor during light hitstun
   // Landing while tumbling knocks you down (teching arrives with milestone 3).
   KNOCKDOWN_MIN: 18,        // frames lying down before you can choose a getup

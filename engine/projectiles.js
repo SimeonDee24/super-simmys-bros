@@ -76,7 +76,7 @@ export function stepProjectiles(state) {
       p.spin += p.vx;
       p.x += p.vx;
       let onFloor = false;
-      for (const sd of stage.solids) if (p.x >= sd.x * FX && p.x <= (sd.x + sd.w) * FX && Math.abs(p.y + r - sd.y * FX) <= 2 * FX) onFloor = true;
+      for (const sd of [...stage.solids, ...(stage.platforms || [])]) if (p.x >= sd.x * FX && p.x <= (sd.x + sd.w) * FX && Math.abs(p.y + r - sd.y * FX) <= 2 * FX) onFloor = true;
       if (!onFloor) p.life = 0;
     } else if (p.rolling) {
       p.spin += p.vx;

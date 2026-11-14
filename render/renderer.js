@@ -307,7 +307,7 @@ export class Renderer {
     if (f.state === 'dead' || f.state === 'out' || f.state === 'respawn' || this.vanished(f, getCharacter(f.charId))) return;
     const x = f.x / FX, y = f.y / FX;
     let gy = Infinity;
-    for (const s of stage.solids) if (x >= s.x && x <= s.x + s.w && s.y >= y - 2 && s.y < gy) gy = s.y;
+    for (const s of [...stage.solids, ...(stage.platforms || [])]) if (x >= s.x && x <= s.x + s.w && s.y >= y - 2 && s.y < gy) gy = s.y;
     if (gy === Infinity) return;
     const h = Math.max(0, gy - y), k = Math.max(0, 1 - h / 150);
     if (k <= 0) return;

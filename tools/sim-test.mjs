@@ -5,7 +5,8 @@ import { createMatch, step, hashState, serialize, deserialize } from '../engine/
 import { BTN } from '../engine/input.js';
 import { FX } from '../engine/fixed.js';
 
-const setup = { stageId: 'nest', players: [{ charId: 'simeon', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 1234 };
+// most tests use Cloudrest: same main stage as the others, but no platforms to land on mid-test
+const setup = { stageId: 'cloudrest', players: [{ charId: 'simeon', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 1234 };
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log((ok ? 'PASS ' : 'FAIL ') + name + (extra ? '  ' + extra : '')); if (!ok) fails++; };
 
@@ -743,7 +744,7 @@ for (const hold of [0, 30]) {
 }
 // Kaelyn's specials
 {
-  const ksetup = { stageId: 'nest', players: [{ charId: 'kaelyn', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 5 };
+  const ksetup = { stageId: 'cloudrest', players: [{ charId: 'kaelyn', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 5 };
   // Puff Pass: flies out, comes back, is caught; hits on the way out and back; one at a time
   let s = createMatch(ksetup); let [a, v] = s.fighters; v.x = 900 * FX;
   step(s, [BTN.SPECIAL, 0]);
@@ -824,7 +825,7 @@ for (const hold of [0, 30]) {
 
 // Luca's specials
 {
-  const lsetup = { stageId: 'nest', players: [{ charId: 'luca', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 5 };
+  const lsetup = { stageId: 'cloudrest', players: [{ charId: 'luca', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 5 };
   // Bass Drop: bigger blast and more damage the longer it is charged; hits both sides, launching away
   const bass = (hold, gap) => {
     const s = createMatch(lsetup); const [a, v] = s.fighters; v.x = a.x + gap * FX;
@@ -888,6 +889,38 @@ for (const hold of [0, 30]) {
     for (let i = 0; i < 90; i++) { step(s, [0, 0]); if (!hitX && v.percent) hitX = a.x; else if (hitX && a.x < hitX - 4 * FX) back = true; }
     check('stage dive: 11%, and he springs back off the hit', v.percent === 110 && back, v.percent / 10 + '%');
   }
+}
+
+// Pass-through platforms on the Nest
+{
+  const { getStage } = await import('../stages/index.js');
+  const nest = getStage('nest');
+  check('the nest has three platforms: two low sides and a high middle', nest.platforms.length === 3 && nest.platforms[2].y < nest.platforms[0].y && nest.platforms[0].y === nest.platforms[1].y);
+  const p = nest.platforms[0];
+  const nsetup = { ...setup, stageId: 'nest' };
+  // jump up through a side platform and land on it
+  let s = createMatch(nsetup); let a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  a.x = (p.x + p.w / 2) * FX;
+  let passed = false;
+  step(s, [BTN.JUMP, 0]); for (let i = 0; i < 80; i++) { step(s, [BTN.JUMP, 0]); if (a.y < p.y * FX - 2 * FX) passed = true; }
+  check('jump up through a platform and land on top of it', passed && a.grounded && a.y === p.y * FX, `y ${(a.y / FX).toFixed(0)}`);
+  // tap down to drop through, then land on the main stage
+  for (let i = 0; i < 10; i++) step(s, [0, 0]);
+  step(s, [BTN.DOWN, 0]);
+  for (let i = 0; i < 80; i++) step(s, [0, 0]);
+  check('tapping down drops through the platform to the stage below', a.grounded && a.y === 170 * FX, `y ${(a.y / FX).toFixed(0)}`);
+  // down + attack on a platform is a down tilt, not a drop
+  s = createMatch(nsetup); a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  a.x = (p.x + p.w / 2) * FX; a.y = p.y * FX; a.ground = nest.solids.length; a.grounded = 1;
+  step(s, [BTN.DOWN | BTN.ATTACK, 0]);
+  check('down tilt on a platform does not drop through', a.move === 'dtilt' && a.grounded);
+  // walking off the end of a platform falls
+  s = createMatch(nsetup); a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  a.x = (p.x + p.w - 3) * FX; a.y = p.y * FX; a.ground = nest.solids.length; a.grounded = 1;
+  for (let i = 0; i < 40; i++) step(s, [BTN.RIGHT, 0]);
+  check('walking off a platform falls to the stage', a.y > p.y * FX);
+  // the other stages have none
+  check('the other stages have no platforms', !getStage('balcony').platforms && !getStage('cloudrest').platforms);
 }
 
 process.exit(fails ? 1 : 0);

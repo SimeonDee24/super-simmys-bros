@@ -249,6 +249,27 @@ function drawWalkway(ctx, stage, t) {
   // concrete end caps
   ctx.fillStyle = C.concreteLight; ctx.fillRect(L, deck, 3, main.h);
   ctx.fillStyle = C.concreteShade; ctx.fillRect(R - 3, deck, 3, main.h);
+
+  // --- floating study decks (pass-through platforms) ---
+  // timber slabs with a polished top, hung from the ceiling on steel rods
+  for (const p of stage.platforms || []) {
+    const pl = p.x, pr = p.x + p.w, py = p.y;
+    ctx.fillStyle = C.steelDark;
+    for (const rx of [pl + 6, pr - 7]) ctx.fillRect(rx, 4, 1, py - 4);
+    ctx.fillStyle = C.steel;
+    for (const rx of [pl + 7, pr - 6]) ctx.fillRect(rx, 4, 1, py - 4);
+    for (let x = pl; x < pr; x++) {
+      const m = (x - pl) % 4;
+      ctx.fillStyle = m === 3 ? C.woodGap : (Math.floor((x - pl) / 4) & 1 ? C.wood : C.woodAlt);
+      ctx.fillRect(x, py + 3, 1, 5);
+    }
+    ctx.fillStyle = C.floor; ctx.fillRect(pl, py, p.w, 3);
+    ctx.fillStyle = C.floorLight; ctx.fillRect(pl, py, p.w, 1);
+    ctx.fillStyle = C.woodShade; ctx.fillRect(pl, py + 8, p.w, 1);
+    ctx.fillStyle = C.concreteLight; ctx.fillRect(pl, py, 2, 9);
+    ctx.fillStyle = C.concreteShade; ctx.fillRect(pr - 2, py, 2, 9);
+    ctx.fillStyle = C.glow; ctx.fillRect(pl + 8, py + 9, p.w - 16, 1);   // light strip underneath
+  }
 }
 
 export const NEST = {
@@ -261,6 +282,15 @@ export const NEST = {
     { x: 70, y: 170, w: 340, h: 44 },
     { x: 100, y: 214, w: 280, h: 14 },
     { x: 136, y: 228, w: 208, h: 12 },
+  ],
+
+  // Pass-through platforms, laid out like a classic battle stage: two low
+  // side decks and one higher in the middle. Jump up through them; tap down
+  // to drop back through.
+  platforms: [
+    { x: 112, y: 124, w: 76 },
+    { x: 292, y: 124, w: 76 },
+    { x: 202, y: 80, w: 76 },
   ],
 
   // Grabbable ledges. dir = which way is off-stage, solid = platform it belongs to.

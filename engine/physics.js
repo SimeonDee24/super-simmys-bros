@@ -5,6 +5,11 @@ import { BTN } from './input.js';
 import { CONFIG } from '../config/config.js';
 import { getCharacter } from '../characters/index.js';
 
+// The floor a fighter stands on: solids come first, then pass-through
+// platforms (ground index = solids.length + platform index).
+export const groundOf = (stage, i) => (i < stage.solids.length ? stage.solids[i] : (stage.platforms || [])[i - stage.solids.length]);
+export const onPlatform = (stage, f) => f.grounded && f.ground >= stage.solids.length;
+
 export function moveFighter(f, stage, st) {
   const solids = stage.solids;
   const hw = st.ecbHalfW, h = st.ecbHeight;
@@ -13,7 +18,7 @@ export function moveFighter(f, stage, st) {
 
   if (f.grounded) {
     f.x += f.vx;
-    const g = solids[f.ground];
+    const g = groundOf(stage, f.ground);
     const gl = g.x * FX, gr = (g.x + g.w) * FX;
     if (f.state === 'attack' || f.state === 'getupRoll') {
       // Ground attacks and rolls stop at the edge instead of sliding off.
@@ -44,6 +49,18 @@ export function moveFighter(f, stage, st) {
 
   // Vertical move: land on top surfaces, bonk on undersides.
   f.y += f.vy;
+  // Pass-through platforms: only landed on from above while falling, and not
+  // while dropping through one.
+  const plats = stage.platforms || [];
+  if (f.dropThru > 0) f.dropThru--;
+  for (let i = 0; i < plats.length; i++) {
+    const s = plats[i], T = s.y * FX;
+    if (f.vy >= 0 && y0 <= T && f.y >= T && f.x >= s.x * FX && f.x <= (s.x + s.w) * FX && !f.dropThru) {
+      f.y = T;
+      land(f, solids.length + i, st);
+      return;
+    }
+  }
   for (let i = 0; i < solids.length; i++) {
     const s = solids[i];
     const L = s.x * FX, R = (s.x + s.w) * FX, T = s.y * FX, B = (s.y + s.h) * FX;
@@ -141,7 +158,7 @@ export function pushApart(state, stage) {
   // gentle push while they overlap a little; a firm one past the hard limit
   let each = Math.min(CONFIG.PUSH_RATE, (W - dist) >> 1);
   if (dist < hard) each = Math.max(each, ((hard - dist) + 1) >> 1);
-  const g = stage.solids[a.ground];
+  const g = groundOf(stage, a.ground);
   const L = g.x * FX, R = (g.x + g.w) * FX;
   const move = (f, dx) => { const x = Math.max(L, Math.min(R, f.x + dx)); const done = x - f.x; f.x = x; return done; };
   const da = move(a, -dir * each);
