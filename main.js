@@ -12,9 +12,12 @@ import { Renderer } from './render/renderer.js';
 import { loadSettings, saveSettings } from './ui/settings.js';
 import { checkForUpdate, UPDATE_MESSAGE } from './ui/updatecheck.js';
 import { sfx } from './audio/sfx.js';
+import { SoundDirector } from './audio/director.js';
 
 const settings = loadSettings();
 sfx.setVolume(settings.volume);
+sfx.setMuted(settings.muted);
+const director = new SoundDirector();   // turns what happens in a match into sounds
 const renderer = new Renderer(document.getElementById('game'));
 const keyboard = new Keyboard();
 ['F1', 'F2', 'Escape', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].forEach((k) => keyboard.blocked.add(k));
@@ -51,6 +54,8 @@ function startMatch(stage = STAGES[0]) {
     endTimer: 0,
   };
   renderer.resetEffects();
+  director.reset();
+  sfx.play('start');
   paused = false;
   screen = 'match';
 }
@@ -60,6 +65,7 @@ function tick() {
     const inputs = match.sources.map((s, i) => s.sample(match.state, i));
     match.recorder.push(inputs);
     step(match.state, inputs);
+    for (const e of director.update(match.state)) sfx.play(e.name, e.strength, e.pan);
     // Someone is out of stocks: show GAME!, then leave. (The victory screen
     // replaces this in milestone 5.)
     if (match.state.fighters.some((f) => f.state === 'out') && ++match.endTimer >= CONFIG.GAME_END_FRAMES) {
@@ -112,6 +118,7 @@ function render() {
       'LEDGE  GRABBED AUTOMATICALLY WHEN FALLING NEXT TO IT',
       '       TOWARD STAGE = GET UP, J = LEDGE ATTACK, I = LEDGE ROLL, SPACE = JUMP, S = DROP',
       '',
+      'M  SOUND ON / OFF',
       'F1  DEBUG INFO AND STATE HASH',
       'F2  HITBOXES (RED), HURTBOXES (YELLOW), LEDGE BOXES',
       '',
@@ -126,6 +133,9 @@ function render() {
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   sfx.unlock();
+  // M mutes and unmutes the sound on any screen
+  if (e.code === 'KeyM') { settings.muted = !settings.muted; sfx.setMuted(settings.muted); saveSettings(settings); if (!settings.muted) sfx.play('menuOk'); return; }
+  menuSound(e.code);
   if (screen === 'title') {
     if (!e.ctrlKey && !e.metaKey && !e.altKey && e.code !== 'F5' && e.code !== 'F12') screen = 'charSelect';
     return;
@@ -167,6 +177,21 @@ window.addEventListener('keydown', (e) => {
   else if (e.code === 'F1') { settings.showDebug = !settings.showDebug; saveSettings(settings); }
   else if (e.code === 'F2') { settings.showBoxes = !settings.showBoxes; saveSettings(settings); }
 });
+
+// Clicks and blips for the menus and the pause screen.
+function menuSound(code) {
+  const ok = code === 'KeyJ' || code === 'Enter' || code === 'Space';
+  const dirKey = ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(code);
+  if (screen === 'title') { if (!['F5', 'F12'].includes(code)) sfx.play('menuOk'); }
+  else if (screen === 'charSelect' || screen === 'stageSelect') {
+    if (code === 'Escape') sfx.play('menuBack');
+    else if (ok && screen === 'charSelect') sfx.play('menuOk');
+    else if (dirKey) sfx.play('menuMove');
+  } else if (screen === 'match') {
+    if (code === 'Escape') sfx.play('pause');
+    else if (code === 'KeyQ' && paused) sfx.play('menuBack');
+  }
+}
 
 function chooseStage(i) {
   stageIndex = i;

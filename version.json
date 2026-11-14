@@ -1,5 +1,5 @@
 {
-  "version": "0.21.0",
+  "version": "0.22.0",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -29,6 +29,7 @@
     "render/renderer.js",
     "ui/settings.js",
     "ui/updatecheck.js",
+    "audio/director.js",
     "audio/sfx.js",
     "net/handshake.js"
   ]

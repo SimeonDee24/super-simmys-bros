@@ -10,6 +10,7 @@ const BINDINGS_VERSION = 2;   // 2: shield moved from U to I (grab to U)
 const DEFAULTS = {
   bindings: { ...DEFAULT_BINDINGS },
   volume: 0.6,
+  muted: false,       // M toggles sound
   showBoxes: false,   // hurtbox / hitbox / ledge-box display
   showDebug: false,   // tick, state hash, fighter state
   cpuLevel: 'fighter', // P2 CPU: 'dummy' (training) or 'fighter'
