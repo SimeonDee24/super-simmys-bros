@@ -32,10 +32,11 @@ export function spawnProjectile(state, f, mv) {
   if (!state.projectiles) state.projectiles = [];
   state.projectiles.push({
     kind: mv.spawn.projectile, charId: f.charId, owner: f.slot,
-    x: f.x + f.facing * at[0], y: f.y + at[1],
+    x: f.x + f.facing * at[0], y: d.type === 'wave' ? f.y - d.r * FX : f.y + at[1],   // waves sit on the floor
     vx: f.facing * (d.speed[0] + c * d.chargeSpeed[0]),
-    vy: -(d.speed[1] + c * d.chargeSpeed[1]),
+    vy: (-(d.speed[1] + c * d.chargeSpeed[1])) | 0,
     bounces: 0, rolling: 0, life: d.life, spent: 0, spin: 0, born: state.tick | 0,
+    dir: f.facing, cool: 0,
   });
 }
 
@@ -48,14 +49,38 @@ export function stepProjectiles(state) {
   for (let i = list.length - 1; i >= 0; i--) {
     const p = list[i], d = def(p), r = d.r * FX;
     p.life--;
-    p.spin += p.vx;
-    if (p.rolling) {
+    if (p.cool > 0) p.cool--;
+    if (d.type === 'boomerang') {
+      // Flies out, slows, and comes back to whoever threw it. Passes through
+      // the stage. Caught (removed) when it reaches its owner again.
+      p.spin += d.spinRate;
+      p.vx -= p.dir * d.accel;
+      if (p.vx * p.dir < -d.speed[0]) p.vx = -p.dir * d.speed[0];
+      const o = state.fighters[p.owner];
+      if (p.vx * p.dir < 0) {
+        // on the way back it drifts toward the thrower's height
+        const ty = o.y - 22 * FX;
+        p.vy = approach(p.vy, ty > p.y ? d.homing : ty < p.y ? -d.homing : 0, d.homing >> 3);
+        const dx = Math.abs(o.x - p.x), dy = Math.abs(ty - p.y);
+        if (dx < d.catchX * FX && dy < d.catchY * FX && !UNHITTABLE[o.state]) p.life = 0;
+      }
+      p.x += p.vx; p.y += p.vy;
+    } else if (d.type === 'wave') {
+      // A shockwave sliding along the floor; gone at the end of the platform.
+      p.spin += p.vx;
+      p.x += p.vx;
+      let onFloor = false;
+      for (const sd of stage.solids) if (p.x >= sd.x * FX && p.x <= (sd.x + sd.w) * FX && Math.abs(p.y + r - sd.y * FX) <= 2 * FX) onFloor = true;
+      if (!onFloor) p.life = 0;
+    } else if (p.rolling) {
+      p.spin += p.vx;
       p.vx = approach(p.vx, 0, d.rollFriction);
       p.x += p.vx;
       const s = stage.solids[p.rolling - 1];
       if (p.x < s.x * FX || p.x > (s.x + s.w) * FX) p.rolling = 0;   // rolled off the edge
       if (p.vx === 0) p.life = Math.min(p.life, d.fadeFrames);
     } else {
+      p.spin += p.vx;
       p.vy = Math.min(p.vy + d.gravity, d.maxFall);
       const y0 = p.y;
       p.x += p.vx;
@@ -88,7 +113,7 @@ export function resolveProjectileHits(state) {
   const list = state.projectiles;
   if (!list || !list.length) return;
   for (const p of list) {
-    if (p.spent) continue;
+    if (p.spent || p.cool > 0) continue;
     const d = def(p);
     // a slow-rolling ball is harmless; a rolling one hits weaker than in flight
     const speed = Math.abs(p.vx);
@@ -123,6 +148,8 @@ export function resolveProjectileHits(state) {
       else if (result === 'parry') applyParry(state, owner, vic, hb, src);
       else if (result === 'shield') applyShieldHit(state, owner, vic, hb, src);
       else applyHit(state, owner, vic, { def: hb, px: p.x >> 8, py: p.y >> 8 }, src);
+      if (d.type === 'boomerang') { p.cool = d.rehit; break; }   // keeps flying, can hit again later
+      if (d.type === 'wave') { p.spent = 1; p.life = Math.min(p.life, 4); break; }
       // the ball pops off whatever it hit and becomes harmless
       p.spent = 1;
       p.rolling = 0;

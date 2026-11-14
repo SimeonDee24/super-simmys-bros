@@ -13,6 +13,7 @@ const DEFAULTS = {
   showBoxes: false,   // hurtbox / hitbox / ledge-box display
   showDebug: false,   // tick, state hash, fighter state
   cpuLevel: 'fighter', // P2 CPU: 'dummy' (training) or 'fighter'
+  picks: [{ char: 0, alt: 0 }, { char: 0, alt: 1 }],   // character and skin for P1 and the CPU
 };
 
 export function loadSettings() {

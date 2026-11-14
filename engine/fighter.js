@@ -34,6 +34,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     parryTick: -1, shieldHitTick: -1, breakTick: -1,
     counterDmg: 0, counterTick: -1,   // counter specials
     charge: 0,                        // chargeable moves (Jump Shot)
+    airUsed: 0,                       // 1 once a once-per-jump special has been used in the air
     // Grabs: who I am holding / who is holding me
     holding: -1, heldBy: -1, grabTimer: 0, pummelFrame: 0, throwName: '', throwFacing: 1, releaseFrames: 0, grabTick: -1, kbAngle: 0, kbSpeed: 0, gv: 0,
     hitX: 0, hitY: 0, lastHitTick: -1, lastHitDmg: 0,
@@ -59,6 +60,7 @@ export function enterAir(f, animName) {
 
 export function land(f, groundIndex, st) {
   f.y = f.y | 0;
+  f.airUsed = 0;
   f.vy = 0;
   f.grounded = 1;
   f.ground = groundIndex;
@@ -67,6 +69,14 @@ export function land(f, groundIndex, st) {
   // they just become the grounded version from here on.
   if (f.state === 'attack' && f.move) {
     const mv = getCharacter(f.charId).moves[f.move];
+    // Plunging moves (ground pounds) hit the floor and go straight into
+    // their landing move.
+    if (mv && mv.plunge && mv.plunge.landMove && f.stateFrame >= mv.plunge.fallAt) {
+      f.fastFall = 0; f.jumpsLeft = st.airJumps; f.wallSide = 0; f.airDodged = 0; f.intangible = 0; f.ledgeGrabs = 0;
+      f.vx = 0;
+      startMove(f, mv.plunge.landMove, false);
+      return;
+    }
     if (mv && mv.landContinue && !(mv.rocket && f.stateFrame >= mv.rocket.frame) && !(mv.fly && f.stateFrame >= mv.fly.frame)) {
       f.moveAir = 0; f.fastFall = 0; f.jumpsLeft = st.airJumps; f.wallSide = 0; f.airDodged = 0;
       return;
@@ -162,6 +172,8 @@ function trySpecial(c, air) {
   if (!name) return false;
   const mv = c.ch.moves[name];
   if (mv.limit && countProjectiles(c.match, f.slot, mv.spawn.projectile) >= mv.limit) return false;
+  // `once` moves can be used one time in the air until he lands, grabs a ledge or is hit
+  if (mv.once && air) { if (f.airUsed) return false; f.airUsed = 1; }
   if (slot === 'side' && c.dir) f.facing = c.dir;
   startMove(f, name, air);
   return true;
@@ -533,17 +545,33 @@ const STATES = {
         }
         const r = mv.rocket, max = mv.charge ? mv.charge.max : 1;
         f.vx = f.facing * (r.speed[0] + Math.trunc(((r.speed[1] - r.speed[0]) * Math.min(f.charge, max)) / max));
-        f.vy = -r.lift;
-        f.grounded = 0; f.ground = -1; f.moveAir = 1; f.fastFall = 0;
+        // `ground: true` rockets used on the floor stay on it (a skating dash)
+        if (!(r.ground && f.grounded)) { f.vy = -r.lift; f.grounded = 0; f.ground = -1; f.moveAir = 1; f.fastFall = 0; }
       } else if (f.hitGroups && f.vx * f.facing > 0) {
         // Connected (or hit a shield): the rocket stops dead and he bounces
         // back a little, then falls.
         f.vx = -f.facing * mv.rocket.bounce[0];
-        f.vy = -mv.rocket.bounce[1];
+        if (!f.grounded) f.vy = -mv.rocket.bounce[1];
       } else if (f.stateFrame <= mv.rocket.frame + mv.rocket.frames) {
         f.vx -= Math.trunc((f.vx * (f.hitGroups ? 60 : mv.rocket.drag)) / 1000);
-        f.vy = Math.min(f.vy + Math.trunc((st.gravity * mv.rocket.gravity) / 100), st.fallSpeed);
-      } else airMotion(c);
+        if (!f.grounded) f.vy = Math.min(f.vy + Math.trunc((st.gravity * mv.rocket.gravity) / 100), st.fallSpeed);
+      } else if (f.grounded) f.vx = approach(f.vx, 0, st.traction);
+      else airMotion(c);
+    } else if (mv.plunge && f.stateFrame >= mv.plunge.frame) {
+      // Plunging moves: rise for a moment (a hop on the ground, or always for
+      // recovery moves), then drop fast until he lands.
+      const pl = mv.plunge;
+      if (f.stateFrame === pl.frame) {
+        if (f.moveAir && pl.airSkip) { f.stateFrame = pl.fallAt; f.animFrame = pl.fallAt; }   // already airborne: straight to the drop
+        else { f.grounded = 0; f.ground = -1; f.moveAir = 1; f.fastFall = 0; f.vx = f.facing * pl.hopX; }
+      }
+      if (f.stateFrame < pl.fallAt) {
+        f.vy = -pl.rise;
+        f.vx = approach(f.vx, f.facing * pl.hopX + c.dir * pl.drift, pl.steer);
+      } else {
+        f.vy = pl.fall;
+        f.vx = approach(f.vx, c.dir * pl.drift, pl.steer);
+      }
     } else if (mv.fly && f.stateFrame >= mv.fly.frame) {
       // Flying moves: rise steadily for `frames`, steering left and right,
       // then coast.

@@ -146,8 +146,10 @@ export class DollRenderer {
       this.put(ch, altIndex, back, end, endDeg, l.c);
     };
     limb(s.armB, true, 'upperArm', 'lowerArm', 'hand_' + s.handB, s.armB.low);
-    limb(s.legB, true, 'upperLeg', 'lowerLeg', 'foot', s.footB);
-    limb(s.legF, false, 'upperLeg', 'lowerLeg', 'foot', s.footF);
+    // opts.swap replaces parts for a move, e.g. { foot: 'skate' }
+    const foot = (opts.swap && opts.swap.foot) || 'foot';
+    limb(s.legB, true, 'upperLeg', 'lowerLeg', foot, s.footB);
+    limb(s.legF, false, 'upperLeg', 'lowerLeg', foot, s.footF);
     this.put(ch, altIndex, false, 'torso', -s.torso, s.hip);
     this.put(ch, altIndex, false, 'head_' + s.face, -s.head, s.neck);
     this.put(ch, altIndex, false, 'hair', -s.head, s.neck);
@@ -173,10 +175,10 @@ export class DollRenderer {
     const key = ch.id + '|' + altIndex + '|' + face;
     let c = this.heads.get(key);
     if (!c) {
-      const N = 24;
+      const N = 56;
       c = document.createElement('canvas'); c.width = N; c.height = N;
       const cx = c.getContext('2d');
-      const neck = [11, 20];   // where the neck point goes on the icon
+      const neck = [24, 26];   // where the neck point goes on the icon (room for long hair)
       for (const part of ['head_' + face, 'hair']) {
         const s = this.sprite(ch, altIndex, false, part, 0);
         cx.drawImage(s.canvas, neck[0] - s.R, neck[1] - s.R);
@@ -184,10 +186,10 @@ export class DollRenderer {
       this.outline(cx, N, ch.outline, null);
       this.heads.set(key, c);
     }
-    const w = size * 1.45;
+    const k = (size * 1.45) / 24;   // screen units per art pixel
     dest.save();
     dest.imageSmoothingEnabled = false;
-    dest.drawImage(c, x - w / 2, y - w * 0.52, w, w);
+    dest.drawImage(c, x - 25 * k, y - 18.5 * k, 56 * k, 56 * k);
     dest.restore();
   }
 }

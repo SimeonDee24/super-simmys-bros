@@ -731,4 +731,78 @@ for (const hold of [0, 30]) {
     for (const k of Object.keys(lib.moves)) { ch.animations[k] = saved.anims[k]; ch.moves[k] = saved.moves[k]; }
   }
 }
+// Roster: two fighters, two skins each, sharing every normal attack
+{
+  const { CHARACTERS } = await import('../characters/index.js');
+  check('two characters with two skins each', CHARACTERS.length === 2 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  const [sim, kae] = CHARACTERS;
+  const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
+  check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
+  check('Kaelyn has her own four specials', ['neutral', 'side', 'up', 'down'].every((k) => kae.specials[k] && kae.specials[k] !== sim.specials[k]));
+}
+// Kaelyn's specials
+{
+  const ksetup = { stageId: 'nest', players: [{ charId: 'kaelyn', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 5 };
+  // Puff Pass: flies out, comes back, is caught; hits on the way out and back; one at a time
+  let s = createMatch(ksetup); let [a, v] = s.fighters; v.x = 900 * FX;
+  step(s, [BTN.SPECIAL, 0]);
+  let far = 0, count = 0, caught = false, second = false;
+  for (let i = 0; i < 200; i++) {
+    step(s, [i === 45 ? BTN.SPECIAL : 0, 0]);
+    const ps = s.projectiles || [];
+    count = Math.max(count, ps.length);
+    if (ps.length) far = Math.max(far, (ps[0].x - a.x) / FX);
+    if (i > 30 && !ps.length && !caught) { caught = true; }
+  }
+  check('puff pass: the vape flies out over 100px, comes back and is caught', far > 100 && caught && (s.projectiles || []).length === 0, `${far.toFixed(0)}px out`);
+  check('puff pass: only one out at a time', count === 1);
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = a.x + 60 * FX;
+  step(s, [BTN.SPECIAL, 0]);
+  const pcts = [];
+  for (let i = 0; i < 160; i++) { step(s, [0, 0]); if (v.percent !== (pcts[pcts.length - 1] || 0)) pcts.push(v.percent); if (v.state === 'hitstun') { v.vx = 0; v.kbSpeed = 0; } }
+  check('puff pass: can hit going out and again coming back (7% each)', pcts.length === 2 && pcts[1] === 140, pcts.map((p) => p / 10).join('% then ') + '%');
+  // Roll Out: stays on the floor, stops on hit, launches them upward; once per jump in the air
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = 900 * FX;
+  const x0 = a.x; let left = false;
+  step(s, [BTN.SPECIAL | BTN.RIGHT, 0]);
+  for (let i = 0; i < 80; i++) { step(s, [0, 0]); if (!a.grounded) left = true; }
+  check('roll out on the ground: skates forward without leaving the floor', !left && (a.x - x0) / FX > 70 && a.state === 'idle', `${((a.x - x0) / FX).toFixed(0)}px`);
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = a.x + 60 * FX;
+  step(s, [BTN.SPECIAL | BTN.RIGHT, 0]);
+  let hitX = 0, top = v.y;
+  for (let i = 0; i < 80; i++) { step(s, [0, 0]); if (!hitX && v.percent) hitX = a.x; top = Math.min(top, v.y); }
+  check('roll out: 11%, she stops where it lands and they go straight up', v.percent === 110 && a.x <= hitX + 2 * FX && (v.y === top ? 0 : 1) + ((170 * FX - top) / FX > 30 ? 1 : 0) >= 1, `${v.percent / 10}%, up ${((170 * FX - top) / FX).toFixed(0)}px`);
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = 900 * FX;
+  a.y -= 120 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.vy = 0;
+  step(s, [BTN.SPECIAL | BTN.RIGHT, 0]);
+  const first = a.move; let again = '';
+  for (let i = 0; i < 70 && a.state === 'attack'; i++) step(s, [0, 0]);
+  if (!a.grounded) { step(s, [BTN.SPECIAL | BTN.RIGHT, 0]); again = a.move; }
+  check('roll out in the air: once per jump', first === 'rollOut' && again !== 'rollOut' && !a.grounded, `second try: ${again || 'nothing'}`);
+  // Drop In: hop then slam on the ground; straight down in the air; lands into a shock
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = a.x + 26 * FX;
+  let peak = a.y; const seenMoves = new Set();
+  step(s, [BTN.SPECIAL | BTN.DOWN, 0]);
+  for (let i = 0; i < 110; i++) { step(s, [0, 0]); peak = Math.min(peak, a.y); if (a.move) seenMoves.add(a.move); }
+  check('drop in from the ground: hops up, slams down, lands into the shock', (170 * FX - peak) / FX > 30 && seenMoves.has('dropInLand') && a.state === 'idle' && v.percent >= 160, `hop ${((170 * FX - peak) / FX).toFixed(0)}px, ${v.percent / 10}%`);
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = 900 * FX;
+  a.y -= 100 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.vy = -2 * FX;
+  step(s, [BTN.SPECIAL | BTN.DOWN, 0]);
+  let rose = false, frames = 0;
+  for (; frames < 60 && !a.grounded; frames++) { const y = a.y; step(s, [0, 0]); if (frames > 9 && a.y < y) rose = true; }
+  check('drop in from the air: drops straight down fast', !rose && frames < 34 && a.move === 'dropInLand', `${frames} frames to land`);
+  // Kickflip: big rise, steerable, shockwave on landing, grabs the ledge
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = 900 * FX;
+  peak = a.y; let wave = false; const kx = a.x;
+  step(s, [BTN.SPECIAL | BTN.UP, 0]);
+  for (let i = 0; i < 130; i++) { step(s, [i < 30 ? BTN.RIGHT : 0, 0]); peak = Math.min(peak, a.y); if ((s.projectiles || []).some((p) => p.kind === 'shockwave')) wave = true; }
+  check('kickflip: rises over 100px, steers, and sends a shockwave when she lands', (170 * FX - peak) / FX > 100 && a.x > kx + 15 * FX && wave && a.state === 'idle', `${((170 * FX - peak) / FX).toFixed(0)}px up, ${((a.x - kx) / FX).toFixed(0)}px across`);
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = 900 * FX;
+  a.x = 56 * FX; a.y = 300 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.jumpsLeft = 0; a.vy = 0;
+  step(s, [BTN.SPECIAL | BTN.UP, 0]);
+  let grabbedK = false;
+  for (let i = 0; i < 120 && !grabbedK; i++) { step(s, [0, 0]); grabbedK = a.state === 'ledge'; }
+  check('kickflip from far below the stage grabs the ledge', grabbedK, a.state);
+}
+
 process.exit(fails ? 1 : 0);

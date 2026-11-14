@@ -1,5 +1,5 @@
 {
-  "version": "0.17.5",
+  "version": "0.18.0",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -14,6 +14,7 @@
     "engine/sim.js",
     "engine/skeleton.js",
     "characters/index.js",
+    "characters/kaelyn.js",
     "characters/library.js",
     "characters/shared.js",
     "characters/simeon.js",

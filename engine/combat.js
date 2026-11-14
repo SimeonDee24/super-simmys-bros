@@ -114,6 +114,7 @@ export function applyHit(state, att, vic, hit, proj = null) {
   vic.hitX = hit.px; vic.hitY = hit.py;
   vic.lastHitTick = state.tick;
   vic.lastHitDmg = hb.damage;
+  vic.airUsed = 0;
 }
 
 // --- Shield ---

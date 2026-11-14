@@ -187,7 +187,7 @@ export class Renderer {
         }
       }
       this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, f.x / FX + shake, f.y / FX, f.facing,
-        tint ? { flash: tint } : undefined);
+        { flash: tint || undefined, swap: cm && cm.wear });
       if (f.state === 'shield' || f.state === 'shieldStun') this.drawShield(state, f, 0, 0);
       if (f.state === 'dizzy') this.drawDizzy(f, 0, 0);
       this.drawProp(state, f, ch);
@@ -519,10 +519,38 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawProjectile(p, camX, camY) {
+  drawProjectile(p) {
     const d = getCharacter(p.charId).projectiles[p.kind];
     const fade = p.spent ? Math.max(0.2, p.life / d.fadeFrames) : 1;
-    this.drawBall(p.x / FX, p.y / FX, d.r, p.spin, fade);
+    const x = p.x / FX, y = p.y / FX, ctx = this.ctx;
+    if (d.draw === 'vape') {
+      // a green and orange vape, spinning end over end, with a puff behind it
+      ctx.save();
+      ctx.fillStyle = 'rgba(240,244,250,0.35)';
+      for (let k = 1; k <= 3; k++) { ctx.beginPath(); ctx.arc(x - (p.vx / FX) * k * 2.2, y - (p.vy / FX) * k * 2.2 - k * 0.6, 1.6 + k * 0.9, 0, Math.PI * 2); ctx.fill(); }
+      ctx.translate(x, y); ctx.rotate((p.spin / 256) * 0.9);
+      ctx.fillStyle = '#100d16'; ctx.fillRect(-5.5, -2, 11, 4);
+      ctx.fillStyle = '#3fbf5f'; ctx.fillRect(-5, -1.5, 5.5, 3);
+      ctx.fillStyle = '#7fe39a'; ctx.fillRect(-5, -1.5, 5.5, 1);
+      ctx.fillStyle = '#ff8a2a'; ctx.fillRect(0.5, -1.5, 3.5, 3);
+      ctx.fillStyle = '#ffc07a'; ctx.fillRect(0.5, -1.5, 3.5, 1);
+      ctx.fillStyle = '#2a2a33'; ctx.fillRect(4, -1, 1.5, 2);
+      ctx.restore();
+      return;
+    }
+    if (d.draw === 'wave') {
+      // a low crescent of energy sliding along the floor
+      const dir = p.vx >= 0 ? 1 : -1, a = Math.min(1, p.life / 8) * fade;
+      ctx.save();
+      ctx.translate(x, y + d.r); ctx.scale(dir, 1);
+      for (const [w, h, col, al] of [[9, 11, '#c26bff', 0.55], [7, 9, '#ff9be8', 0.8], [4, 6, '#ffffff', 1]]) {
+        ctx.globalAlpha = al * a; ctx.fillStyle = col;
+        ctx.beginPath(); ctx.moveTo(-w, 0); ctx.quadraticCurveTo(w * 0.2, -h * 0.4, w, -h); ctx.quadraticCurveTo(w * 0.9, -h * 0.3, w * 0.5, 0); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+      return;
+    }
+    this.drawBall(x, y, d.r, p.spin, fade);
   }
   // The ball in his hands before it is released.
   drawHeldBall(f, ch, camX, camY) {
@@ -761,6 +789,51 @@ export class Renderer {
     ctx.fillRect(0, 96, W, 60);
     drawText(ctx, text, W / 2 + 3, 109, '#1a1440', 7, 'center');
     drawText(ctx, text, W / 2, 106, '#ffe14a', 7, 'center', '#c2452d');
+  }
+
+  // Character select: one panel per player with a big preview of the chosen
+  // fighter and skin. picks = [{ char, alt }, { char, alt }], chars = roster.
+  drawCharSelect(chars, picks, cpuText) {
+    const ctx = this.ctx;
+    this.ui();
+    this.time++;
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#1b1a3a'); g.addColorStop(1, '#3a2456');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.035)';
+    for (let x = -H + ((this.time >> 1) % 40); x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.lineTo(x + H + 16, 0); ctx.lineTo(x + 16, H); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = 'rgba(8,8,24,0.82)'; ctx.fillRect(0, 0, W, 22);
+    drawText(ctx, 'CHOOSE YOUR FIGHTER', 8, 6, '#ffe14a', 2, 'left', '#000000');
+    drawText(ctx, 'J OR ENTER  CONTINUE     ESC  BACK', W - 8, 9, '#ffffff', 1, 'right');
+    const keys = [['A / D', 'W / S'], ['LEFT / RIGHT', 'UP / DOWN']];
+    picks.forEach((pk, i) => {
+      const ch = chars[pk.char], col = PLAYER_COLORS[i];
+      const x0 = i === 0 ? 20 : W / 2 + 10, w = W / 2 - 30, y0 = 32, h = 196, cx = x0 + w / 2;
+      ctx.fillStyle = 'rgba(8,8,24,0.6)'; ctx.fillRect(x0, y0, w, h);
+      ctx.fillStyle = col; ctx.fillRect(x0, y0, w, 3);
+      drawText(ctx, i === 0 ? 'PLAYER 1' : (cpuText || 'CPU'), cx, y0 + 9, col, 1, 'center', '#000000');
+      // spotlight and the fighter, three times life size
+      const sp = ctx.createRadialGradient(cx, y0 + 150, 4, cx, y0 + 150, 70);
+      sp.addColorStop(0, rgba(col, 0.35)); sp.addColorStop(1, rgba(col, 0));
+      ctx.fillStyle = sp; ctx.fillRect(x0, y0 + 60, w, 130);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(cx, y0 + 152, 34, 5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.save();
+      ctx.translate(cx, y0 + 150); ctx.scale(3, 3);
+      this.doll.drawAnim(ctx, ch, pk.alt, 'idle', this.time, 0, 0, i === 0 ? 1 : -1);
+      ctx.restore();
+      drawText(ctx, '<', x0 + 10, y0 + 80, '#ffffff', 3, 'left', '#000000');
+      drawText(ctx, '>', x0 + w - 10, y0 + 80, '#ffffff', 3, 'right', '#000000');
+      drawText(ctx, ch.name, cx, y0 + 160, '#ffffff', 3, 'center', '#000000');
+      drawText(ctx, 'SKIN ' + (pk.alt + 1) + ' / ' + ch.palettes.length + ': ' + ch.palettes[pk.alt].name, cx, y0 + 181, col, 1, 'center', '#000000');
+      drawText(ctx, keys[i][0] + '  FIGHTER      ' + keys[i][1] + '  SKIN', cx, y0 + h + 6, '#ffffff', 1, 'center', '#000000');
+    });
+    // the roster along the bottom, with a marker for each player's pick
+    chars.forEach((ch, k) => {
+      const x = W / 2 + (k - (chars.length - 1) / 2) * 34, y = H - 16;
+      ctx.fillStyle = 'rgba(8,8,24,0.7)'; ctx.fillRect(x - 13, y - 13, 26, 26);
+      picks.forEach((pk, i) => { if (pk.char === k) { ctx.fillStyle = PLAYER_COLORS[i]; ctx.fillRect(x - 13 + i * 13, y + 11, 13, 2); } });
+      this.doll.drawHead(ctx, ch, 0, x, y - 1, 12);
+    });
   }
 
   // Stage select: the highlighted stage fills the screen, with a row of tiles.

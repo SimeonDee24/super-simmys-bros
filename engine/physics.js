@@ -86,6 +86,7 @@ function tryLedgeGrab(f, stage, st) {
     f.tumbling = 0;
     f.airDodged = 0;
     f.move = '';
+    f.airUsed = 0;
     f.x = l.x * FX + l.dir * st.ecbHalfW;
     f.y = l.y * FX + st.ledgeHang;
     f.vx = 0; f.vy = 0;

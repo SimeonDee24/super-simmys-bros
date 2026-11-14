@@ -213,11 +213,6 @@ const DARK_JEANS = ['#2c2f44', '#1d1f30', '#3e425c'];
 const palettes = [
   alt('Classic', ['#2d2d37', '#1d1d26', '#41414e'], BLUE_JEANS, { g: '#2fa35a' }), // white sneakers with green accents
   alt('Red',     ['#cc363c', '#962330', '#e8625b'], DARK_JEANS),
-  alt('White',   ['#eceef2', '#b9bfcc', '#ffffff'], BLUE_JEANS),
-  alt('Forest',  ['#3f8f55', '#2b6a41', '#5fb873'], ['#b89f72', '#8d7752', '#d3bd91']),
-  alt('Royal',   ['#3d5fd0', '#2a419c', '#6485ea'], ['#26262e', '#18181f', '#383842']),
-  alt('Gold',    ['#e7b53a', '#b78324', '#f8d66a'], ['#6f7686', '#4f5564', '#8c93a3']),
-  alt('Violet',  ['#8b4fc4', '#643795', '#ab77de'], ['#9db9dc', '#7693bd', '#bcd3ee']),
 ];
 const outline = '#100d16';
 

@@ -85,4 +85,29 @@ for (const stageId of ['nest', 'cloudrest']) {
     `shield ${n('shield')}, blocked ${n('shieldStun')}, spot dodge ${n('spotdodge')}, roll ${n('roll')}, air dodge ${n('airdodge')}`);
 }
 
+// Out of jumps below the ledge, a CPU Kaelyn recovers with Kickflip.
+{
+  const s = createMatch({ stageId: 'nest', players: [{ charId: 'kaelyn', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 9 });
+  const k = s.fighters[0]; const cpu = new CpuController('dummy', 4);
+  k.x = 50 * FX; k.y = 270 * FX; k.grounded = 0; k.ground = -1; k.state = 'air'; k.vy = FX; k.jumpsLeft = 0;
+  let usedUp = false, back = false;
+  for (let t = 0; t < 400 && !back && k.state !== 'dead'; t++) { step(s, [cpu.sample(s, 0), 0]); if (k.move === 'kickflip') usedUp = true; back = k.grounded === 1; }
+  check('CPU Kaelyn recovers from below the ledge with Kickflip', usedUp && back, `${usedUp ? 'used it' : 'did not use it'}, ${k.state}`);
+}
+
+// A CPU can play Kaelyn too: it fights, uses her specials and gets back to the stage.
+{
+  const s = createMatch({ stageId: 'nest', players: [{ charId: 'kaelyn', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 9 });
+  const cpus = [new CpuController('fighter', 61), new CpuController('fighter', 62)];
+  const used = new Set(); let dealt = 0;
+  for (let t = 0; t < 7200; t++) {
+    const before = s.fighters[1].percent;
+    step(s, [cpus[0].sample(s, 0), cpus[1].sample(s, 1)]);
+    if (s.fighters[1].percent > before) dealt += s.fighters[1].percent - before;
+    if (s.fighters[0].move) used.add(s.fighters[0].move);
+    if (s.fighters.some((f) => f.state === 'out')) break;
+  }
+  check('a CPU Kaelyn fights and uses her specials', dealt > 300 && used.has('puffPass'), `dealt ${dealt / 10}%, specials: ${['puffPass', 'rollOut', 'kickflip', 'dropIn'].filter((m) => used.has(m)).join(', ')}`);
+}
+
 process.exit(fails ? 1 : 0);

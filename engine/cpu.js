@@ -308,7 +308,9 @@ export class CpuController {
     const ACT = { idle: 1, walk: 1, dash: 1, run: 1, brake: 1, crouch: 1, crawl: 1, land: 1, shield: 1 };
     if (!ACT[me.state]) return null;
     const pick = this.weighted(c.defendMix);
-    if (pick === 'bluff' && me.state !== 'shield') { this.queue = []; return BTN.SPECIAL | BTN.DOWN; }
+    // Bluff only if this character's down special really is a counter
+    const ch = getCharacter(me.charId), down = ch.specials && ch.moves[ch.specials.down];
+    if (pick === 'bluff' && me.state !== 'shield' && down && down.counter) { this.queue = []; return BTN.SPECIAL | BTN.DOWN; }
     if (pick === 'spotDodge') { this.queue = [BTN.SHIELD | BTN.DOWN]; return BTN.SHIELD; }
     if (pick === 'roll') {
       // away from them, or sometimes behind them

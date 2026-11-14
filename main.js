@@ -17,9 +17,9 @@ const settings = loadSettings();
 sfx.setVolume(settings.volume);
 const renderer = new Renderer(document.getElementById('game'));
 const keyboard = new Keyboard();
-['F1', 'F2', 'Escape', 'Tab'].forEach((k) => keyboard.blocked.add(k));
+['F1', 'F2', 'Escape', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].forEach((k) => keyboard.blocked.add(k));
 
-let screen = 'title';   // 'title' | 'stageSelect' | 'match'
+let screen = 'title';   // 'title' | 'charSelect' | 'stageSelect' | 'match'
 let match = null;       // { state, sources, recorder, endTimer }
 // Stage select tiles: every stage, then Random.
 const stageTiles = [...STAGES.map((stage) => ({ stage })), { random: true }];
@@ -28,10 +28,19 @@ let paused = false;
 let updateMessage = null;
 let fps = 0, fpsFrames = 0, fpsTime = 0, slowSeconds = 0;
 
+// The saved character and skin picks, kept valid if the roster changes.
+function picks() {
+  const ps = settings.picks;
+  for (const p of ps) { p.char = ((p.char | 0) % CHARACTERS.length + CHARACTERS.length) % CHARACTERS.length; p.alt = (p.alt | 0) % CHARACTERS[p.char].palettes.length; }
+  // same fighter, same skin: give the CPU the other one so they can be told apart
+  if (ps[0].char === ps[1].char && ps[0].alt === ps[1].alt) ps[1].alt = (ps[1].alt + 1) % CHARACTERS[ps[1].char].palettes.length;
+  return ps;
+}
+
 function startMatch(stage = STAGES[0]) {
   const state = createMatch({
     stageId: stage.id,
-    players: [{ charId: CHARACTERS[0].id, alt: 0 }, { charId: CHARACTERS[0].id, alt: 1 }],
+    players: picks().map((p) => ({ charId: CHARACTERS[p.char].id, alt: p.alt })),
     stocks: CONFIG.DEFAULT_STOCKS,
     seed: CONFIG.DEFAULT_SEED,
   });
@@ -65,6 +74,7 @@ function render() {
     renderer.drawTitle(STAGES[0], { charId: CHARACTERS[0].id, updateMessage });
     return;
   }
+  if (screen === 'charSelect') { renderer.drawCharSelect(CHARACTERS, picks(), 'CPU: ' + cpuLabel(settings.cpuLevel)); return; }
   if (screen === 'stageSelect') { renderer.drawStageSelect(stageTiles, stageIndex, 'P2 CPU: ' + cpuLabel(settings.cpuLevel)); return; }
   const opts = { showBoxes: settings.showBoxes };
   if (settings.showDebug) {
@@ -88,9 +98,11 @@ function render() {
       'SHIELD  HOLD I.  + A / D = ROLL, + S = SPOT DODGE, + SPACE = JUMP OUT',
       '        LET GO JUST BEFORE A HIT LANDS TO PARRY.   I IN THE AIR = AIR DODGE',
       'GRAB  U (OR SHIELD + J).  THEN A / D / W / S = THROW THAT WAY, J = PUMMEL',
-      'SPECIAL  K = JUMP SHOT (HOLD TO CHARGE).  S + K = BLUFF: HIT WHILE HOLDING THE CARD, HE COUNTERS',
-      '         A / D + K = FAST BREAK: HOLD TO CHARGE A HEAD-FIRST DIVE. 1 IN 10 MISFIRES!',
-      '         W + K = ROTOR CAP: FLY UP, STEER WITH A / D. YOU FALL HELPLESS AFTERWARDS',
+      'SPECIAL  K ALONE, OR WITH A / D, W OR S. EACH FIGHTER HAS FOUR:',
+      ' SIMEON  K = JUMP SHOT (HOLD TO CHARGE)     A / D + K = FAST BREAK (HOLD TO CHARGE, 1 IN 10 MISFIRES)',
+      '         W + K = ROTOR CAP (FLY UP, STEER)  S + K = BLUFF (COUNTER)',
+      ' KAELYN  K = PUFF PASS (BOOMERANG)          A / D + K = ROLL OUT (SKATING DASH INTO AN UPPERCUT)',
+      '         W + K = KICKFLIP (RISE, THEN DIVE) S + K = DROP IN (GROUND POUND)',
       'KNOCKED DOWN  J = GETUP ATTACK, A / D = ROLL, SPACE OR W = STAND UP',
       'LEDGE  GRABBED AUTOMATICALLY WHEN FALLING NEXT TO IT',
       '       TOWARD STAGE = GET UP, J = LEDGE ATTACK, I = LEDGE ROLL, SPACE = JUMP, S = DROP',
@@ -110,7 +122,26 @@ window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   sfx.unlock();
   if (screen === 'title') {
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.code !== 'F5' && e.code !== 'F12') screen = 'stageSelect';
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.code !== 'F5' && e.code !== 'F12') screen = 'charSelect';
+    return;
+  }
+  if (screen === 'charSelect') {
+    const ps = picks(), n = CHARACTERS.length;
+    const move = (i, dc, da) => {
+      const p = ps[i];
+      if (dc) { p.char = (p.char + dc + n) % n; p.alt = Math.min(p.alt, CHARACTERS[p.char].palettes.length - 1); }
+      if (da) { const m = CHARACTERS[p.char].palettes.length; p.alt = (p.alt + da + m) % m; }
+      // never the same fighter in the same skin: skip past the other player's
+      const o = ps[1 - i];
+      if (p.char === o.char && p.alt === o.alt) { const m = CHARACTERS[p.char].palettes.length; p.alt = (p.alt + (da || 1) + m) % m; }
+      saveSettings(settings);
+    };
+    if (e.code === 'KeyA') move(0, -1, 0); else if (e.code === 'KeyD') move(0, 1, 0);
+    else if (e.code === 'KeyW') move(0, 0, -1); else if (e.code === 'KeyS') move(0, 0, 1);
+    else if (e.code === 'ArrowLeft') move(1, -1, 0); else if (e.code === 'ArrowRight') move(1, 1, 0);
+    else if (e.code === 'ArrowUp') move(1, 0, -1); else if (e.code === 'ArrowDown') move(1, 0, 1);
+    else if (e.code === 'KeyJ' || e.code === 'Enter' || e.code === 'Space') screen = 'stageSelect';
+    else if (e.code === 'Escape') screen = 'title';
     return;
   }
   if (screen === 'stageSelect') {
@@ -123,7 +154,7 @@ window.addEventListener('keydown', (e) => {
       settings.cpuLevel = CPU_ORDER[(i + (e.code === 'KeyW' || e.code === 'ArrowUp' ? CPU_ORDER.length - 1 : 1)) % CPU_ORDER.length];
       saveSettings(settings);
     }
-    else if (e.code === 'Escape') screen = 'title';
+    else if (e.code === 'Escape') screen = 'charSelect';
     return;
   }
   if (e.code === 'Escape') paused = !paused;
