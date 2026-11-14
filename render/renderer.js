@@ -169,7 +169,11 @@ export class Renderer {
     for (const f of state.fighters) {
       if (f.state === 'dead' || f.state === 'out') continue;
       const ch = getCharacter(f.charId);
-      if (this.vanished(f, ch)) continue;   // mid-teleport: nothing to draw
+      if (this.vanished(f, ch)) {
+        // mid-teleport: only a glint of light where he is travelling
+        this.star(f.x / FX, f.y / FX - 22, 5 + (state.tick & 3), (ch.trailColors || ['#fff', '#9fe9ff'])[1], '#ffffff', state.tick * 0.7);
+        continue;
+      }
       if (f.state === 'respawn') this.drawRespawnPlatform(toPx(f.x), toPx(f.y), f.slot);
       const blink = f.invuln > 0 && (state.tick >> 2) & 1;
       // the fighter who got hit shakes during hitlag
@@ -188,7 +192,9 @@ export class Renderer {
         }
       }
       this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, f.x / FX + shake, f.y / FX, f.facing,
-        { flash: tint || undefined, swap: cm && cm.wear });
+        { flash: tint || undefined, swap: cm && cm.wear,
+          // twirl: [from, to] frames during which he spins on the spot
+          squash: cm && cm.twirl && cm.twirl.some(([a, b]) => f.stateFrame >= a && f.stateFrame <= b) ? Math.cos(f.stateFrame * 0.85) : undefined });
       if (f.state === 'shield' || f.state === 'shieldStun') this.drawShield(state, f, 0, 0);
       if (f.state === 'dizzy') this.drawDizzy(f, 0, 0);
       this.drawProp(state, f, ch);
@@ -493,7 +499,12 @@ export class Renderer {
         add({ type: 'smoke', x: x - f.facing * 6, y: y - 16, slot: f.slot, big: !!emv.burst });
       }
       // teleports flash where he vanishes and where he reappears
-      if (emv && emv.teleport && state.tick !== was.tick && (f.stateFrame === emv.teleport.vanish || f.stateFrame === emv.teleport.appear)) add({ type: 'parry', x, y: y - 22 });
+      if (emv && emv.teleport && state.tick !== was.tick) {
+        const cols = getCharacter(f.charId).trailColors || ['#5fc8ff', '#9fe9ff', '#ffffff'];
+        // a whirl of light as he spins away, and a bigger burst where he comes back
+        if (f.stateFrame === emv.teleport.vanish - 8 || f.stateFrame === emv.teleport.vanish) add({ type: 'swirl', x, y, col: cols[1], big: 0 });
+        if (f.stateFrame === emv.teleport.appear) { add({ type: 'swirl', x, y, col: cols[1], big: 1 }); add({ type: 'parry', x, y: y - 22 }); }
+      }
       // KO: remember where on the screen edge he left
       if (f.state === 'dead' && was.state !== 'dead' && known) {
         const [sx0, sy0] = this.toScreen(x, y - 20);
@@ -502,7 +513,7 @@ export class Renderer {
       }
       this.seen[i] = { fastFall: f.fastFall, lastHitTick: f.lastHitTick, parryTick: f.parryTick, state: f.state, counterTick: f.counterTick, grounded: f.grounded, x, y, tick: state.tick, move: f.move };
     });
-    const LIFE = { break: 30, parry: 22, counter: 22, ko: 50, dust: 20, smoke: 26, spark: 16, fastfall: 14 };
+    const LIFE = { break: 30, parry: 22, counter: 22, ko: 50, dust: 20, smoke: 26, spark: 16, fastfall: 14, swirl: 22 };
     this.effects = this.effects.filter((e) => state.tick >= e.tick && state.tick - e.tick < LIFE[e.type]);
     for (const e of this.effects) {
       const age = state.tick - e.tick;
@@ -517,6 +528,20 @@ export class Renderer {
           ctx.fillStyle = 'rgba(244,240,228,' + (0.6 * (1 - t)).toFixed(3) + ')';
           ctx.beginPath(); ctx.arc(px, py, 1.6 + j * 1.4 + t * 2.6, 0, Math.PI * 2); ctx.fill();
         }
+        continue;
+      }
+      if (e.type === 'swirl') {
+        // ribbons of light spiralling up round where he stands
+        const t = age / 22, R = (e.big ? 20 : 13) * (e.big ? 0.4 + t : 1 - t * 0.6);
+        ctx.lineCap = 'round';
+        for (let k = 0; k < 7; k++) {
+          const a0 = age * 0.55 + k * 0.9, yy = y - 4 - k * 6 - t * 10;
+          ctx.strokeStyle = k & 1 ? '#ffffff' : e.col; ctx.globalAlpha = (1 - t) * 0.9; ctx.lineWidth = e.big ? 2 : 1.5;
+          ctx.beginPath();
+          for (let q = 0; q <= 6; q++) { const a = a0 + q * 0.28; ctx.lineTo(x + Math.cos(a) * R, yy + Math.sin(a) * R * 0.28 - q * 0.5); }
+          ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
         continue;
       }
       if (e.type === 'smoke') {
@@ -611,7 +636,8 @@ export class Renderer {
       const dir = p.vx >= 0 ? 1 : -1, a = Math.min(1, p.life / 8) * fade;
       ctx.save();
       ctx.translate(x, y + d.r); ctx.scale(dir, 1);
-      for (const [w, h, col, al] of [[9, 11, '#c26bff', 0.55], [7, 9, '#ff9be8', 0.8], [4, 6, '#ffffff', 1]]) {
+      const wc = getCharacter(p.charId).trailColors || ['#ff9a3c', '#ffe14a', '#ffffff'];
+      for (const [w, h, col, al] of [[9, 11, wc[0], 0.55], [7, 9, wc[1], 0.8], [4, 6, wc[2], 1]]) {
         ctx.globalAlpha = al * a; ctx.fillStyle = col;
         ctx.beginPath(); ctx.moveTo(-w, 0); ctx.quadraticCurveTo(w * 0.2, -h * 0.4, w, -h); ctx.quadraticCurveTo(w * 0.9, -h * 0.3, w * 0.5, 0); ctx.closePath(); ctx.fill();
       }

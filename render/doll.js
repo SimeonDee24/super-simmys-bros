@@ -159,8 +159,10 @@ export class DollRenderer {
     dest.save();
     dest.imageSmoothingEnabled = false;
     if (opts.alpha !== undefined) dest.globalAlpha = opts.alpha;
-    if (facing >= 0) dest.drawImage(this.canvas, x - OX, y - OY, SIZE, SIZE);
-    else { dest.scale(-1, 1); dest.drawImage(this.canvas, -x - OX, y - OY, SIZE, SIZE); }
+    // opts.squash (-1..1) narrows the figure, and flips it when negative: a twirl
+    dest.translate(x, y);
+    dest.scale((facing >= 0 ? 1 : -1) * (opts.squash === undefined ? 1 : opts.squash || 0.05), 1);
+    dest.drawImage(this.canvas, -OX, -OY, SIZE, SIZE);
     dest.restore();
   }
 

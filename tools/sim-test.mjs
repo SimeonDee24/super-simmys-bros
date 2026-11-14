@@ -780,21 +780,37 @@ for (const hold of [0, 30]) {
   for (let i = 0; i < 70 && a.state === 'attack'; i++) step(s, [0, 0]);
   if (!a.grounded) { step(s, [BTN.SPECIAL | BTN.RIGHT, 0]); again = a.move; }
   check('roll out in the air: once per jump', first === 'rollOut' && again !== 'rollOut' && !a.grounded, `second try: ${again || 'nothing'}`);
-  // Drop In: hop then slam on the ground; straight down in the air; lands into a shock
-  s = createMatch(ksetup); [a, v] = s.fighters; v.x = a.x + 26 * FX;
-  let peak = a.y; const seenMoves = new Set();
-  step(s, [BTN.SPECIAL | BTN.DOWN, 0]);
-  for (let i = 0; i < 110; i++) { step(s, [0, 0]); peak = Math.min(peak, a.y); if (a.move) seenMoves.add(a.move); }
-  check('drop in from the ground: hops up, slams down, lands into the shock', (170 * FX - peak) / FX > 30 && seenMoves.has('dropInLand') && a.state === 'idle' && v.percent >= 160, `hop ${((170 * FX - peak) / FX).toFixed(0)}px, ${v.percent / 10}%`);
+  // Half Pipe: a flipping leap that cannot be hit at first; stomps on the way down, or kick out of it
   s = createMatch(ksetup); [a, v] = s.fighters; v.x = 900 * FX;
-  a.y -= 100 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.vy = -2 * FX;
+  let peak = a.y; const hx = a.x; let ghost = 0;
   step(s, [BTN.SPECIAL | BTN.DOWN, 0]);
-  let rose = false, frames = 0;
-  for (; frames < 60 && !a.grounded; frames++) { const y = a.y; step(s, [0, 0]); if (frames > 9 && a.y < y) rose = true; }
-  check('drop in from the air: drops straight down fast', !rose && frames < 34 && a.move === 'dropInLand', `${frames} frames to land`);
+  for (let i = 0; i < 80; i++) { step(s, [0, 0]); peak = Math.min(peak, a.y); if (i < 8 && a.intangible > 0) ghost++; }
+  check('half pipe: leaps high and forward, untouchable at the start', (170 * FX - peak) / FX > 40 && (a.x - hx) / FX > 90 && ghost === 8 && a.state === 'idle', `${((170 * FX - peak) / FX).toFixed(0)}px up, ${((a.x - hx) / FX).toFixed(0)}px across`);
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = a.x + 80 * FX;
+  step(s, [BTN.SPECIAL | BTN.DOWN, 0]);
+  const vstates = new Set();
+  for (let i = 0; i < 90; i++) { step(s, [0, 0]); vstates.add(v.state); }
+  check('half pipe stomp on a standing fighter: 8%, pops them up, no burying', v.percent === 80 && vstates.has('hitstun') && [...vstates].every((x) => ['idle', 'hitstun', 'land', 'air', 'knockdown'].includes(x)), [...vstates].join(','));
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = a.x + 70 * FX; v.y -= 20 * FX; v.grounded = 0; v.ground = -1; v.state = 'air';
+  step(s, [BTN.SPECIAL | BTN.DOWN, 0]);
+  let spikedK = false;
+  for (let i = 0; i < 60; i++) { step(s, [0, 0]); if (v.state === 'air') { v.vy = 0; v.y = 150 * FX; } if (v.state === 'hitstun' && v.kbAngle === 270) spikedK = true; }
+  check('half pipe stomp on an airborne fighter spikes them', spikedK && v.percent === 80, v.percent / 10 + '%');
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = a.x + 80 * FX;
+  step(s, [BTN.SPECIAL | BTN.DOWN, 0]);
+  const km = new Set();
+  for (let i = 0; i < 80; i++) { step(s, [i === 20 ? BTN.SPECIAL : 0, 0]); if (a.move) km.add(a.move); }
+  check('half pipe: pressing special again kicks out of the flip for 14%', km.has('halfPipeKick') && v.percent === 140, v.percent / 10 + '%');
+  s = createMatch(ksetup); [a, v] = s.fighters; v.x = 900 * FX;
+  a.y -= 140 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.vy = 0;
+  step(s, [BTN.SPECIAL | BTN.DOWN, 0]);
+  const firstHP = a.move; let againHP = '';
+  for (let i = 0; i < 70 && a.state === 'attack'; i++) step(s, [0, 0]);
+  if (!a.grounded) { step(s, [BTN.SPECIAL | BTN.DOWN, 0]); againHP = a.move; }
+  check('half pipe in the air: once per jump', firstHP === 'halfPipe' && againHP !== 'halfPipe', `second try: ${againHP || 'nothing'}`);
   // Kickflip: big rise, steerable, shockwave on landing, grabs the ledge
   s = createMatch(ksetup); [a, v] = s.fighters; v.x = 900 * FX;
-  peak = a.y; let wave = false; const kx = a.x;
+  let wave = false; const kx = a.x; peak = a.y;
   step(s, [BTN.SPECIAL | BTN.UP, 0]);
   for (let i = 0; i < 130; i++) { step(s, [i < 30 ? BTN.RIGHT : 0, 0]); peak = Math.min(peak, a.y); if ((s.projectiles || []).some((p) => p.kind === 'shockwave')) wave = true; }
   check('kickflip: rises over 100px, steers, and sends a shockwave when she lands', (170 * FX - peak) / FX > 100 && a.x > kx + 15 * FX && wave && a.state === 'idle', `${((170 * FX - peak) / FX).toFixed(0)}px up, ${((a.x - kx) / FX).toFixed(0)}px across`);
@@ -851,10 +867,10 @@ for (const hold of [0, 30]) {
     return { dx, dy, ghost, states };
   };
   const up = tp(0), side = tp(BTN.RIGHT), diag = tp(BTN.RIGHT | BTN.UP);
-  check('wire transfer: straight up by default, about 110px, untouchable on the way, helpless after', Math.abs(up.dx) < 1 && up.dy < -100 && up.dy > -120 && up.ghost && up.states.has('helpless'), `${up.dx.toFixed(0)}, ${up.dy.toFixed(0)}`);
-  check('wire transfer: sideways along the floor, and diagonally', side.dx > 100 && side.dy === 0 && !side.states.has('helpless') && diag.dx > 70 && diag.dy < -70, `side ${side.dx.toFixed(0)},${side.dy.toFixed(0)}  diagonal ${diag.dx.toFixed(0)},${diag.dy.toFixed(0)}`);
+  check('wire transfer: straight up by default, about 150px, untouchable on the way, helpless after', Math.abs(up.dx) < 1 && up.dy < -140 && up.dy > -160 && up.ghost && up.states.has('helpless'), `${up.dx.toFixed(0)}, ${up.dy.toFixed(0)}`);
+  check('wire transfer: sideways along the floor, and diagonally', side.dx > 140 && side.dy === 0 && !side.states.has('helpless') && diag.dx > 95 && diag.dy < -95, `side ${side.dx.toFixed(0)},${side.dy.toFixed(0)}  diagonal ${diag.dx.toFixed(0)},${diag.dy.toFixed(0)}`);
   {
-    const s = createMatch(lsetup); const [a, v] = s.fighters; v.x = a.x + 106 * FX;
+    const s = createMatch(lsetup); const [a, v] = s.fighters; v.x = a.x + 146 * FX;
     step(s, [BTN.SPECIAL | BTN.UP, 0]);
     for (let i = 0; i < 60; i++) step(s, [i < 20 ? BTN.RIGHT : 0, 0]);
     check('wire transfer: hits where he reappears (10%)', v.percent === 100, v.percent / 10 + '%');

@@ -132,6 +132,8 @@ const DJ_MIX = { hip: [0, 2], torso: 16, head: 8, armF: [62, 38], armB: [-150, -
 const DJ_DROP = { hip: [0, -1], torso: -8, head: -12, armF: [172, 8], armB: [150, 14], legF: [10, -6], legB: [-10, -4], ...FISTS, face: 'yell' };
 const THROW_BACK = { torso: -12, head: -4, armF: [-115, 55], armB: [45, 30], legF: [20, -14], legB: [-14, -6], handF: 'fist' };
 const TP_COIL = { hip: [0, 4], torso: 10, armF: [60, 110], armB: [40, 115], legF: [40, -75], legB: [20, -60], ...FISTS };
+// spinning on his toes with both arms raised, like a pirouette
+const TP_SPIN = { hip: [0, -1], torso: 0, head: -6, armF: [160, 24], armB: [-160, -24], legF: [5, -3], legB: [-3, -3], footF: -25, footB: -25, handF: 'open', handB: 'open', face: 'smile' };
 const TP_OUT = { torso: -4, head: -8, armF: [120, 10], armB: [-120, -10], legF: [14, -8], legB: [-14, -6], handF: 'open', handB: 'open', face: 'yell' };
 const DIVE_TUCK = { torso: 30, head: 20, armF: [50, 100], armB: [30, 110], legF: [95, -135], legB: [80, -130], ...FISTS };
 const DIVE_KICK = { torso: -16, head: 4, armF: [-60, 30], armB: [-110, 20], legF: [52, -4], legB: [30, -70], footF: -30, ...FISTS, face: 'yell' };
@@ -168,14 +170,16 @@ const animations = {
     [12, { torso: 8, armF: [40, 20], armB: [-20, 30], legF: [12, -8], legB: [-8, -4] }],
     [1, STAND],
   ]),
-  // Wire Transfer: coils up, vanishes, and reappears with his arms flung wide.
+  // Wire Transfer: twirls on the spot with his arms up until he vanishes in
+  // a whirl of light, then spins back into view and flings his arms wide.
   wireTransfer: anim(false, [
-    [8, TP_COIL],
-    [6, { ...TP_COIL, hip: [0, 6], torso: 20 }],
-    [12, { ...TP_COIL, hip: [0, 6], torso: 20 }],
-    [4, TP_OUT],
-    [14, TP_OUT],
-    [12, AIR],
+    [4, TP_COIL],
+    [10, TP_SPIN],
+    [12, { ...TP_SPIN, hip: [0, -2] }],
+    [10, { ...TP_SPIN, hip: [0, -2] }],
+    [6, TP_OUT],
+    [12, TP_OUT],
+    [2, AIR],
   ]),
   // Stage Dive: springs off the floor in a tucked flip, then kicks out
   // heel first on the way down.
@@ -218,12 +222,13 @@ const moves = {
   supplyDemandCrash: { faf: 50, charge: { at: 10, max: 12 },
     spawn: { frame: 16, from: 'fistF', projectile: 'arrowDown' }, hitboxes: [] },
 
-  // Up special: Wire Transfer. Vanishes and reappears about 110px away in
+  // Up special: Wire Transfer. Twirls, vanishes and reappears about 150px away in
   // the direction held (straight up if none). Untouchable in between; a
   // small hit where he vanishes and a bigger one where he reappears. Falls
   // helpless afterwards if he ends up in the air.
   wireTransfer: { faf: 56, landLag: 16, helpless: true, float: { gravity: 15, fall: 20 },
-    teleport: { vanish: 14, appear: 26, speed: px(9.2) },
+    teleport: { vanish: 14, appear: 26, speed: px(12.5) },
+    twirl: [[4, 13], [26, 36]],
     ledgeGrab: { from: 26 },
     hitboxes: [
       hit(12, 13, 'chest', 10, 5, 80, 30, 60, { group: 0, radial: true }),
@@ -235,8 +240,8 @@ const moves = {
   // in the air.
   stageDive: { faf: 50, landLag: 14, once: true,
     rocket: { frame: 6, frames: 34, speed: [px(2.7), px(2.7)], lift: px(3.9), gravity: 100, drag: 0, bounce: [px(1.6), px(3.3)] },
-    trail: { part: 'toeF', from: 18, to: 40, width: 7, arc: true },
-    hitboxes: hits(18, 40, [['toeF', 7], ['shinF', 6]], 11, 361, 40, 85) },
+    trail: { part: 'toeF', from: 18, to: 40, width: 11, arc: true },
+    hitboxes: hits(18, 40, [['toeF', 11], ['shinF', 9], ['kneeF', 7]], 11, 361, 40, 85) },
 };
 
 export const LUCA = {

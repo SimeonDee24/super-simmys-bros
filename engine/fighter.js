@@ -611,6 +611,13 @@ const STATES = {
     if (mv.spawn && f.stateFrame === mv.spawn.frame) spawnProjectile(c.match, f, mv);
     // combo link (jab 1 -> 2 -> 3)
     if (mv.next && (c.pressed & BTN.ATTACK) && f.stateFrame >= mv.next.from) { startMove(f, mv.next.move, false); return; }
+    // follow-up: pressing attack or special again during the window turns
+    // the move into another one (e.g. a kick out of a flip), keeping him airborne
+    if (mv.followUp && (c.pressed & (BTN.ATTACK | BTN.SPECIAL)) && f.stateFrame >= mv.followUp.from && f.stateFrame <= mv.followUp.to) {
+      const air = f.moveAir;
+      startMove(f, mv.followUp.move, !!air);
+      return;
+    }
     if (f.stateFrame < mv.faf) return;
     f.move = '';
     f.ledge = -1;

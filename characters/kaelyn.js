@@ -153,7 +153,8 @@ const FISTS = { handF: 'fist', handB: 'fist' };
 const STAND = { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6, -2] };
 const DASH = { hip: [0, 2], torso: 36, head: -26, armF: [-55, 105], armB: [60, 50], legF: [62, -85], legB: [-48, -8], footB: -30, ...FISTS, face: 'yell' };
 const BOMB_DROP = { torso: 4, head: 6, armF: [150, 20], armB: [-150, -20], legF: [22, -8], legB: [-18, -4], ...FISTS, face: 'yell' };
-const BOMB_SQUAT = { hip: [0, 9], torso: 20, head: -8, armF: [70, 30], armB: [-70, 20], legF: [72, -122], legB: [56, -112], ...FISTS, face: 'yell' };
+const FLIP_TUCK = { torso: 28, head: 18, armF: [50, 100], armB: [30, 110], legF: [96, -136], legB: [82, -130], ...FISTS };
+const FLIP_KICK = { torso: -30, head: 10, armF: [-80, 30], armB: [-130, 20], legF: [58, -3], legB: [36, -105], footF: -30, ...FISTS, face: 'yell' };
 const CUT_KICK = { torso: -8, head: -6, legF: [112, -6], legB: [-24, -46], armF: [-40, 40], armB: [60, 40], footF: -20, ...FISTS, face: 'yell' };
 const CUT_DIVE = { torso: -22, head: 14, legF: [34, -3], legB: [-20, -100], armF: [160, 20], armB: [-140, -20], footF: -35, ...FISTS, face: 'yell' };
 
@@ -178,19 +179,22 @@ const animations = {
     [12, { torso: -4, armF: [120, 30], armB: [-20, 40], legF: [14, -12], legB: [-12, -6] }],
     [2, STAND],
   ]),
-  // Drop In: crouches, hops up with her knees tucked, then slams down skates first.
-  dropIn: anim(false, [
-    [8, { hip: [0, 6], torso: 16, armF: [30, 60], armB: [-20, 50], legF: [50, -95], legB: [30, -80] }],
-    [12, { hip: [0, -2], torso: -6, armF: [140, 30], armB: [120, 40], legF: [80, -120], legB: [60, -110], face: 'yell' }],
-    [4, { hip: [0, -3], torso: -10, armF: [170, 10], armB: [150, 20], legF: [86, -128], legB: [66, -118], face: 'yell' }],
-    [3, BOMB_DROP],
-    [1, BOMB_DROP],
+  // Half Pipe: springs up into a tucked forward flip, then straightens out
+  // to come down skates first.
+  halfPipe: anim(false, [
+    [3, { hip: [0, 6], torso: 16, armF: [30, 60], armB: [-20, 50], legF: [50, -95], legB: [30, -80] }],
+    [8, { ...FLIP_TUCK, rot: 50 }],
+    [20, { ...FLIP_TUCK, rot: 320 }],
+    [6, { ...BOMB_DROP, rot: 360 }],
+    [12, { ...BOMB_DROP, rot: 360 }],
+    [1, { ...BOMB_DROP, rot: 360 }],
   ]),
-  dropInLand: anim(false, [
-    [3, BOMB_SQUAT],
-    [14, { ...BOMB_SQUAT, hip: [0, 8] }],
-    [14, { hip: [0, 3], torso: 8, armF: [30, 30], armB: [-30, 20], legF: [30, -50], legB: [14, -40] }],
-    [2, STAND],
+  // the kick out of the flip: leaning back, one skate driven down and forward
+  halfPipeKick: anim(false, [
+    [3, { torso: -18, head: 6, armF: [-70, 40], armB: [-120, 30], legF: [95, -60], legB: [40, -100], ...FISTS, face: 'yell' }],
+    [16, FLIP_KICK],
+    [8, { ...FLIP_KICK, torso: -16 }],
+    [8, { torso: 4, armF: [60, 30], armB: [-40, 30], legF: [30, -30], legB: [-10, -40] }],
   ]),
   // Kickflip: a rising backflip with one skate leading, then a dive with
   // that skate pointed at the floor.
@@ -237,19 +241,19 @@ const moves = {
       ...hits(37, 41, [['fistF', 8], ['elbowF', 6]], 11, 88, 78, 72),
     ] },
 
-  // Down special: Drop In. On the floor she hops up and forward first; in
-  // the air she drops straight away. Slams down skates first, with a shock
-  // on landing. She keeps falling until she lands.
-  dropIn: { faf: FOREVER, landLag: 20, wear: SKATES, float: { gravity: 20, fall: 25 },
-    plunge: { frame: 8, fallAt: 24, rise: px(2.6), hopX: px(1.5), drift: 0, steer: px(0.3), fall: px(6), airSkip: true, landMove: 'dropInLand' },
-    hitboxes: [
-      ...hits(8, 23, [['footF', 5], ['footB', 5]], 4, 80, 0, 100, { fkb: 70, group: 0 }),
-      ...hits(24, FOREVER, [['footF', 7], ['footB', 7], ['hip', 6]], 16, 60, 50, 80, { group: 1 }),
-    ] },
-  dropInLand: { faf: 34, wear: SKATES, hitboxes: [
-    hit(1, 3, 'hip', 9, 9, 60, 60, 70, { off: [12, 10] }),
-    hit(1, 3, 'hip', 9, 9, 60, 60, 70, { off: [-12, 10], dir: -1 }),
-  ] },
+  // Down special: Half Pipe. A high flipping leap forward; she cannot be hit
+  // for the first few frames. Coming down she stomps skates first (8%: it
+  // spikes in the air, and just pops grounded fighters up). Press K or J
+  // during the flip to kick out of it instead (14%, launches hard, and she
+  // springs back off the hit). Once per jump in the air.
+  halfPipe: { faf: 52, landLag: 10, wear: SKATES, once: true, intangible: 12,
+    rocket: { frame: 3, frames: 46, speed: [px(2.4), px(2.4)], lift: px(4.6), gravity: 100, drag: 0, bounce: [px(1.0), px(3.0)] },
+    followUp: { from: 10, to: 40, move: 'halfPipeKick' },
+    hitboxes: hits(30, 48, [['footF', 7], ['footB', 7]], 8, 270, 30, 70) },
+  halfPipeKick: { faf: 34, landLag: 12, wear: SKATES,
+    rocket: { frame: 3, frames: 24, speed: [px(3.2), px(3.2)], lift: -px(2.6), gravity: 60, drag: 0, bounce: [px(1.6), px(3.4)] },
+    trail: { part: 'toeF', from: 3, to: 20, width: 9, arc: true },
+    hitboxes: hits(4, 22, [['toeF', 9], ['shinF', 7]], 14, 42, 45, 95) },
 
   // Up special: Kickflip. Flips upward with a skate leading (carrying anyone
   // it hits), then dives. Steerable the whole way, grabs ledges on the way
@@ -276,10 +280,10 @@ export const KAELYN = {
   stats,
   parts,
   palettes,
-  trailColors: ['#c26bff', '#ff9be8', '#ffffff'],
+  trailColors: ['#2f7bff', '#8fd0ff', '#ffffff'],   // her hits and swipes are blue
   animations: { ...SIMEON.animations, ...animations },
   moves: { ...SIMEON.moves, ...moves },
-  specials: { neutral: 'puffPass', side: 'rollOut', up: 'kickflip', down: 'dropIn' },
+  specials: { neutral: 'puffPass', side: 'rollOut', up: 'kickflip', down: 'halfPipe' },
   projectiles: {
     // the vape: flies out about 125px, then comes back
     vape: {
