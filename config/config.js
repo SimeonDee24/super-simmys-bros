@@ -70,6 +70,7 @@ export const CONFIG = {
   TECH_FRAMES: 26, TECH_INTANGIBLE: 20,          // tech in place
   TECH_ROLL_INTANGIBLE: 20,                      // tech roll (uses the getup roll)
   TECH_WALL_FRAMES: 10, TECH_WALL_INTANGIBLE: 14, // wall / ceiling tech
+  SMASH_FLICK_FRAMES: 4,    // attack this soon after tapping a direction is a smash attack, not a tilt
   HITSTUN_LAND_LAG: 8,      // landing lag when hitting the floor during light hitstun
   // Landing while tumbling knocks you down (teching arrives with milestone 3).
   KNOCKDOWN_MIN: 18,        // frames lying down before you can choose a getup

@@ -619,6 +619,37 @@ const animations = {
   ], { ease: false }),
   // Down air: a heavy double-foot stomp straight down. Slow to start,
   // spikes if the feet land the hit cleanly.
+  // --- Smash attacks ---
+  // Home Run: bat pulled back behind him (holding here while charging), then
+  // a full swing through and up in front.
+  fsmash: anim(false, [
+    [6, { torso: -6, armF: [-60, -20], armB: [-30, 60], legF: [16, -12], legB: [-12, -6], ...FISTS }],
+    [6, { hip: [-1, 1], torso: -20, head: 8, armF: [-115, -25], armB: [-70, 80], legF: [24, -20], legB: [-16, -6], ...FISTS }],
+    [3, { hip: [-1, 1], torso: -24, head: 10, armF: [-125, -25], armB: [-75, 80], legF: [24, -20], legB: [-16, -6], ...FISTS, face: 'yell' }],
+    [2, { hip: [1, 1], torso: 6, armF: [10, -5], armB: [-20, 60], legF: [30, -24], legB: [-20, -4], ...FISTS, face: 'yell' }],
+    [10, { hip: [2, 1], torso: 26, head: -10, armF: [125, 0], armB: [40, 60], legF: [34, -28], legB: [-24, -4], ...FISTS, face: 'yell' }],
+    [16, { torso: 12, armF: [150, 20], armB: [30, 50], legF: [20, -16], legB: [-14, -4], ...FISTS }],
+    [8, STAND],
+  ]),
+  // Slam Dunk: gathers the ball low, then leaps and slams it down from overhead.
+  usmash: anim(false, [
+    [4, { hip: [0, 4], torso: 12, armF: [40, 80], armB: [30, 85], legF: [36, -66], legB: [16, -52], ...FISTS }],
+    [5, { hip: [0, 6], torso: 16, armF: [30, 90], armB: [20, 95], legF: [44, -82], legB: [22, -66], ...FISTS }],
+    [2, { hip: [0, 6], torso: 16, armF: [30, 90], armB: [20, 95], legF: [44, -82], legB: [22, -66], ...FISTS }],
+    [5, { hip: [0, -7], torso: -6, head: -14, armF: [176, 4], armB: [166, 10], legF: [8, -30], legB: [-10, -36], footF: 30, footB: 30, ...FISTS, face: 'yell' }],
+    [6, { hip: [0, -5], torso: 14, head: -4, armF: [120, 10], armB: [150, 10], legF: [14, -34], legB: [-6, -30], footF: 30, footB: 30, ...FISTS, face: 'yell' }],
+    [12, { hip: [0, 4], torso: 10, armF: [60, 30], armB: [40, 40], legF: [34, -60], legB: [14, -46] }],
+    [8, STAND],
+  ]),
+  // All In: lifts a stack of chips overhead, then shoves it into the floor.
+  dsmash: anim(false, [
+    [4, { torso: -4, armF: [120, 40], armB: [110, 50], legF: [10, -8], legB: [-8, -4] }],
+    [5, { torso: -8, head: -8, armF: [168, 14], armB: [158, 20], legF: [10, -8], legB: [-8, -4] }],
+    [2, { torso: -8, head: -8, armF: [168, 14], armB: [158, 20], legF: [10, -8], legB: [-8, -4], face: 'yell' }],
+    [10, { hip: [0, 10], torso: 34, head: 10, armF: [30, 6], armB: [14, 12], legF: [76, -124], legB: [58, -112], face: 'yell' }],
+    [12, { hip: [0, 8], torso: 26, armF: [30, 20], armB: [14, 24], legF: [70, -116], legB: [52, -104] }],
+    [8, STAND],
+  ]),
   dair: anim(false, [
     [5, { ...AIR, torso: 2, head: -4, legF: [40, -70], legB: [30, -60], armF: [95, 35], armB: [-95, 30] }],
     [5, DAIR_GATHER], [3, DAIR_TUCK], [1, DAIR_TUCK],
@@ -811,6 +842,24 @@ const moves = {
   // sideways hit on 19-21.
   // Out frame 14-17. Feet and legs meteor smash; the body hits at the
   // Sakurai angle. One hit, no late hit. Autocancels in a short hop.
+  // --- Smash attacks: L (with a direction), or tap a direction and press J
+  // right after. Hold the button to charge: up to 1.4x damage after a second.
+  // Forward: Home Run. A baseball bat swing. Slow, and his strongest launch. 18%.
+  fsmash: { faf: 54, charge: { at: 12, max: 60, smash: true }, gear: { kind: 'bat', from: 0, to: 44 },
+    trail: { part: 'weaponF', from: 15, to: 20, width: 10, arc: true }, hitboxes: [
+      ...hits(17, 19, [['weaponF', 9], ['weaponMidF', 8], ['fistF', 6]], 18, 361, 32, 104, { chargeScale: [180, 252], lagMult: 150 }),
+    ] },
+  // Up: Slam Dunk. Leaps and slams a basketball overhead. 14%, straight up.
+  usmash: { faf: 44, charge: { at: 9, max: 60, smash: true }, gear: { kind: 'ball', from: 0, to: 24 },
+    trail: { part: 'fistF', from: 11, to: 17, width: 9, arc: true }, hitboxes: [
+      ...hits(13, 17, [['fistF', 10], ['neck', 8]], 14, 88, 34, 96, { chargeScale: [140, 196], lagMult: 150 }),
+    ] },
+  // Down: All In. Slams a stack of poker chips down; they burst along the
+  // floor on both sides. 13%, sends low and away.
+  dsmash: { faf: 46, charge: { at: 9, max: 60, smash: true }, gear: { kind: 'chips', from: 2, to: 30, active: [12, 26] }, hitboxes: [
+      hit(12, 15, 'hip', 10, 13, 32, 30, 90, { chargeScale: [130, 182], lagMult: 150, radial: true, off: [15, 6] }),
+      hit(12, 15, 'hip', 10, 13, 32, 30, 90, { chargeScale: [130, 182], lagMult: 150, radial: true, off: [-15, 6] }),
+    ] },
   dair: { faf: 43, landLag: 13, autoCancel: [6, 32], trail: { part: 'footF', from: 13, to: 17, straight: true }, hitboxes: [
     ...hits(14, 17, [['footF', 6], ['footB', 6], ['shinF', 5], ['shinB', 5]], 14, 270, 25, 80),
     hit(14, 17, 'chest', 7, 14, 361, 30, 90),

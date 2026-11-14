@@ -17,6 +17,7 @@ export function fighterSolve(f, ch) {
 const tip = (limb, n) => [limb.c[0] + mulTrig(n * FX, sinDeg(limb.low)), limb.c[1] + mulTrig(n * FX, cosDeg(limb.low))];
 const mid = (p, q) => [(p[0] + q[0]) >> 1, (p[1] + q[1]) >> 1];
 const JOINT = {
+  weaponF: (s) => tip(s.armF, 13), weaponMidF: (s) => tip(s.armF, 7),   // along something held in the front hand
   fistF: (s) => tip(s.armF, 2), handF: (s) => s.armF.c, elbowF: (s) => s.armF.b,
   fistB: (s) => tip(s.armB, 2), handB: (s) => s.armB.c, elbowB: (s) => s.armB.b,
   toeF: (s) => tip(s.legF, 3), footF: (s) => s.legF.c, shinF: (s) => mid(s.legF.b, s.legF.c), kneeF: (s) => s.legF.b,

@@ -5,6 +5,12 @@ import { createMatch, step, hashState, serialize, deserialize } from '../engine/
 import { BTN } from '../engine/input.js';
 import { FX } from '../engine/fixed.js';
 
+// The older tests press a direction and attack on the same frame and expect a
+// tilt. That input is now a smash attack ("flick"), so the flick window is
+// switched off here and switched back on for the smash attack tests.
+const { CONFIG: TEST_CONFIG } = await import('../config/config.js');
+const FLICK = TEST_CONFIG.SMASH_FLICK_FRAMES;
+TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
 // most tests use Cloudrest: same main stage as the others, but no platforms to land on mid-test
 const setup = { stageId: 'cloudrest', players: [{ charId: 'simeon', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 1234 };
 let fails = 0;
@@ -977,6 +983,49 @@ for (const hold of [0, 30]) {
   step(s, [press(b.up), 0]);
   for (let i = 0; i < 6; i++) step(s, [press(b.up), 0]);
   check('tap jump on: pressing W leaves the ground', !a.grounded);
+}
+
+// Smash attacks: the smash button, or a direction tap followed straight away by attack
+{
+  TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
+  const { CHARACTERS } = await import('../characters/index.js');
+  const mk = (id = 'simeon') => { const s = createMatch({ ...setup, players: [{ charId: id, alt: 0 }, { charId: 'simeon', alt: 1 }] }); s.fighters[1].x = 900 * FX; return s; };
+  const moveAfter = (script, id) => { const s = mk(id); const a = s.fighters[0]; let mv = ''; for (const [n, inp] of script) for (let i = 0; i < n; i++) { step(s, [inp, 0]); if (a.move && !mv) mv = a.move; } return { mv, a }; };
+  check('smash button alone: forward smash', moveAfter([[1, BTN.SMASH]]).mv === 'fsmash');
+  check('smash button + up / down: up smash / down smash', moveAfter([[1, BTN.SMASH | BTN.UP]]).mv === 'usmash' && moveAfter([[1, BTN.SMASH | BTN.DOWN]]).mv === 'dsmash');
+  const back = moveAfter([[1, BTN.SMASH | BTN.LEFT]]);
+  check('smash button + back: turns round and forward smashes', back.mv === 'fsmash' && back.a.facing === -1);
+  check('direction and attack together: smash attack', moveAfter([[1, BTN.ATTACK | BTN.RIGHT]]).mv === 'fsmash' && moveAfter([[1, BTN.ATTACK | BTN.UP]]).mv === 'usmash' && moveAfter([[1, BTN.ATTACK | BTN.DOWN]]).mv === 'dsmash');
+  check('tap a direction, attack 3 frames later: still a smash', moveAfter([[1, BTN.RIGHT], [2, BTN.RIGHT], [1, BTN.RIGHT | BTN.ATTACK]]).mv === 'fsmash');
+  check('hold a direction first, then attack: a tilt as before', moveAfter([[8, BTN.RIGHT], [1, BTN.RIGHT | BTN.ATTACK]]).mv === 'ftilt' && moveAfter([[8, BTN.UP], [1, BTN.UP | BTN.ATTACK]]).mv === 'utilt' && moveAfter([[8, BTN.DOWN], [1, BTN.DOWN | BTN.ATTACK]]).mv === 'dtilt');
+  check('attack with no direction is still a jab', moveAfter([[1, BTN.ATTACK]]).mv === 'jab1');
+  { const s = mk(); const a = s.fighters[0]; a.y -= 80 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; step(s, [BTN.SMASH | BTN.UP, 0]); check('smash button in the air does an aerial', a.move === 'uair', a.move); }
+  // every fighter has three smashes that hit, charge up, and end
+  for (const ch of CHARACTERS) {
+    for (const [name, inp, place] of [['fsmash', 0, (a) => [a.x + 26 * FX, a.y]], ['usmash', BTN.UP, (a) => [a.x + 2 * FX, a.y - 52 * FX]], ['dsmash', BTN.DOWN, (a) => [a.x - 16 * FX, a.y]]]) {
+      const run = (hold) => {
+        const s = mk(ch.id); const [a, v] = s.fighters;
+        [v.x, v.y] = place(a);
+        if (v.y !== a.y) { v.grounded = 0; v.ground = -1; v.state = 'air'; }
+        const y0 = v.y;
+        step(s, [BTN.SMASH | inp, 0]);
+        const started = a.move;
+        for (let i = 0; i < hold; i++) { step(s, [BTN.SMASH | inp, 0]); if (v.state === 'air') { v.vy = 0; v.y = y0; } }
+        let end = -1;
+        for (let i = 0; i < 90 && end < 0; i++) { step(s, [0, 0]); if (v.state === 'air') { v.vy = 0; v.y = y0; } if (a.state === 'idle') end = i; }
+        return { started, pct: v.percent, ended: end >= 0 };
+      };
+      const tap = run(0), full = run(75);
+      const base = Math.max(...ch.moves[name].hitboxes.filter((h) => h.chargeScale).map((h) => h.chargeScale[0]));
+      check(`${ch.name} ${name}: hits, ends, and a full charge does more`, tap.started === name && tap.pct >= 100 && tap.ended && full.ended && full.pct > tap.pct && full.pct - tap.pct >= Math.round(base * 0.4) - 1,
+        `${tap.pct / 10}% uncharged, ${full.pct / 10}% fully charged`);
+    }
+  }
+  // down smashes hit behind as well, launching that way
+  { const s = mk('luca'); const [a, v] = s.fighters; v.x = a.x - 17 * FX; step(s, [BTN.SMASH | BTN.DOWN, 0]); let d = 0; for (let i = 0; i < 40; i++) { step(s, [0, 0]); if (!d && v.state === 'hitstun') d = Math.sign(v.vx); } check('down smash hits behind and launches them away', v.percent > 0 && d === -1); }
+  // a forward smash is a real kill move: KOs from the middle of the stage at high percent
+  { const s = mk(); const [a, v] = s.fighters; v.x = a.x + 26 * FX; v.percent = 1100; step(s, [BTN.SMASH, 0]); let ko = false; for (let i = 0; i < 300 && !ko; i++) { step(s, [0, 0]); ko = v.state === 'dead'; } check('Simeon forward smash KOs at 110% from mid-stage', ko); }
+  { const s = mk(); const [a, v] = s.fighters; v.x = a.x + 26 * FX; v.percent = 300; step(s, [BTN.SMASH, 0]); let ko = false; for (let i = 0; i < 300 && !ko; i++) { step(s, [0, 0]); ko = v.state === 'dead'; } check('...but not at 30%', !ko); }
 }
 
 process.exit(fails ? 1 : 0);

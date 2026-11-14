@@ -198,6 +198,7 @@ export class Renderer {
       if (f.state === 'shield' || f.state === 'shieldStun') this.drawShield(state, f, 0, 0);
       if (f.state === 'dizzy') this.drawDizzy(f, 0, 0);
       this.drawProp(state, f, ch);
+      this.drawGear(state, f, ch);
       this.drawDeck(state, f, ch);
     }
 
@@ -215,6 +216,105 @@ export class Renderer {
     if (opts.debugLines) {
       let y = 4;
       for (const line of opts.debugLines) { drawText(ctx, line, 4, y, '#ffffff', 1, 'left', '#000000'); y += 7; }
+    }
+  }
+
+  // Things a move brings out, set by `gear: { kind, from, to, active }` in its
+  // data: a bat, hockey stick or guitar in the front hand, a ball, a foaming
+  // beaker, poker chips, a microphone on a cord, a pair of speakers.
+  drawGear(state, f, ch) {
+    const mv = f.state === 'attack' && f.move ? ch.moves[f.move] : null;
+    const g = mv && mv.gear;
+    if (!g || f.stateFrame < g.from || f.stateFrame > g.to) return;
+    const ctx = this.ctx, fr = f.stateFrame, dir = f.facing;
+    const s = solve(ch.skeleton, samplePose(ch.animations[f.anim], f.animFrame));
+    const hx = f.x / FX + dir * (s.armF.c[0] / FX), hy = f.y / FX + s.armF.c[1] / FX;   // front hand
+    const act = g.active ? (fr >= g.active[0] && fr <= g.active[1] ? (fr - g.active[0]) / (g.active[1] - g.active[0]) : -1) : -1;
+    const cols = ch.trailColors || ['#ff9a3c', '#ffe14a', '#ffffff'];
+    const OUT = '#100d16';
+    // held along the forearm: +y runs from the hand out past the knuckles
+    const held = (draw) => { ctx.save(); ctx.translate(hx, hy); ctx.scale(dir, 1); ctx.rotate((-s.armF.low * Math.PI) / 180); draw(); ctx.restore(); };
+    const poly = (pts, fill) => { ctx.fillStyle = fill; ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.closePath(); ctx.fill(); };
+    if (g.kind === 'bat') held(() => {
+      poly([[-1.5, -3.5], [1.5, -3.5], [2.6, 12], [2.4, 17.5], [-2.4, 17.5], [-2.6, 12]], OUT);
+      poly([[-0.8, -3], [0.8, -3], [1.9, 12], [1.7, 16.8], [-1.7, 16.8], [-1.9, 12]], '#d9a866');
+      poly([[-0.8, -3], [0, -3], [0.4, 12], [0.2, 16.8], [-1.7, 16.8], [-1.9, 12]], '#f0cb94');
+      ctx.fillStyle = '#7a4f28'; ctx.fillRect(-1, -3, 2, 4);
+    });
+    else if (g.kind === 'stick') held(() => {
+      poly([[-1.3, -4], [1.3, -4], [1.3, 15], [7.5, 15.5], [7.5, 18.5], [-1.3, 18.5]], OUT);
+      poly([[-0.6, -3.4], [0.6, -3.4], [0.6, 15.6], [6.8, 16.1], [6.8, 17.8], [-0.6, 17.8]], '#e9dcc0');
+      ctx.fillStyle = cols[0]; ctx.fillRect(-0.6, 2, 1.2, 3); ctx.fillStyle = '#2a2a33'; ctx.fillRect(1.5, 16.4, 5.3, 1.4);
+    });
+    else if (g.kind === 'guitar') held(() => {
+      ctx.fillStyle = OUT; ctx.fillRect(-1.4, -6.5, 2.8, 16);
+      ctx.beginPath(); ctx.ellipse(0, 13.5, 5, 5.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#6b4a2a'; ctx.fillRect(-0.7, -4, 1.4, 13);
+      ctx.fillStyle = '#e9eef5'; ctx.fillRect(-1.1, -6, 2.2, 2.4);
+      ctx.fillStyle = cols[0]; ctx.beginPath(); ctx.ellipse(0, 13.5, 4.2, 4.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = cols[1]; ctx.beginPath(); ctx.ellipse(-1.2, 12, 1.8, 2.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(0, 13.5, 1.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e9eef5'; ctx.fillRect(-0.25, -4, 0.5, 19);
+    });
+    else if (g.kind === 'ball') {
+      const a = (s.armF.low * Math.PI) / 180;
+      this.drawBall(hx + dir * Math.sin(a) * 4, hy + Math.cos(a) * 4, 4, fr * 300);
+    } else if (g.kind === 'beaker') {
+      if (act >= 0) {
+        // the foam column: bubbles piling up above the beaker
+        const top = 38 * Math.min(1, act * 3) * (act > 0.85 ? 1.15 : 1);
+        for (let k = 0; k < 16; k++) {
+          const u = k / 15, wob = Math.sin(state.tick * 0.9 + k * 1.7) * (2 + u * 3);
+          ctx.fillStyle = k % 3 === 0 ? '#ffffff' : k % 3 === 1 ? cols[1] : cols[0];
+          ctx.globalAlpha = 0.9 - u * 0.25;
+          ctx.beginPath(); ctx.arc(hx + wob, hy - 6 - u * top, 3.2 + (1 - Math.abs(u - 0.6)) * 3.4, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      held(() => {
+        poly([[-1.6, 1], [1.6, 1], [1.6, 4], [4, 9.6], [-4, 9.6], [-1.6, 4]], OUT);
+        poly([[-0.9, 1.6], [0.9, 1.6], [0.9, 4.2], [3, 9], [-3, 9], [-0.9, 4.2]], '#dff3ff');
+        poly([[-1.6, 5.6], [1.6, 5.6], [3, 9], [-3, 9]], cols[0]);
+      });
+    } else if (g.kind === 'chips') {
+      const chip = (x, y, k) => { ctx.fillStyle = OUT; ctx.fillRect(x - 3, y - 1.3, 6, 2.6); ctx.fillStyle = ['#d2343c', '#f6f6f2', '#2f7bff', '#2fa35a'][k & 3]; ctx.fillRect(x - 2.5, y - 0.8, 5, 1.6); ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 0.6, y - 0.8, 1.2, 1.6); };
+      if (act < 0 && fr < g.active[0]) { for (let k = 0; k < 6; k++) chip(hx + dir * 2, hy - 2 - k * 1.8, k); }
+      else if (act >= 0) {
+        // burst along the floor on both sides, hopping as they scatter
+        const fy = f.y / FX;
+        for (let k = 0; k < 14; k++) {
+          const side = k & 1 ? 1 : -1, j = ((k * 37 + 11) % 10) / 10;
+          const x = f.x / FX + side * (5 + act * (14 + j * 22)), y = fy - 1.5 - Math.abs(Math.sin(act * Math.PI * (1 + j))) * (5 + j * 9) * (1 - act * 0.5);
+          ctx.globalAlpha = Math.min(1, (1 - act) * 2.5); chip(x, y, k);
+        }
+        ctx.globalAlpha = 1;
+      }
+    } else if (g.kind === 'mic') {
+      // out on its cord: shoots up, hangs, drops back to the hand
+      const h = act < 0 ? 0 : 42 * (act < 0.3 ? act / 0.3 : act > 0.7 ? (1 - act) / 0.3 : 1);
+      const a = (s.armF.low * Math.PI) / 180;
+      const mx = act < 0 ? hx + dir * Math.sin(a) * 5 : hx, my = act < 0 ? hy + Math.cos(a) * 5 : hy - 6 - h;
+      ctx.strokeStyle = OUT; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(hx, hy);
+      ctx.quadraticCurveTo(hx + dir * (act < 0 ? 3 : 2.5 * Math.sin(fr)), (hy + my) / 2, mx, my); ctx.stroke();
+      ctx.fillStyle = OUT; ctx.fillRect(mx - 1.4, my - 0.5, 2.8, 5.5); ctx.beginPath(); ctx.arc(mx, my - 2, 3.1, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#474b60'; ctx.fillRect(mx - 0.8, my, 1.6, 4.4);
+      ctx.fillStyle = '#c9ced8'; ctx.beginPath(); ctx.arc(mx, my - 2, 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(mx - 0.8, my - 2.8, 0.8, 0, Math.PI * 2); ctx.fill();
+    } else if (g.kind === 'speakers') {
+      const pop = Math.min(1, (fr - g.from) / 4, (g.to - fr) / 4), fy = f.y / FX;
+      for (const side of [-1, 1]) {
+        const x = f.x / FX + side * 19, thump = act >= 0 ? 1.6 * (1 - act) + ((state.tick >> 1) & 1) : 0;
+        ctx.fillStyle = OUT; ctx.fillRect(x - 6, fy - 15 * pop, 12, 15 * pop);
+        ctx.fillStyle = '#2f3242'; ctx.fillRect(x - 5, fy - 15 * pop + 1, 10, Math.max(0, 15 * pop - 2));
+        ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(x, fy - 7.5 * pop, 3.6 + thump, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = act >= 0 ? '#ffffff' : cols[0]; ctx.beginPath(); ctx.arc(x, fy - 7.5 * pop, 1.5 + thump * 0.6, 0, Math.PI * 2); ctx.fill();
+        if (act >= 0) for (let k = 0; k < 3; k++) {
+          const r = 6 + act * 16 + k * 5;
+          ctx.strokeStyle = k & 1 ? cols[2] : cols[1]; ctx.globalAlpha = Math.max(0, (1 - act) * (1 - k * 0.25)); ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.arc(x, fy - 7.5, r, side > 0 ? -1.0 : Math.PI - 1.0, side > 0 ? 1.0 : Math.PI + 1.0); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      }
     }
   }
 

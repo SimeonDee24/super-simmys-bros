@@ -55,12 +55,13 @@ const fighterLevel = (n, label, t) => ({
   ledgeOptions: { getup: 4, roll: 3, jump: 3, attack: 3 },
   getupWait: t.getupWait,
   techChance: t.tech,            // techs this share of its hard landings
+  smashChance: t.smash,          // picks a smash attack instead of a tilt when close
 });
-CPU_LEVELS.lv1 = fighterLevel(1, 'BEGINNER', { reaction: 24, think: [12, 22], sloppy: 0.45, defReact: 16, defend: 0.12, defMix: { shield: 6, spotDodge: 1, roll: 1, bluff: 0 }, airDodge: 0, jumpIn: 0.1, shoot: 0.05, grab: 0.05, mash: false, edgeguard: false, upRecover: false, ledgeWait: [30, 80], getupWait: [20, 50], tech: 0 });
-CPU_LEVELS.lv2 = fighterLevel(2, 'EASY', { reaction: 17, think: [7, 14], sloppy: 0.25, defReact: 11, defend: 0.3, defMix: { shield: 6, spotDodge: 1, roll: 2, bluff: 0 }, airDodge: 0.1, jumpIn: 0.2, shoot: 0.1, grab: 0.1, mash: false, edgeguard: false, upRecover: true, ledgeWait: [16, 60], getupWait: [12, 36], tech: 0.15 });
-CPU_LEVELS.lv3 = fighterLevel(3, 'MEDIUM', { reaction: 10, think: [3, 7], sloppy: 0.08, defReact: 5, defend: 0.6, defMix: { shield: 5, spotDodge: 2, roll: 2, bluff: 1 }, airDodge: 0.35, jumpIn: 0.3, shoot: 0.18, grab: 0.15, mash: true, edgeguard: true, upRecover: true, ledgeWait: [6, 40], getupWait: [4, 20], tech: 0.55 });
-CPU_LEVELS.lv4 = fighterLevel(4, 'HARD', { reaction: 7, think: [2, 5], sloppy: 0.03, defReact: 4, defend: 0.72, defMix: { shield: 5, spotDodge: 3, roll: 2, bluff: 1 }, airDodge: 0.45, jumpIn: 0.35, shoot: 0.2, grab: 0.22, mash: true, edgeguard: true, upRecover: true, ledgeWait: [4, 28], getupWait: [2, 14], tech: 0.75 });
-CPU_LEVELS.lv5 = fighterLevel(5, 'EXPERT', { reaction: 4, think: [1, 3], sloppy: 0, defReact: 3, defend: 0.85, defMix: { shield: 4, spotDodge: 3, roll: 3, bluff: 1 }, airDodge: 0.55, jumpIn: 0.4, shoot: 0.22, grab: 0.3, mash: true, edgeguard: true, upRecover: true, ledgeWait: [2, 20], getupWait: [1, 10], tech: 0.9 });
+CPU_LEVELS.lv1 = fighterLevel(1, 'BEGINNER', { reaction: 24, think: [12, 22], sloppy: 0.45, defReact: 16, defend: 0.12, defMix: { shield: 6, spotDodge: 1, roll: 1, bluff: 0 }, airDodge: 0, jumpIn: 0.1, shoot: 0.05, grab: 0.05, mash: false, edgeguard: false, upRecover: false, ledgeWait: [30, 80], getupWait: [20, 50], smash: 0.04, tech: 0 });
+CPU_LEVELS.lv2 = fighterLevel(2, 'EASY', { reaction: 17, think: [7, 14], sloppy: 0.25, defReact: 11, defend: 0.3, defMix: { shield: 6, spotDodge: 1, roll: 2, bluff: 0 }, airDodge: 0.1, jumpIn: 0.2, shoot: 0.1, grab: 0.1, mash: false, edgeguard: false, upRecover: true, ledgeWait: [16, 60], getupWait: [12, 36], smash: 0.07, tech: 0.15 });
+CPU_LEVELS.lv3 = fighterLevel(3, 'MEDIUM', { reaction: 10, think: [3, 7], sloppy: 0.08, defReact: 5, defend: 0.6, defMix: { shield: 5, spotDodge: 2, roll: 2, bluff: 1 }, airDodge: 0.35, jumpIn: 0.3, shoot: 0.18, grab: 0.15, mash: true, edgeguard: true, upRecover: true, ledgeWait: [6, 40], getupWait: [4, 20], smash: 0.11, tech: 0.55 });
+CPU_LEVELS.lv4 = fighterLevel(4, 'HARD', { reaction: 7, think: [2, 5], sloppy: 0.03, defReact: 4, defend: 0.72, defMix: { shield: 5, spotDodge: 3, roll: 2, bluff: 1 }, airDodge: 0.45, jumpIn: 0.35, shoot: 0.2, grab: 0.22, mash: true, edgeguard: true, upRecover: true, ledgeWait: [4, 28], getupWait: [2, 14], smash: 0.15, tech: 0.75 });
+CPU_LEVELS.lv5 = fighterLevel(5, 'EXPERT', { reaction: 4, think: [1, 3], sloppy: 0, defReact: 3, defend: 0.85, defMix: { shield: 4, spotDodge: 3, roll: 3, bluff: 1 }, airDodge: 0.55, jumpIn: 0.4, shoot: 0.22, grab: 0.3, mash: true, edgeguard: true, upRecover: true, ledgeWait: [2, 20], getupWait: [1, 10], smash: 0.18, tech: 0.9 });
 // Old name for level 3 (older saved settings and tests use it).
 CPU_LEVELS.fighter = CPU_LEVELS.lv3;
 
@@ -272,8 +273,14 @@ export class CpuController {
     if (adx < 26 && ady < 30) {
       if (!inFront) return toward;                                   // turn around first
       if (adx < 20 && ady < 10 && (view.state === 'shield' || this.rand() < c.grabChance)) return BTN.GRAB;
-      if (dy < -22 * FX) return BTN.ATTACK | BTN.UP;                 // above: up tilt
+      if (dy < -22 * FX) return this.rand() < (c.smashChance || 0) * 2 ? BTN.SMASH | BTN.UP : BTN.ATTACK | BTN.UP;   // above: up tilt or up smash
       if (view.state === 'knockdown') return BTN.ATTACK | BTN.DOWN;  // lying down: down tilt
+      if (this.rand() < (c.smashChance || 0)) {
+        // a smash: forward, or down if they are right on top of it; sometimes charged a little
+        const sm = BTN.SMASH | (adx < 10 ? BTN.DOWN : toward);
+        this.queue = new Array(this.between([0, 14])).fill(BTN.SMASH);
+        return sm;
+      }
       const pick = this.rand();
       if (pick < 0.3) { this.queue = [0, 0, 0, 0, BTN.ATTACK, 0, 0, 0, 0, BTN.ATTACK]; return BTN.ATTACK; } // jab 1-2-3
       if (pick < 0.55) return BTN.ATTACK | toward;                   // forward tilt

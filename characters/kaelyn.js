@@ -155,6 +155,7 @@ const DASH = { hip: [0, 2], torso: 36, head: -26, armF: [-55, 105], armB: [60, 5
 const BOMB_DROP = { torso: 4, head: 6, armF: [150, 20], armB: [-150, -20], legF: [22, -8], legB: [-18, -4], ...FISTS, face: 'yell' };
 const FLIP_TUCK = { torso: 28, head: 18, armF: [50, 100], armB: [30, 110], legF: [96, -136], legB: [82, -130], ...FISTS };
 const FLIP_KICK = { torso: -30, head: 10, armF: [-80, 30], armB: [-130, 20], legF: [58, -3], legB: [36, -105], footF: -30, ...FISTS, face: 'yell' };
+const SPIN_OUT = { hip: [0, 1], torso: -6, head: -4, armF: [100, 10], armB: [-100, -10], legF: [86, -4], legB: [4, -8], footF: -10, handF: 'open', handB: 'open', face: 'smile' };
 const CUT_KICK = { torso: -8, head: -6, legF: [112, -6], legB: [-24, -46], armF: [-40, 40], armB: [60, 40], footF: -20, ...FISTS, face: 'yell' };
 const CUT_DIVE = { torso: -22, head: 14, legF: [34, -3], legB: [-20, -100], armF: [160, 20], armB: [-140, -20], footF: -35, ...FISTS, face: 'yell' };
 
@@ -195,6 +196,36 @@ const animations = {
     [16, FLIP_KICK],
     [8, { ...FLIP_KICK, torso: -16 }],
     [8, { torso: 4, armF: [60, 30], armB: [-40, 30], legF: [30, -30], legB: [-10, -40] }],
+  ]),
+  // --- Smash attacks ---
+  // Slapshot: stick drawn back and up, then swept low along the ice.
+  fsmash: anim(false, [
+    [5, { torso: -6, armF: [-70, -10], armB: [-40, 50], legF: [16, -12], legB: [-12, -6], ...FISTS }],
+    [5, { hip: [-1, 2], torso: -16, head: 8, armF: [-130, -10], armB: [-80, 70], legF: [28, -26], legB: [-18, -8], ...FISTS }],
+    [2, { hip: [-1, 2], torso: -18, head: 8, armF: [-136, -10], armB: [-80, 70], legF: [28, -26], legB: [-18, -8], ...FISTS, face: 'yell' }],
+    [2, { hip: [1, 4], torso: 16, armF: [10, 0], armB: [-30, 50], legF: [40, -40], legB: [-26, -6], ...FISTS, face: 'yell' }],
+    [8, { hip: [2, 6], torso: 38, head: -16, armF: [38, 4], armB: [30, 50], legF: [46, -50], legB: [-34, -4], ...FISTS, face: 'yell' }],
+    [14, { hip: [0, 2], torso: 14, armF: [90, 20], armB: [20, 40], legF: [24, -22], legB: [-16, -4], ...FISTS }],
+    [6, STAND],
+  ]),
+  // Eruption: swirls a beaker, then thrusts it overhead as it foams over.
+  usmash: anim(false, [
+    [4, { torso: 6, armF: [50, 80], armB: [20, 60], legF: [10, -8], legB: [-8, -4], handF: 'fist' }],
+    [3, { hip: [0, 2], torso: 10, armF: [40, 95], armB: [10, 70], legF: [18, -20], legB: [-10, -12], handF: 'fist' }],
+    [2, { hip: [0, 2], torso: 10, armF: [40, 95], armB: [10, 70], legF: [18, -20], legB: [-10, -12], handF: 'fist' }],
+    [3, { hip: [0, -1], torso: -6, head: -12, armF: [176, 4], armB: [-40, 30], legF: [8, -4], legB: [-8, -4], handF: 'fist', face: 'yell' }],
+    [14, { hip: [0, -1], torso: -8, head: -14, armF: [178, 2], armB: [-50, 30], legF: [8, -4], legB: [-8, -4], handF: 'fist', face: 'yell' }],
+    [12, { torso: 2, armF: [100, 40], armB: [-20, 30], legF: [8, -6], legB: [-8, -4] }],
+    [6, STAND],
+  ]),
+  // Scratch Spin: pulls in, then spins on one skate with the other leg out.
+  dsmash: anim(false, [
+    [3, { hip: [0, 3], torso: 8, armF: [40, 90], armB: [30, 95], legF: [30, -50], legB: [10, -30], ...FISTS }],
+    [3, SPIN_OUT],
+    [12, SPIN_OUT],
+    [4, { ...SPIN_OUT, hip: [0, 3] }],
+    [12, { hip: [0, 3], torso: 6, armF: [50, 40], armB: [-40, 30], legF: [30, -40], legB: [0, -20] }],
+    [6, STAND],
   ]),
   // Kickflip: a rising backflip with one skate leading, then a dive with
   // that skate pointed at the floor.
@@ -254,6 +285,27 @@ const moves = {
     rocket: { frame: 3, frames: 24, speed: [px(3.2), px(3.2)], lift: -px(2.6), gravity: 60, drag: 0, bounce: [px(1.6), px(3.4)] },
     trail: { part: 'toeF', from: 3, to: 20, width: 9, arc: true },
     hitboxes: hits(4, 22, [['toeF', 9], ['shinF', 7]], 14, 42, 45, 95) },
+
+  // --- Smash attacks (see simeon.js for how they are performed) ---
+  // Forward: Slapshot. A hockey stick swept along the ice. Quick for a smash;
+  // sends low and far. 15%.
+  fsmash: { faf: 46, wear: SKATES, charge: { at: 9, max: 60, smash: true }, gear: { kind: 'stick', from: 0, to: 38 },
+    trail: { part: 'weaponF', from: 11, to: 16, width: 9, arc: true }, hitboxes: [
+      ...hits(13, 15, [['weaponF', 9], ['weaponMidF', 7], ['fistF', 6]], 15, 28, 36, 98, { chargeScale: [150, 210], lagMult: 150 }),
+    ] },
+  // Up: Eruption. A beaker held overhead foams up in a column: four small
+  // hits that hold them in it, then a burst. 14% in all.
+  usmash: { faf: 46, charge: { at: 8, max: 60, smash: true }, gear: { kind: 'beaker', from: 0, to: 34, active: [10, 26] }, hitboxes: [
+      ...[0, 1, 2, 3].flatMap((i) => hits(10 + i * 3, 12 + i * 3, [['fistF', 8], ['fistF', 8, [0, -14]], ['fistF', 7, [0, -27]]], 2, 100, 0, 100, { fkb: 18, group: i })
+        .map((h, k) => ({ ...h, off: [[0, -6], [0, -19], [0, -31]][k] }))),
+      ...hits(23, 25, [['fistF', 10], ['fistF', 9]], 6, 88, 50, 130, { chargeScale: [60, 84], lagMult: 150, group: 4 }).map((h, k) => ({ ...h, off: [[0, -8], [0, -24]][k] })),
+    ] },
+  // Down: Scratch Spin. A figure-skating spin with one leg out: hits on both
+  // sides. 12%, sends low and away.
+  dsmash: { faf: 40, wear: SKATES, twirl: [[6, 19]], charge: { at: 5, max: 60, smash: true }, hitboxes: [
+      hit(7, 18, 'hip', 9, 12, 30, 32, 88, { chargeScale: [120, 168], lagMult: 150, radial: true, off: [14, 3] }),
+      hit(7, 18, 'hip', 9, 12, 30, 32, 88, { chargeScale: [120, 168], lagMult: 150, radial: true, off: [-14, 3] }),
+    ] },
 
   // Up special: Kickflip. Flips upward with a skate leading (carrying anyone
   // it hits), then dives. Steerable the whole way, grabs ledges on the way

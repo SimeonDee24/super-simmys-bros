@@ -37,6 +37,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     charge: 0,                        // chargeable moves (Jump Shot)
     airUsed: 0,
     dropThru: 0,                      // frames left falling through a platform
+    flick: 0, flickTimer: 0,          // the direction just tapped, for flick + attack smashes
     techTimer: 0, techLock: 0,        // teching: press window, and lockout after a press                       // 1 once a once-per-jump special has been used in the air
     // Grabs: who I am holding / who is holding me
     holding: -1, heldBy: -1, grabTimer: 0, pummelFrame: 0, throwName: '', throwFacing: 1, releaseFrames: 0, grabTick: -1, kbAngle: 0, kbSpeed: 0, gv: 0,
@@ -150,7 +151,7 @@ export function startMove(f, name, air) {
   f.move = name;
   f.moveAir = air ? 1 : 0;
   f.hitGroups = 0;
-  f.buf &= ~(BTN.ATTACK | BTN.SPECIAL | BTN.GRAB);
+  f.buf &= ~(BTN.ATTACK | BTN.SPECIAL | BTN.GRAB | BTN.SMASH);
   const mv = getCharacter(f.charId).moves[name];
   if (mv.intangible) f.intangible = mv.intangible;
   f.charge = 0;
@@ -193,9 +194,31 @@ function trySpecial(c, air) {
   return true;
 }
 
+// Smash attacks: the smash button (with a direction, or none for forward), or
+// attack pressed within a few frames of tapping a direction ("flick").
+function trySmash(c, allowFlick = true) {
+  const f = c.f;
+  let up = false, down = false, side = 0;
+  if (c.pressed & BTN.SMASH) {
+    up = !!(c.input & BTN.UP); down = !!(c.input & BTN.DOWN); side = c.dir;
+  } else if (allowFlick && (c.pressed & BTN.ATTACK) && f.flickTimer > 0 && !(c.input & BTN.SHIELD)) {
+    up = !!(f.flick & BTN.UP); down = !!(f.flick & BTN.DOWN);
+    side = (f.flick & BTN.LEFT) ? -1 : (f.flick & BTN.RIGHT) ? 1 : 0;
+    if (!up && !down && !side) return false;
+  } else return false;
+  const name = up ? 'usmash' : down ? 'dsmash' : 'fsmash';
+  if (!c.ch.moves[name]) return false;
+  if (!up && !down && side) f.facing = side;
+  f.flickTimer = 0;
+  f.vx = 0;
+  startMove(f, name, false);
+  return true;
+}
+
 function tryGroundAttack(c) {
   if (tryGrab(c)) return true;
   if (trySpecial(c, false)) return true;
+  if (trySmash(c)) return true;
   if (!(c.pressed & BTN.ATTACK)) return false;
   const f = c.f;
   if (c.input & BTN.UP) startMove(f, 'utilt', false);
@@ -209,7 +232,7 @@ function tryGroundAttack(c) {
 function tryAerial(c) {
   if (trySpecial(c, true)) return true;
   if (c.pressed & BTN.GRAB) { startMove(c.f, 'nair', true); return true; }   // grab in the air: neutral air
-  if (!(c.pressed & BTN.ATTACK)) return false;
+  if (!(c.pressed & (BTN.ATTACK | BTN.SMASH))) return false;   // the smash button does aerials in the air
   const f = c.f;
   let name = 'nair';
   if (c.input & BTN.UP) name = 'uair';
@@ -246,6 +269,7 @@ function airMotion(c, float) {
 function tryDashAttack(c) {
   if (tryGrab(c, true)) return true;
   if (trySpecial(c, false)) return true;
+  if (trySmash(c, false)) return true;   // smash button out of a run (no flick: that is the dash attack)
   if (!(c.pressed & BTN.ATTACK)) return false;
   startMove(c.f, 'dashAttack', false);
   c.f.vx = c.f.facing * c.ch.moves.dashAttack.slide.speed;
@@ -535,7 +559,9 @@ const STATES = {
     let mv = c.ch.moves[f.move];
     // Chargeable move: while the special button is held, stay on the charge
     // frame and build up charge (up to `max`).
-    if (mv.charge && f.stateFrame === mv.charge.at + 1 && (c.input & BTN.SPECIAL) && f.charge < mv.charge.max) {
+    // (specials charge with the special button; smash attacks with smash or attack)
+    const holdBtn = mv.charge && mv.charge.smash ? BTN.SMASH | BTN.ATTACK : BTN.SPECIAL;
+    if (mv.charge && f.stateFrame === mv.charge.at + 1 && (c.input & holdBtn) && f.charge < mv.charge.max) {
       f.charge++;
       f.stateFrame = mv.charge.at;
       f.animFrame--;
@@ -900,7 +926,7 @@ export function updateFighter(match, f, input) {
   // As in Smash Ultimate, a buffered button that is still being held stays
   // buffered for as long as it is held, so pressing jump early during an
   // aerial and keeping it down jumps on the very first frame possible.
-  const BUFFERED = BTN.JUMP | BTN.ATTACK | BTN.SPECIAL | BTN.GRAB;
+  const BUFFERED = BTN.JUMP | BTN.ATTACK | BTN.SPECIAL | BTN.GRAB | BTN.SMASH;
   if (pressed & BUFFERED) { f.buf |= pressed & BUFFERED; f.bufTimer = CONFIG.BUFFER_FRAMES; }
   else if (f.buf & input) { f.buf &= input; f.bufTimer = CONFIG.BUFFER_FRAMES; }
   else if (f.bufTimer > 0 && --f.bufTimer === 0) f.buf = 0;
@@ -916,6 +942,10 @@ export function updateFighter(match, f, input) {
   if (f.state !== 'shield' && f.state !== 'shieldStun' && f.state !== 'shieldBreak' && f.state !== 'dizzy') {
     f.shieldHp = Math.min(CONFIG.SHIELD_MAX, f.shieldHp + CONFIG.SHIELD_REGEN);
   }
+  // Remember a direction tap for a few frames: attack right after it is a smash.
+  const tapped = pressed & (BTN.LEFT | BTN.RIGHT | BTN.UP | BTN.DOWN);
+  if (tapped) { f.flick = tapped; f.flickTimer = CONFIG.SMASH_FLICK_FRAMES; }
+  else if (f.flickTimer > 0 && --f.flickTimer === 0) f.flick = 0;
   // Tech input: a shield press while airborne and tumbling or in hitstun opens
   // a short window; pressing again too soon does nothing (no mashing).
   if (f.techTimer > 0) f.techTimer--;

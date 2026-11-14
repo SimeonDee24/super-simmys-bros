@@ -170,6 +170,36 @@ const animations = {
     [12, { torso: 8, armF: [40, 20], armB: [-20, 30], legF: [12, -8], legB: [-8, -4] }],
     [1, STAND],
   ]),
+  // --- Smash attacks ---
+  // Power Chord: guitar hauled up over his shoulder, then chopped down like an axe.
+  fsmash: anim(false, [
+    [6, { torso: -4, armF: [120, 30], armB: [80, 60], legF: [16, -12], legB: [-12, -6], ...FISTS }],
+    [6, { hip: [-1, 1], torso: -18, head: 6, armF: [208, 30], armB: [150, 60], legF: [24, -20], legB: [-16, -6], ...FISTS }],
+    [3, { hip: [-1, 1], torso: -22, head: 8, armF: [216, 30], armB: [156, 60], legF: [24, -20], legB: [-16, -6], ...FISTS, face: 'yell' }],
+    [2, { hip: [1, 1], torso: 6, armF: [140, 0], armB: [100, 40], legF: [30, -24], legB: [-20, -4], ...FISTS, face: 'yell' }],
+    [10, { hip: [2, 4], torso: 34, head: -8, armF: [56, 0], armB: [30, 40], legF: [42, -44], legB: [-28, -4], ...FISTS, face: 'yell' }],
+    [15, { hip: [0, 2], torso: 16, armF: [60, 20], armB: [20, 40], legF: [24, -22], legB: [-16, -4], ...FISTS }],
+    [8, STAND],
+  ]),
+  // Mic Drop: swings the mic low on its cord, then flings it straight up.
+  usmash: anim(false, [
+    [4, { torso: 8, armF: [30, 30], armB: [-30, 40], legF: [12, -10], legB: [-10, -6], handF: 'fist' }],
+    [4, { hip: [0, 3], torso: 14, armF: [-20, 20], armB: [-40, 50], legF: [22, -26], legB: [-12, -14], handF: 'fist' }],
+    [2, { hip: [0, 3], torso: 14, armF: [-24, 20], armB: [-40, 50], legF: [22, -26], legB: [-12, -14], handF: 'fist' }],
+    [3, { hip: [0, -1], torso: -8, head: -14, armF: [176, 2], armB: [-50, 30], legF: [8, -4], legB: [-8, -4], handF: 'fist', face: 'yell' }],
+    [8, { hip: [0, -1], torso: -8, head: -14, armF: [178, 0], armB: [-50, 30], legF: [8, -4], legB: [-8, -4], handF: 'fist', face: 'yell' }],
+    [13, { torso: 2, armF: [90, 40], armB: [-20, 30], legF: [8, -6], legB: [-8, -4], handF: 'open' }],
+    [8, STAND],
+  ]),
+  // Feedback: lifts a foot, then stomps a pedal as the speakers either side blast.
+  dsmash: anim(false, [
+    [5, { torso: -4, armF: [60, 60], armB: [-50, 50], legF: [60, -80], legB: [-4, -4], ...FISTS }],
+    [5, { hip: [0, -1], torso: -8, armF: [100, 50], armB: [-90, 40], legF: [78, -96], legB: [-4, -4], ...FISTS }],
+    [2, { hip: [0, -1], torso: -8, armF: [100, 50], armB: [-90, 40], legF: [78, -96], legB: [-4, -4], ...FISTS, face: 'yell' }],
+    [12, { hip: [0, 4], torso: 12, head: -8, armF: [150, 20], armB: [-150, -20], legF: [20, -8], legB: [-22, -30], ...FISTS, face: 'yell' }],
+    [14, { hip: [0, 2], torso: 6, armF: [60, 30], armB: [-50, 30], legF: [14, -10], legB: [-10, -10] }],
+    [8, STAND],
+  ]),
   // Wire Transfer: twirls on the spot with his arms up until he vanishes in
   // a whirl of light, then spins back into view and flings his arms wide.
   wireTransfer: anim(false, [
@@ -221,6 +251,26 @@ const moves = {
     spawn: { frame: 14, from: 'fistF', projectile: 'arrowUp' }, hitboxes: [] },
   supplyDemandCrash: { faf: 50, charge: { at: 10, max: 12 },
     spawn: { frame: 16, from: 'fistF', projectile: 'arrowDown' }, hitboxes: [] },
+
+  // --- Smash attacks (see simeon.js for how they are performed) ---
+  // Forward: Power Chord. Swings an electric guitar like an axe. 17%.
+  fsmash: { faf: 52, charge: { at: 12, max: 60, smash: true }, gear: { kind: 'guitar', from: 0, to: 44 },
+    trail: { part: 'weaponF', from: 15, to: 20, width: 10, arc: true }, hitboxes: [
+      ...hits(16, 19, [['weaponF', 9], ['weaponMidF', 8], ['fistF', 6]], 17, 361, 32, 100, { chargeScale: [170, 238], lagMult: 150 }),
+    ] },
+  // Up: Mic Drop. Flings a microphone straight up on its cord and yanks it
+  // back: a tall, thin hit. 13%.
+  usmash: { faf: 44, charge: { at: 8, max: 60, smash: true }, gear: { kind: 'mic', from: 0, to: 30, active: [11, 20] }, hitboxes: [
+      hit(11, 16, 'fistF', 7, 13, 90, 34, 98, { chargeScale: [130, 182], lagMult: 150, off: [0, -8] }),
+      hit(11, 16, 'fistF', 6, 13, 90, 34, 98, { chargeScale: [130, 182], lagMult: 150, off: [0, -22] }),
+      hit(12, 16, 'fistF', 6, 13, 90, 34, 98, { chargeScale: [130, 182], lagMult: 150, off: [0, -36] }),
+    ] },
+  // Down: Feedback. Stomps a pedal and a speaker on each side of him
+  // blasts. 14%, launches up and away.
+  dsmash: { faf: 48, charge: { at: 10, max: 60, smash: true }, gear: { kind: 'speakers', from: 2, to: 34, active: [12, 22] }, hitboxes: [
+      hit(12, 15, 'hip', 11, 14, 40, 30, 92, { chargeScale: [140, 196], lagMult: 150, radial: true, off: [17, 6] }),
+      hit(12, 15, 'hip', 11, 14, 40, 30, 92, { chargeScale: [140, 196], lagMult: 150, radial: true, off: [-17, 6] }),
+    ] },
 
   // Up special: Wire Transfer. Twirls, vanishes and reappears about 150px away in
   // the direction held (straight up if none). Untouchable in between; a

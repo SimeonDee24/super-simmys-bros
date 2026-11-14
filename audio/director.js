@@ -74,7 +74,7 @@ export class SoundDirector {
             const fr = f.stateFrame;
             if (!mv.deck) {
               let dmg = -1;
-              for (const hb of mv.hitboxes) if (hb.frames[0] === fr) dmg = Math.max(dmg, hb.chargeScale ? hb.chargeScale[1] / 2 : hb.damage);
+              for (const hb of mv.hitboxes) if (hb.frames[0] === fr) dmg = Math.max(dmg, hb.chargeScale ? hb.chargeScale[0] : hb.damage);
               if (dmg >= 0) add(dmg >= 120 ? 'swingL' : dmg >= 60 ? 'swingM' : 'swingS');
             }
             if (mv.grab && mv.grab.frames && mv.grab.frames[0] === fr) add('swingS');

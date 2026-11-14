@@ -132,6 +132,7 @@ function drawScreen() {
       'F1  DEBUG INFO AND STATE HASH',
       'F2  HITBOXES (RED), HURTBOXES (YELLOW), LEDGE BOXES',
       '',
+      'SMASH  L (+ W / S FOR UP / DOWN), OR TAP A DIRECTION AND PRESS J RIGHT AFTER.  HOLD TO CHARGE',
       'ATTACK  J    ON THE GROUND: JAB (PRESS AGAIN FOR 1-2-3), A / D = FORWARD TILT,',
       '             W = UP TILT, S = DOWN TILT',
       '             IN THE AIR: NEUTRAL, FORWARD, BACK, W = UP, S = DOWN AIR',
