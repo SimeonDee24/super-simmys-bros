@@ -63,6 +63,13 @@ export const CONFIG = {
   SPECIAL_LAND_LAG: 10,     // landing lag for an air special that sets none of its own
   HELPLESS_LAND_LAG: 14,    // landing lag after falling helpless from a recovery move
   PLATFORM_DROP_FRAMES: 12, // frames a fighter falls through a platform after tapping down on it
+  // Teching: press shield just before hitting the floor, a wall or the ceiling
+  // while tumbling. Pressing too early locks you out for a while (no mashing).
+  TECH_WINDOW: 11,          // frames a shield press counts for
+  TECH_LOCKOUT: 40,         // frames after a press before another one counts
+  TECH_FRAMES: 26, TECH_INTANGIBLE: 20,          // tech in place
+  TECH_ROLL_INTANGIBLE: 20,                      // tech roll (uses the getup roll)
+  TECH_WALL_FRAMES: 10, TECH_WALL_INTANGIBLE: 14, // wall / ceiling tech
   HITSTUN_LAND_LAG: 8,      // landing lag when hitting the floor during light hitstun
   // Landing while tumbling knocks you down (teching arrives with milestone 3).
   KNOCKDOWN_MIN: 18,        // frames lying down before you can choose a getup

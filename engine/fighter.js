@@ -36,7 +36,8 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     counterDmg: 0, counterTick: -1,   // counter specials
     charge: 0,                        // chargeable moves (Jump Shot)
     airUsed: 0,
-    dropThru: 0,                      // frames left falling through a platform                       // 1 once a once-per-jump special has been used in the air
+    dropThru: 0,                      // frames left falling through a platform
+    techTimer: 0, techLock: 0,        // teching: press window, and lockout after a press                       // 1 once a once-per-jump special has been used in the air
     // Grabs: who I am holding / who is holding me
     holding: -1, heldBy: -1, grabTimer: 0, pummelFrame: 0, throwName: '', throwFacing: 1, releaseFrames: 0, grabTick: -1, kbAngle: 0, kbSpeed: 0, gv: 0,
     hitX: 0, hitY: 0, lastHitTick: -1, lastHitDmg: 0,
@@ -104,6 +105,17 @@ export function land(f, groundIndex, st) {
   f.airDodged = 0;
   f.intangible = 0;
   f.ledgeGrabs = 0;
+  if ((f.tumbling || (f.state === 'hitstun' && f.anim === 'tumble')) && f.techTimer > 0) {
+    // Teched: shield was pressed just before hitting the floor. Get up at
+    // once (in place, or rolling the way the stick is held), briefly untouchable.
+    const dir = (f.prevIn & BTN.LEFT) ? -1 : (f.prevIn & BTN.RIGHT) ? 1 : 0;
+    f.tumbling = 0; f.techTimer = 0;
+    f.hitstun = 0; f.fastFall = 0; f.jumpsLeft = st.airJumps; f.wallSide = 0; f.vx = 0;
+    if (dir) { f.facing = dir; f.intangible = CONFIG.TECH_ROLL_INTANGIBLE; setState(f, 'getupRoll', 'getupRoll'); }
+    else { f.intangible = CONFIG.TECH_INTANGIBLE; setState(f, 'tech', 'getupStand'); }
+    f.techTick = 1;
+    return;
+  }
   if (f.tumbling || (f.state === 'hitstun' && f.anim === 'tumble')) {
     // Hit the floor while tumbling: knocked down.
     f.tumbling = 0;
@@ -682,6 +694,17 @@ const STATES = {
       setState(f, 'getupStand', 'getupStand');
     }
   },
+  // Teched in place: back on his feet almost at once.
+  tech(c) {
+    c.f.vx = 0;
+    if (c.f.stateFrame >= CONFIG.TECH_FRAMES) setState(c.f, 'idle', 'idle');
+  },
+  // Teched off a wall or the ceiling: sticks for a moment, then drops away.
+  techWall(c) {
+    const f = c.f;
+    f.vx = 0; f.vy = 0;
+    if (f.stateFrame >= CONFIG.TECH_WALL_FRAMES) { f.vy = -FX; f.vx = f.facing * FX; setState(f, 'air', 'fall'); }
+  },
   getupStand(c) {
     c.f.vx = 0;
     if (c.f.stateFrame >= CONFIG.GETUP_STAND_FRAMES) setState(c.f, 'idle', 'idle');
@@ -892,6 +915,13 @@ export function updateFighter(match, f, input) {
   if (f.intangible > 0) f.intangible--;
   if (f.state !== 'shield' && f.state !== 'shieldStun' && f.state !== 'shieldBreak' && f.state !== 'dizzy') {
     f.shieldHp = Math.min(CONFIG.SHIELD_MAX, f.shieldHp + CONFIG.SHIELD_REGEN);
+  }
+  // Tech input: a shield press while airborne and tumbling or in hitstun opens
+  // a short window; pressing again too soon does nothing (no mashing).
+  if (f.techTimer > 0) f.techTimer--;
+  if (f.techLock > 0) f.techLock--;
+  if ((pressed & BTN.SHIELD) && !f.grounded && (f.state === 'hitstun' || f.tumbling) && !f.techLock) {
+    f.techTimer = CONFIG.TECH_WINDOW; f.techLock = CONFIG.TECH_LOCKOUT;
   }
   // Standing on a pass-through platform: tapping down (on its own) drops through it.
   if ((pressed & BTN.DOWN) && !(input & (BTN.ATTACK | BTN.SPECIAL | BTN.GRAB | BTN.SHIELD | BTN.JUMP)) && DROPPABLE[f.state] && onPlatform(getStage(match.stageId), f)) {

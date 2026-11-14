@@ -10,6 +10,18 @@ import { getCharacter } from '../characters/index.js';
 export const groundOf = (stage, i) => (i < stage.solids.length ? stage.solids[i] : (stage.platforms || [])[i - stage.solids.length]);
 export const onPlatform = (stage, f) => f.grounded && f.ground >= stage.solids.length;
 
+// Hitting a wall or ceiling while tumbling, with the tech window open:
+// stick to it for a moment instead of bouncing off.
+function wallTech(f, away) {
+  if (f.techTimer <= 0 || !(f.state === 'hitstun' || f.tumbling)) return false;
+  f.techTimer = 0; f.tumbling = 0; f.hitstun = 0; f.kbSpeed = 0;
+  f.vx = 0; f.vy = 0; f.facing = away || f.facing;
+  f.intangible = CONFIG.TECH_WALL_INTANGIBLE;
+  f.techTick = 1;
+  setState(f, 'techWall', 'fall');
+  return true;
+}
+
 export function moveFighter(f, stage, st) {
   const solids = stage.solids;
   const hw = st.ecbHalfW, h = st.ecbHeight;
@@ -44,6 +56,7 @@ export function moveFighter(f, stage, st) {
       if (x0 <= (L + R) >> 1) { f.x = L - hw; f.wallSide = 1; }
       else { f.x = R + hw; f.wallSide = -1; }
       f.vx = 0;
+      if (wallTech(f, -f.wallSide)) return;
     }
   }
 
@@ -72,6 +85,7 @@ export function moveFighter(f, stage, st) {
     if (f.vy < 0 && y0 - h >= B && f.y - h < B && f.x + hw > L && f.x - hw < R) {
       f.y = B + h;
       f.vy = 0;
+      if (wallTech(f, f.facing)) return;
     }
   }
 
@@ -116,7 +130,7 @@ function tryLedgeGrab(f, stage, st) {
   }
 }
 
-const NO_PHYSICS = { ledge: 1, ledgeGetup: 1, ledgeRoll: 1, dead: 1, out: 1, respawn: 1, grabbed: 1, thrown: 1 };
+const NO_PHYSICS = { techWall: 1, ledge: 1, ledgeGetup: 1, ledgeRoll: 1, dead: 1, out: 1, respawn: 1, grabbed: 1, thrown: 1 };
 
 // Crossing a blast zone is a KO: lose a stock and wait to respawn.
 // (Milestone 2 adds launch-based KOs; the rule here stays the same.)

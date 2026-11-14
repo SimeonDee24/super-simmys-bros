@@ -21,6 +21,7 @@ export const CPU_LEVELS = {
     ledgeWait: [20, 60],
     ledgeOptions: { getup: 5, roll: 3, jump: 2, attack: 0 },
     getupWait: [10, 40],
+    techChance: 0,
   },
   fighter: {
     label: 'FIGHTER',
@@ -44,6 +45,7 @@ export const CPU_LEVELS = {
     ledgeWait: [6, 40],
     ledgeOptions: { getup: 4, roll: 3, jump: 3, attack: 3 },
     getupWait: [4, 20],
+    techChance: 0.55,      // techs about half its hard landings
   },
 };
 
@@ -99,6 +101,14 @@ export class CpuController {
 
     // --- things every level does ---
     if (me.state === 'dizzy') return (state.tick & 1) ? BTN.ATTACK : BTN.JUMP;   // mash
+    // tumbling toward the floor: try to tech (decided once per tumble)
+    if ((me.state === 'hitstun' || me.tumbling) && !me.grounded && me.vy > 0) {
+      const below = me.y / FX, floor = this.floorBelow(stage, me);
+      if (floor !== null && floor - below < (me.vy / FX) * 7 + 2 && floor - below > 0) {
+        if (this.techRoll === undefined) this.techRoll = this.rand() < (this.cfg.techChance || 0) ? this.between([0, 2]) : -1;
+        if (this.techRoll >= 0) return this.press(BTN.SHIELD) | [0, BTN.LEFT, BTN.RIGHT][this.techRoll];
+      }
+    } else this.techRoll = undefined;
     if (me.state === 'ledge') return this.onLedge(me);
     if (me.state === 'knockdown') return this.onKnockdown(me, opp);
     if (me.state === 'grabbed') return this.cfg.mashes && (state.tick & 1) ? BTN.ATTACK : 0;
@@ -333,6 +343,14 @@ export class CpuController {
     }
     this.queue = new Array(this.between([12, 26])).fill(BTN.SHIELD);
     return BTN.SHIELD;
+  }
+
+  // Height of the floor (or platform) under a fighter, or null.
+  floorBelow(stage, me) {
+    let best = null;
+    const x = me.x / FX, y = me.y / FX;
+    for (const s of [...stage.solids, ...(stage.platforms || [])]) if (x >= s.x && x <= s.x + s.w && s.y >= y && (best === null || s.y < best)) best = s.y;
+    return best;
   }
 
   // Walk (or dash if far) toward an x position.

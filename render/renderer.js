@@ -498,6 +498,10 @@ export class Renderer {
       if (emv && emv.rocket && f.stateFrame >= emv.rocket.frame && f.stateFrame <= emv.rocket.frame + emv.rocket.frames && state.tick !== was.tick && (state.tick & 1) === 0) {
         add({ type: 'smoke', x: x - f.facing * 6, y: y - 16, slot: f.slot, big: !!emv.burst });
       }
+      // a tech: a bright flash and a ring
+      if (known && (f.state === 'tech' || f.state === 'techWall' || (f.state === 'getupRoll' && was.state !== 'knockdown')) && was.state !== f.state) {
+        add({ type: 'parry', x, y: y - 18 }); add({ type: 'fastfall', x, y: y - 18 });
+      }
       // teleports flash where he vanishes and where he reappears
       if (emv && emv.teleport && state.tick !== was.tick) {
         const cols = getCharacter(f.charId).trailColors || ['#5fc8ff', '#9fe9ff', '#ffffff'];

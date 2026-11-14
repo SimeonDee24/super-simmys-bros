@@ -923,4 +923,40 @@ for (const hold of [0, 30]) {
   check('the other stages have no platforms', !getStage('balcony').platforms && !getStage('cloudrest').platforms);
 }
 
+// Teching: shield just before landing while tumbling
+{
+  const tumbleDown = (inputAt) => {
+    const s = createMatch(setup); const [a, v] = s.fighters; v.x = 900 * FX;
+    a.y = 120 * FX; a.grounded = 0; a.ground = -1; a.state = 'hitstun'; a.anim = 'tumble'; a.hitstun = 200; a.kbSpeed = 0; a.vy = 2 * FX; a.gv = 2 * FX;
+    let landed = '';
+    for (let i = 0; i < 80 && !landed; i++) {
+      const toGo = (170 * FX - a.y) / FX;
+      step(s, [inputAt(toGo, i), 0]);
+      if (a.grounded) landed = a.state;
+    }
+    return { state: landed, a };
+  };
+  const none = tumbleDown(() => 0);
+  check('landing while tumbling with no tech: knocked down', none.state === 'knockdown', none.state);
+  const tech = tumbleDown((toGo) => (toGo < 12 ? BTN.SHIELD : 0));
+  check('shield just before landing: tech in place, untouchable', tech.state === 'tech' && tech.a.intangible > 0, tech.state);
+  const roll = tumbleDown((toGo) => (toGo < 12 ? BTN.SHIELD | BTN.RIGHT : 0));
+  check('shield + direction just before landing: tech roll that way', roll.state === 'getupRoll' && roll.a.facing === 1 && roll.a.intangible > 0, roll.state);
+  const early = tumbleDown((toGo, i) => (i === 0 ? BTN.SHIELD : 0));
+  check('pressing shield far too early does not tech', early.state === 'knockdown', early.state);
+  const mash = tumbleDown((toGo, i) => (i % 2 === 0 ? BTN.SHIELD : 0));
+  check('mashing shield does not tech either (lockout)', mash.state === 'knockdown', mash.state);
+  // wall tech: launched into the side of the stage
+  const s = createMatch(setup); const [a, v] = s.fighters; v.x = 900 * FX;
+  a.x = 50 * FX; a.y = 200 * FX; a.grounded = 0; a.ground = -1; a.state = 'hitstun'; a.anim = 'tumble'; a.hitstun = 60; a.kbAngle = 0; a.kbSpeed = 3 * FX;
+  let walled = false;
+  for (let i = 0; i < 20 && !walled; i++) { step(s, [i > 2 ? BTN.SHIELD : 0, 0]); walled = a.state === 'techWall'; }
+  check('shield as you hit a wall while tumbling: wall tech', walled && a.intangible > 0);
+}
+// Top blast zone is close enough to KO with upward hits
+{
+  const { getStage } = await import('../stages/index.js');
+  check('top blast zone is 335px above the stage on every stage', ['nest', 'balcony', 'cloudrest'].every((id) => getStage(id).solids[0].y - getStage(id).blast.top === 335));
+}
+
 process.exit(fails ? 1 : 0);

@@ -307,7 +307,7 @@ export const NEST = {
 
   // Well past the screen edges; the bottom one leaves room to fall off
   // screen for a moment and still recover.
-  blast: { left: -170, right: 650, top: -230, bottom: 430 },
+  blast: { left: -170, right: 650, top: -165, bottom: 430 },
 
   // --- Art (composited by render/background.js) ---
   background: {
