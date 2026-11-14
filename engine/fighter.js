@@ -526,6 +526,12 @@ const STATES = {
       f.stateFrame = mv.charge.at;
       f.animFrame--;
     }
+    // Tap or hold: once the charge is let go, a move with `variant` becomes
+    // a different move if it was held long enough (same timing from here on).
+    if (mv.variant && mv.charge && f.stateFrame === mv.charge.at + 1 && f.charge >= mv.variant.minCharge) {
+      f.move = mv.variant.move; f.anim = mv.variant.move; f.animFrame = f.stateFrame;
+      mv = c.ch.moves[f.move];
+    }
     if (mv.fromLedge && f.ledge >= 0) {
       // Climbing up from the ledge, then stepping onto the stage.
       const l = getStage(c.match.stageId).ledges[f.ledge];
@@ -557,6 +563,21 @@ const STATES = {
         if (!f.grounded) f.vy = Math.min(f.vy + Math.trunc((st.gravity * mv.rocket.gravity) / 100), st.fallSpeed);
       } else if (f.grounded) f.vx = approach(f.vx, 0, st.traction);
       else airMotion(c);
+    } else if (mv.teleport && f.stateFrame >= mv.teleport.vanish && f.stateFrame <= mv.teleport.appear) {
+      // Teleport: vanish, travel a set distance in the held direction (up if
+      // none) while untouchable, then reappear. Walls and floors still stop him.
+      const tp = mv.teleport;
+      if (f.stateFrame === tp.vanish) {
+        const dx = c.dir;
+        let dy = (c.input & BTN.UP) ? -1 : (c.input & BTN.DOWN) ? 1 : 0;
+        if (!dx && !dy) dy = -1;
+        const k = dx && dy ? 181 : 256;   // diagonals cover the same distance
+        f.vx = dx * Math.trunc((tp.speed * k) / 256);
+        f.vy = dy * Math.trunc((tp.speed * k) / 256);
+        f.intangible = Math.max(f.intangible, tp.appear - tp.vanish + 1);
+        if (dy < 0 || !f.grounded) { f.grounded = 0; f.ground = -1; f.moveAir = 1; f.fastFall = 0; }
+        else f.vy = 0;                    // on the floor: slide along it
+      } else if (f.stateFrame === tp.appear) { f.vx = 0; f.vy = 0; }
     } else if (mv.plunge && f.stateFrame >= mv.plunge.frame) {
       // Plunging moves: rise for a moment (a hop on the ground, or always for
       // recovery moves), then drop fast until he lands.

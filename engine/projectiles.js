@@ -65,6 +65,12 @@ export function stepProjectiles(state) {
         if (dx < d.catchX * FX && dy < d.catchY * FX && !UNHITTABLE[o.state]) p.life = 0;
       }
       p.x += p.vx; p.y += p.vy;
+    } else if (d.type === 'dart') {
+      // Flies in a line (bending with gravity if it has any) until it hits
+      // the stage.
+      p.vy = Math.min(p.vy + (d.gravity || 0), d.maxFall || 99 * FX);
+      p.x += p.vx; p.y += p.vy;
+      for (const sd of stage.solids) if (p.x > sd.x * FX && p.x < (sd.x + sd.w) * FX && p.y > sd.y * FX && p.y < (sd.y + sd.h) * FX) p.life = 0;
     } else if (d.type === 'wave') {
       // A shockwave sliding along the floor; gone at the end of the platform.
       p.spin += p.vx;
@@ -149,7 +155,7 @@ export function resolveProjectileHits(state) {
       else if (result === 'shield') applyShieldHit(state, owner, vic, hb, src);
       else applyHit(state, owner, vic, { def: hb, px: p.x >> 8, py: p.y >> 8 }, src);
       if (d.type === 'boomerang') { p.cool = d.rehit; break; }   // keeps flying, can hit again later
-      if (d.type === 'wave') { p.spent = 1; p.life = Math.min(p.life, 4); break; }
+      if (d.type === 'wave' || d.type === 'dart') { p.spent = 1; p.life = Math.min(p.life, d.type === 'dart' ? 1 : 4); break; }
       // the ball pops off whatever it hit and becomes harmless
       p.spent = 1;
       p.rolling = 0;

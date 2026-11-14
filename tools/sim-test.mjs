@@ -734,10 +734,11 @@ for (const hold of [0, 30]) {
 // Roster: two fighters, two skins each, sharing every normal attack
 {
   const { CHARACTERS } = await import('../characters/index.js');
-  check('two characters with two skins each', CHARACTERS.length === 2 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
-  const [sim, kae] = CHARACTERS;
+  check('three characters with two skins each', CHARACTERS.length === 3 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  const [sim, kae, luc] = CHARACTERS;
   const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
   check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
+  check('Luca shares all normals, grabs and throws too, with his own four specials', shared.every((m) => luc.moves[m] === sim.moves[m]) && ['neutral', 'side', 'up', 'down'].every((k) => luc.specials[k] && luc.specials[k] !== sim.specials[k] && luc.specials[k] !== kae.specials[k]));
   check('Kaelyn has her own four specials', ['neutral', 'side', 'up', 'down'].every((k) => kae.specials[k] && kae.specials[k] !== sim.specials[k]));
 }
 // Kaelyn's specials
@@ -803,6 +804,74 @@ for (const hold of [0, 30]) {
   let grabbedK = false;
   for (let i = 0; i < 120 && !grabbedK; i++) { step(s, [0, 0]); grabbedK = a.state === 'ledge'; }
   check('kickflip from far below the stage grabs the ledge', grabbedK, a.state);
+}
+
+// Luca's specials
+{
+  const lsetup = { stageId: 'nest', players: [{ charId: 'luca', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 5 };
+  // Bass Drop: bigger blast and more damage the longer it is charged; hits both sides, launching away
+  const bass = (hold, gap) => {
+    const s = createMatch(lsetup); const [a, v] = s.fighters; v.x = a.x + gap * FX;
+    step(s, [BTN.SPECIAL, 0]); for (let i = 0; i < hold; i++) step(s, [BTN.SPECIAL, 0]);
+    let dir = 0;
+    for (let i = 0; i < 60; i++) { step(s, [0, 0]); if (!dir && v.state === 'hitstun') dir = Math.sign(v.vx); }
+    return { pct: v.percent, dir };
+  };
+  check('bass drop uncharged: a small 6% blast that only reaches close up', bass(0, 12).pct === 60 && bass(0, 30).pct === 0);
+  const fullF = bass(80, 40), fullB = bass(80, -40);
+  check('bass drop fully charged: 20%, reaches 40px away on both sides, launching away from him',
+    fullF.pct === 200 && fullB.pct === 200 && fullF.dir === 1 && fullB.dir === -1 && bass(80, 62).pct === 0, `${fullF.pct / 10}% / ${fullB.pct / 10}%`);
+  // Supply & Demand: tap = fast weak arrow going up, hold = slow heavy arrow crashing down
+  const arrow = (hold) => {
+    const s = createMatch(lsetup); const [a, v] = s.fighters; v.x = 900 * FX;
+    step(s, [BTN.SPECIAL | BTN.RIGHT, 0]); for (let i = 0; i < hold; i++) step(s, [BTN.SPECIAL, 0]);
+    let kind = '', first = null, last = null, n = 0;
+    for (let i = 0; i < 120; i++) { step(s, [0, 0]); const p = (s.projectiles || [])[0]; if (p) { kind = p.kind; first = first || { x: p.x, y: p.y }; last = { x: p.x, y: p.y }; n++; } }
+    return { kind, dx: (last.x - first.x) / FX, dy: (last.y - first.y) / FX, n };
+  };
+  const tapA = arrow(2), holdA = arrow(30);
+  check('supply & demand tap: a quick arrow that flies up and forward', tapA.kind === 'arrowUp' && tapA.dy < -60 && tapA.dx > 40, `${tapA.dx.toFixed(0)}px across, ${(-tapA.dy).toFixed(0)}px up`);
+  check('supply & demand held: a slower arrow that crashes down to the floor', holdA.kind === 'arrowDown' && holdA.dy > 10 && holdA.n > tapA.n, `${holdA.dx.toFixed(0)}px across, ends ${holdA.dy.toFixed(0)}px lower, in the air ${holdA.n} frames vs ${tapA.n}`);
+  const arrowHit = (hold, gx, gy) => {
+    const s = createMatch(lsetup); const [a, v] = s.fighters; v.x = a.x + gx * FX;
+    if (gy) { v.y -= gy * FX; v.grounded = 0; v.ground = -1; v.state = 'air'; }
+    step(s, [BTN.SPECIAL | BTN.RIGHT, 0]); for (let i = 0; i < hold; i++) step(s, [BTN.SPECIAL, 0]);
+    for (let i = 0; i < 100; i++) { step(s, [0, 0]); if (gy && v.state === 'air') { v.vy = 0; v.y = 170 * FX - gy * FX; } if (v.percent) break; }
+    return v.percent;
+  };
+  check('supply & demand: the tap arrow does 5%, the held arrow 14%', arrowHit(2, 46, 60) === 50 && arrowHit(30, 92, 0) === 140, `${arrowHit(2, 46, 60) / 10}% and ${arrowHit(30, 92, 0) / 10}%`);
+  // Wire Transfer: teleports about 110px in the held direction, untouchable on the way
+  const tp = (inp) => {
+    const s = createMatch(lsetup); const [a, v] = s.fighters; v.x = 900 * FX;
+    const x0 = a.x, y0 = a.y; let ghost = true;
+    step(s, [BTN.SPECIAL | BTN.UP, 0]);
+    for (let i = 0; i < 28; i++) { step(s, [inp, 0]); if (a.stateFrame >= 15 && a.stateFrame <= 25 && !a.intangible) ghost = false; }
+    const dx = (a.x - x0) / FX, dy = (a.y - y0) / FX;
+    const states = new Set(); for (let i = 0; i < 120; i++) { step(s, [0, 0]); states.add(a.state); }
+    return { dx, dy, ghost, states };
+  };
+  const up = tp(0), side = tp(BTN.RIGHT), diag = tp(BTN.RIGHT | BTN.UP);
+  check('wire transfer: straight up by default, about 110px, untouchable on the way, helpless after', Math.abs(up.dx) < 1 && up.dy < -100 && up.dy > -120 && up.ghost && up.states.has('helpless'), `${up.dx.toFixed(0)}, ${up.dy.toFixed(0)}`);
+  check('wire transfer: sideways along the floor, and diagonally', side.dx > 100 && side.dy === 0 && !side.states.has('helpless') && diag.dx > 70 && diag.dy < -70, `side ${side.dx.toFixed(0)},${side.dy.toFixed(0)}  diagonal ${diag.dx.toFixed(0)},${diag.dy.toFixed(0)}`);
+  {
+    const s = createMatch(lsetup); const [a, v] = s.fighters; v.x = a.x + 106 * FX;
+    step(s, [BTN.SPECIAL | BTN.UP, 0]);
+    for (let i = 0; i < 60; i++) step(s, [i < 20 ? BTN.RIGHT : 0, 0]);
+    check('wire transfer: hits where he reappears (10%)', v.percent === 100, v.percent / 10 + '%');
+  }
+  // Stage Dive: an arcing leap; bounces back off a hit; once per jump in the air
+  {
+    let s = createMatch(lsetup); let [a, v] = s.fighters; v.x = 900 * FX;
+    const x0 = a.x; let top = a.y;
+    step(s, [BTN.SPECIAL | BTN.DOWN, 0]);
+    for (let i = 0; i < 90; i++) { step(s, [0, 0]); top = Math.min(top, a.y); }
+    check('stage dive: leaps forward in an arc and lands', (170 * FX - top) / FX > 20 && (a.x - x0) / FX > 60 && a.state === 'idle', `${((a.x - x0) / FX).toFixed(0)}px across, ${((170 * FX - top) / FX).toFixed(0)}px high`);
+    s = createMatch(lsetup); [a, v] = s.fighters; v.x = a.x + 70 * FX;
+    step(s, [BTN.SPECIAL | BTN.DOWN, 0]);
+    let hitX = 0, back = false;
+    for (let i = 0; i < 90; i++) { step(s, [0, 0]); if (!hitX && v.percent) hitX = a.x; else if (hitX && a.x < hitX - 4 * FX) back = true; }
+    check('stage dive: 11%, and he springs back off the hit', v.percent === 110 && back, v.percent / 10 + '%');
+  }
 }
 
 process.exit(fails ? 1 : 0);

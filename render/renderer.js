@@ -169,6 +169,7 @@ export class Renderer {
     for (const f of state.fighters) {
       if (f.state === 'dead' || f.state === 'out') continue;
       const ch = getCharacter(f.charId);
+      if (this.vanished(f, ch)) continue;   // mid-teleport: nothing to draw
       if (f.state === 'respawn') this.drawRespawnPlatform(toPx(f.x), toPx(f.y), f.slot);
       const blink = f.invuln > 0 && (state.tick >> 2) & 1;
       // the fighter who got hit shakes during hitlag
@@ -191,6 +192,7 @@ export class Renderer {
       if (f.state === 'shield' || f.state === 'shieldStun') this.drawShield(state, f, 0, 0);
       if (f.state === 'dizzy') this.drawDizzy(f, 0, 0);
       this.drawProp(state, f, ch);
+      this.drawDeck(state, f, ch);
     }
 
     for (const f of state.fighters) this.drawTrail(f, getCharacter(f.charId), 0, 0);
@@ -207,6 +209,55 @@ export class Renderer {
     if (opts.debugLines) {
       let y = 4;
       for (const line of opts.debugLines) { drawText(ctx, line, 4, y, '#ffffff', 1, 'left', '#000000'); y += 7; }
+    }
+  }
+
+  // True while a fighter is between the vanish and reappear frames of a teleport.
+  vanished(f, ch) {
+    const mv = f.state === 'attack' && f.move ? ch.moves[f.move] : null;
+    return !!(mv && mv.teleport && f.stateFrame >= mv.teleport.vanish && f.stateFrame < mv.teleport.appear);
+  }
+
+  // DJ decks and a speaker stack, for moves that set `deck` (Bass Drop).
+  // The speakers thump harder as the move charges; on the blast frame a
+  // ring bursts out to the size of the hit.
+  drawDeck(state, f, ch) {
+    const mv = f.state === 'attack' && f.move ? ch.moves[f.move] : null;
+    if (!mv || !mv.deck || f.stateFrame < mv.deck.from) return;
+    const ctx = this.ctx, d = mv.deck, x = f.x / FX, y = f.y / FX, dir = f.facing;
+    const k = mv.charge ? Math.min(1, f.charge / mv.charge.max) : 0;
+    const out = f.stateFrame > d.to ? 0 : Math.min(1, (f.stateFrame - d.from) / 4, (d.to - f.stateFrame) / 4);   // pops in and out
+    if (out > 0) {
+      const thump = f.stateFrame < d.blast ? ((state.tick >> 2) & 1) * (0.4 + k) : 0;
+      ctx.save();
+      ctx.translate(x, y); ctx.scale(dir, 1); ctx.globalAlpha = Math.min(1, out * 1.5);
+      // speaker stack behind him: two boxes, cones pulsing
+      for (const [by, h] of [[-15, 15], [-29, 13]]) {
+        ctx.fillStyle = '#100d16'; ctx.fillRect(-27, by * out, 13, h * out);
+        ctx.fillStyle = '#2f3242'; ctx.fillRect(-26, by * out + 1, 11, h * out - 2);
+        ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.arc(-20.5, (by + h / 2) * out, 4 + thump, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = k >= 1 && (state.tick & 2) ? '#ffffff' : '#39d98a'; ctx.beginPath(); ctx.arc(-20.5, (by + h / 2) * out, 1.6 + thump * 0.8, 0, Math.PI * 2); ctx.fill();
+      }
+      // the decks in front: a table, two platters and a mixer
+      ctx.fillStyle = '#100d16'; ctx.fillRect(5, -19 * out, 24, 5); ctx.fillRect(7, -15 * out, 2, 15 * out); ctx.fillRect(25, -15 * out, 2, 15 * out);
+      ctx.fillStyle = '#474b60'; ctx.fillRect(6, -18 * out, 22, 3);
+      ctx.fillStyle = '#c9ced8'; ctx.fillRect(7, -20 * out, 6, 2); ctx.fillRect(21, -20 * out, 6, 2);
+      ctx.fillStyle = '#39d98a'; ctx.fillRect(15, -20 * out, 4, 2);
+      ctx.fillStyle = ((state.tick >> 1) & 1) ? '#ff4a5a' : '#ffe14a'; ctx.fillRect(16, -20 * out, 1, 1);
+      ctx.restore();
+    }
+    // the drop: a ring out to the edge of the blast, then fading
+    const age = f.stateFrame - d.blast;
+    if (age >= 0 && age < 14) {
+      const hb = mv.hitboxes[0], R = hb.chargeR ? hb.chargeR[0] + (hb.chargeR[1] - hb.chargeR[0]) * k : hb.r;
+      const s = solve(ch.skeleton, samplePose(ch.animations[f.anim], f.animFrame));
+      const cx = x + dir * ((s.hip[0] + s.neck[0]) / 2 / FX), cy = y + (s.hip[1] + s.neck[1]) / 2 / FX;
+      const grow = Math.min(1, (age + 1) / 4), a = 1 - age / 14;
+      const colors = ch.trailColors || ['#ff9a3c', '#ffe14a', '#ffffff'];
+      ctx.fillStyle = rgba(colors[0], 0.22 * a); ctx.beginPath(); ctx.arc(cx, cy, R * grow, 0, Math.PI * 2); ctx.fill();
+      this.drawRing(cx, cy, R * grow, colors[1], a, 4.5);
+      this.drawRing(cx, cy, R * grow * 0.72, colors[2], a * 0.8, 1.6);
+      this.drawRing(cx, cy, R * grow * 0.42, colors[1], a * 0.6, 1.2);
     }
   }
 
@@ -247,7 +298,7 @@ export class Renderer {
 
   // Soft shadow on the ground under a fighter; fainter and smaller the higher he is.
   drawShadow(f, stage) {
-    if (f.state === 'dead' || f.state === 'out' || f.state === 'respawn') return;
+    if (f.state === 'dead' || f.state === 'out' || f.state === 'respawn' || this.vanished(f, getCharacter(f.charId))) return;
     const x = f.x / FX, y = f.y / FX;
     let gy = Infinity;
     for (const s of stage.solids) if (x >= s.x && x <= s.x + s.w && s.y >= y - 2 && s.y < gy) gy = s.y;
@@ -441,6 +492,8 @@ export class Renderer {
       if (emv && emv.rocket && f.stateFrame >= emv.rocket.frame && f.stateFrame <= emv.rocket.frame + emv.rocket.frames && state.tick !== was.tick && (state.tick & 1) === 0) {
         add({ type: 'smoke', x: x - f.facing * 6, y: y - 16, slot: f.slot, big: !!emv.burst });
       }
+      // teleports flash where he vanishes and where he reappears
+      if (emv && emv.teleport && state.tick !== was.tick && (f.stateFrame === emv.teleport.vanish || f.stateFrame === emv.teleport.appear)) add({ type: 'parry', x, y: y - 22 });
       // KO: remember where on the screen edge he left
       if (f.state === 'dead' && was.state !== 'dead' && known) {
         const [sx0, sy0] = this.toScreen(x, y - 20);
@@ -535,6 +588,21 @@ export class Renderer {
       ctx.fillStyle = '#ff8a2a'; ctx.fillRect(0.5, -1.5, 3.5, 3);
       ctx.fillStyle = '#ffc07a'; ctx.fillRect(0.5, -1.5, 3.5, 1);
       ctx.fillStyle = '#2a2a33'; ctx.fillRect(4, -1, 1.5, 2);
+      ctx.restore();
+      return;
+    }
+    if (d.draw === 'arrow') {
+      // a chart arrow: a zigzag line ending in an arrowhead, pointing the way it flies
+      ctx.save();
+      ctx.translate(x, y); ctx.rotate(Math.atan2(p.vy, p.vx));
+      ctx.globalAlpha = fade;
+      const L = d.r * 3.2;
+      for (const [w, col] of [[d.r * 0.9 + 1.4, '#100d16'], [d.r * 0.9, d.color]]) {
+        ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = w * 0.55; ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
+        ctx.beginPath(); ctx.moveTo(-L, 2); ctx.lineTo(-L * 0.62, -2.5); ctx.lineTo(-L * 0.32, 2); ctx.lineTo(0, 0); ctx.stroke();
+        const hgt = w * 0.95 + 1.6;
+        ctx.beginPath(); ctx.moveTo(d.r + 2 + (w - d.r * 0.9) * 0.6, 0); ctx.lineTo(-1.5, -hgt); ctx.lineTo(-1.5, hgt); ctx.closePath(); ctx.fill();
+      }
       ctx.restore();
       return;
     }

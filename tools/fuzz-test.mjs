@@ -12,7 +12,7 @@ let games = 0, crashes = 0;
 for (const stage of STAGES) {
   for (let g = 0; g < 15; g++) {
     games++;
-    const s = createMatch({ stageId: stage.id, players: [{ charId: g % 2 ? 'kaelyn' : 'simeon', alt: 0 }, { charId: g % 3 ? 'simeon' : 'kaelyn', alt: 1 }], stocks: 3, seed: g + 1 });
+    const s = createMatch({ stageId: stage.id, players: [{ charId: ['simeon', 'kaelyn', 'luca'][g % 3], alt: 0 }, { charId: ['luca', 'simeon', 'kaelyn', 'luca'][g % 4], alt: 1 }], stocks: 3, seed: g + 1 });
     const cpu = g % 3 === 0 ? new CpuController('fighter', g + 7) : null;
     const held = [0, 0];
     try {

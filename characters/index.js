@@ -2,8 +2,9 @@
 // simeon.js as a template) and add one import + one entry here.
 import { SIMEON } from './simeon.js';
 import { KAELYN } from './kaelyn.js';
+import { LUCA } from './luca.js';
 
-export const CHARACTERS = [SIMEON, KAELYN];
+export const CHARACTERS = [SIMEON, KAELYN, LUCA];
 
 const byId = Object.fromEntries(CHARACTERS.map((c) => [c.id, c]));
 export const getCharacter = (id) => byId[id];

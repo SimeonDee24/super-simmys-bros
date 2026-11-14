@@ -134,7 +134,12 @@ export class CpuController {
     const ledge = x < main.x + main.w / 2 ? stage.ledges[0] : stage.ledges[1];
     const toStage = x < ledge.x ? 1 : -1;
     // mid-move: just steer toward the stage (matters for the up special)
-    if (me.state === 'attack') return toStage > 0 ? BTN.RIGHT : BTN.LEFT;
+    if (me.state === 'attack') {
+      // a teleport goes where the stick points: up, or up and toward the stage if it is far off
+      const mv = getCharacter(me.charId).moves[me.move];
+      if (mv && mv.teleport) return BTN.UP | (Math.abs(ledge.x - x) > 30 ? (toStage > 0 ? BTN.RIGHT : BTN.LEFT) : 0);
+      return toStage > 0 ? BTN.RIGHT : BTN.LEFT;
+    }
     if (me.state === 'airdodge' || me.state === 'jumpsquat') return 0;
     const dx = Math.abs(ledge.x - x), dy = y - ledge.y;   // dy > 0: below the ledge
     let m = toStage > 0 ? BTN.RIGHT : BTN.LEFT;
@@ -241,8 +246,14 @@ export class CpuController {
       return BTN.ATTACK | BTN.UP;
     }
 
-    // --- mid or far: sometimes take a Jump Shot ---
-    if (adx >= 40 && adx < 200 && inFront && this.rand() < c.shootChance) {
+    // --- neutral special: a projectile from mid or far range, or a blast up close ---
+    const kit = getCharacter(me.charId), nsp = kit.specials && kit.moves[kit.specials.neutral];
+    if (nsp && !nsp.spawn && nsp.charge) {
+      if (adx < 44 && ady < 30 && this.rand() < c.shootChance) {
+        this.queue = new Array(this.between([6, 40])).fill(BTN.SPECIAL);
+        return BTN.SPECIAL;
+      }
+    } else if (adx >= 40 && adx < 200 && inFront && this.rand() < c.shootChance) {
       const hold = this.between([0, 40]);
       this.queue = new Array(hold).fill(BTN.SPECIAL);
       return BTN.SPECIAL;

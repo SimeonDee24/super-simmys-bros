@@ -40,7 +40,9 @@ export function activeHitboxes(f, ch, includeSpent = false) {
     s = s || fighterSolve(f, ch);
     const j = JOINT[hb.at](s);
     const ox = hb.off ? hb.off[0] * FX : 0, oy = hb.off ? hb.off[1] * FX : 0;
-    const r = hb.r * FX;
+    // chargeR: [min, max] makes the hitbox grow with how long the move was charged
+    let r = hb.r * FX;
+    if (hb.chargeR && mv.charge) r = Math.trunc((hb.chargeR[0] + ((hb.chargeR[1] - hb.chargeR[0]) * Math.min(f.charge, mv.charge.max)) / mv.charge.max) * FX);
     const cx = f.x + f.facing * (j[0] + ox), cy = f.y + j[1] + oy;
     out.push({ cx, cy, r, def: hb });
   }
@@ -86,7 +88,8 @@ export function applyHit(state, att, vic, hit, proj = null) {
   }
   // Hit downward while standing: bounce up off the floor instead.
   if (vic.grounded && angle > 180) { angle = 360 - angle; kb = Math.trunc((kb * 8) / 10); }
-  const dir = proj ? proj.dir : att.facing * (hb.dir || 1);
+  // radial hitboxes (blasts) launch away from the attacker, whichever side the victim is on
+  const dir = proj ? proj.dir : hb.radial ? (vic.x >= att.x ? 1 : -1) : att.facing * (hb.dir || 1);
   const launch = dir > 0 ? angle : 180 - angle;
 
   vic.kbAngle = ((launch % 360) + 360) % 360;

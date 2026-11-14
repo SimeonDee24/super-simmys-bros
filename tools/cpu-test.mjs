@@ -110,4 +110,25 @@ for (const stageId of ['nest', 'cloudrest']) {
   check('a CPU Kaelyn fights and uses her specials', dealt > 300 && used.has('puffPass'), `dealt ${dealt / 10}%, specials: ${['puffPass', 'rollOut', 'kickflip', 'dropIn'].filter((m) => used.has(m)).join(', ')}`);
 }
 
+// A CPU can play Luca: it fights, drops the bass and recovers with Wire Transfer.
+{
+  const s = createMatch({ stageId: 'cloudrest', players: [{ charId: 'luca', alt: 0 }, { charId: 'kaelyn', alt: 0 }], stocks: 3, seed: 9 });
+  const cpus = [new CpuController('fighter', 71), new CpuController('fighter', 72)];
+  const used = new Set(); let dealt = 0;
+  for (let t = 0; t < 7200; t++) {
+    const before = s.fighters[1].percent;
+    step(s, [cpus[0].sample(s, 0), cpus[1].sample(s, 1)]);
+    if (s.fighters[1].percent > before) dealt += s.fighters[1].percent - before;
+    if (s.fighters[0].move) used.add(s.fighters[0].move);
+    if (s.fighters.some((f) => f.state === 'out')) break;
+  }
+  check('a CPU Luca fights and uses Bass Drop', dealt > 300 && used.has('bassDrop'), `dealt ${dealt / 10}%, specials: ${['bassDrop', 'supplyDemand', 'supplyDemandCrash', 'wireTransfer', 'stageDive'].filter((m) => used.has(m)).join(', ')}`);
+  const r = createMatch({ stageId: 'nest', players: [{ charId: 'luca', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 9 });
+  const k = r.fighters[0]; const cpu = new CpuController('dummy', 4);
+  k.x = 50 * FX; k.y = 262 * FX; k.grounded = 0; k.ground = -1; k.state = 'air'; k.vy = FX; k.jumpsLeft = 0;
+  let usedUp = false, back = false;
+  for (let t = 0; t < 400 && !back && k.state !== 'dead'; t++) { step(r, [cpu.sample(r, 0), 0]); if (k.move === 'wireTransfer') usedUp = true; back = k.grounded === 1 || k.state === 'ledge'; }
+  check('CPU Luca recovers from below the ledge with Wire Transfer', usedUp && back, `${usedUp ? 'used it' : 'did not use it'}, ${k.state}`);
+}
+
 process.exit(fails ? 1 : 0);
