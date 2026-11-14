@@ -54,7 +54,7 @@ export const CONFIG = {
   // launch speed (px/frame) = knockback * KB_SPEED_NUM / KB_SPEED_DEN / 256
   KB_SPEED_NUM: 1344, KB_SPEED_DEN: 100000,   // = 0.0525 px per knockback unit
   KB_DECAY: 23,             // launch speed lost per frame (1/256 px) = 0.09 px
-  HITSTUN_NUM: 4, HITSTUN_DEN: 10000,         // hitstun frames = knockback * 0.4
+  HITSTUN_NUM: 36, HITSTUN_DEN: 100000,       // hitstun frames = knockback * 0.36 (Smash uses 0.4)
   HITLAG_BASE: 3,           // freeze frames on any hit...
   HITLAG_PER_DMG: 35,       // ...plus 0.35 frames per 1% damage
   HITLAG_MAX: 20,           // (a hitbox can scale its own with lagMult, e.g. 200 for smashes)
