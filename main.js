@@ -80,7 +80,7 @@ function render() {
     renderer.drawTitle(STAGES[0], { charId: CHARACTERS[0].id, updateMessage });
     return;
   }
-  if (screen === 'charSelect') { renderer.drawCharSelect(CHARACTERS, picks(), 'CPU: ' + cpuLabel(settings.cpuLevel)); return; }
+  if (screen === 'charSelect') { renderer.drawCharSelect(CHARACTERS, picks(), 'CPU ' + cpuLabel(settings.cpuLevel)); return; }
   if (screen === 'stageSelect') { renderer.drawStageSelect(stageTiles, stageIndex, 'P2 CPU: ' + cpuLabel(settings.cpuLevel)); return; }
   const opts = { showBoxes: settings.showBoxes };
   if (settings.showDebug) {

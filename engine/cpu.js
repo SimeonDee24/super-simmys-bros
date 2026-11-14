@@ -6,8 +6,9 @@
 // Levels (tunable below):
 //   dummy   - training dummy: stands still, but recovers to the stage, takes
 //             ledge options, gets up from knockdowns and mashes out of dizzy.
-//   fighter - actually plays: approaches, attacks, uses aerials, shields,
-//             edgeguards a little, and recovers.
+//   lv1-lv5 - actually play: approach, attack, use aerials and specials,
+//             defend, tech, edgeguard and recover, better at each level.
+//             ('fighter' is the old name for lv3.)
 import { BTN } from './input.js';
 import { FX } from './fixed.js';
 import { getStage } from '../stages/index.js';
@@ -23,36 +24,52 @@ export const CPU_LEVELS = {
     getupWait: [10, 40],
     techChance: 0,
   },
-  fighter: {
-    label: 'FIGHTER',
-    fights: true,
-    reaction: 10,          // frames late it sees the opponent (no reading inputs)
-    thinkEvery: [3, 7],    // frames between decisions
-    // Defence. Each threat (an attack starting nearby, a dash or jump in, a
-    // ball coming at it) gets one roll of the dice:
-    defendReaction: 5,     // frames late it notices a threat (faster than its attacks)
-    defendChance: 0.6,     // how often it defends at all, rather than ignoring the threat
-    defendMix: { shield: 5, spotDodge: 2, roll: 2, bluff: 1 },   // ...and how
-    airDodgeChance: 0.35,  // in the air: dodge an attack that is close
-    oosMix: { grab: 3, roll: 2, drop: 3, jump: 2 },             // after blocking: out of shield
-    bluffChance: 0.08,     // (kept for menus) Bluff instead of shielding
-    jumpInChance: 0.3,     // approach with a short hop aerial
-    shootChance: 0.18,
-    grabChance: 0.15,      // grab when close (much more often if they are shielding)
-    mashes: true,          // mashes out of grabs     // Jump Shot from mid or far range (charges a random amount)
-    dashAttackChance: 0.25,
-    edgeguard: true,
-    ledgeWait: [6, 40],
-    ledgeOptions: { getup: 4, roll: 3, jump: 3, attack: 3 },
-    getupWait: [4, 20],
-    techChance: 0.55,      // techs about half its hard landings
-  },
 };
+
+// Five fighting levels, from a beginner who wanders about and reacts slowly
+// to an expert who reacts fast, defends well, techs, edgeguards and rarely
+// wastes a turn. Every level reads only the game state, like a player watching
+// the screen; higher levels just see sooner and choose better.
+const fighterLevel = (n, label, t) => ({
+  label: 'LEVEL ' + n + ': ' + label,
+  fights: true,
+  reaction: t.reaction,          // frames late it sees the opponent (no reading inputs)
+  thinkEvery: t.think,           // frames between decisions
+  sloppy: t.sloppy,              // chance a decision is wasted (standing about, wandering)
+  // Defence. Each threat (an attack starting nearby, a dash or jump in, a
+  // ball coming at it) gets one roll of the dice:
+  defendReaction: t.defReact,    // frames late it notices a threat (faster than its attacks)
+  defendChance: t.defend,        // how often it defends at all, rather than ignoring the threat
+  defendMix: t.defMix,           // ...and how
+  airDodgeChance: t.airDodge,    // in the air: dodge an attack that is close
+  oosMix: { grab: 3, roll: 2, drop: 3, jump: 2 },             // after blocking: out of shield
+  bluffChance: 0.08,
+  jumpInChance: t.jumpIn,        // approach with a short hop aerial
+  shootChance: t.shoot,          // neutral special from range (or a charged blast up close)
+  grabChance: t.grab,            // grab when close (much more often if they are shielding)
+  mashes: t.mash,                // mashes out of grabs
+  dashAttackChance: 0.25,
+  edgeguard: t.edgeguard,        // chases them to the ledge
+  upRecover: t.upRecover,        // uses its up special to get back to the stage
+  ledgeWait: t.ledgeWait,
+  ledgeOptions: { getup: 4, roll: 3, jump: 3, attack: 3 },
+  getupWait: t.getupWait,
+  techChance: t.tech,            // techs this share of its hard landings
+});
+CPU_LEVELS.lv1 = fighterLevel(1, 'BEGINNER', { reaction: 24, think: [12, 22], sloppy: 0.45, defReact: 16, defend: 0.12, defMix: { shield: 6, spotDodge: 1, roll: 1, bluff: 0 }, airDodge: 0, jumpIn: 0.1, shoot: 0.05, grab: 0.05, mash: false, edgeguard: false, upRecover: false, ledgeWait: [30, 80], getupWait: [20, 50], tech: 0 });
+CPU_LEVELS.lv2 = fighterLevel(2, 'EASY', { reaction: 17, think: [7, 14], sloppy: 0.25, defReact: 11, defend: 0.3, defMix: { shield: 6, spotDodge: 1, roll: 2, bluff: 0 }, airDodge: 0.1, jumpIn: 0.2, shoot: 0.1, grab: 0.1, mash: false, edgeguard: false, upRecover: true, ledgeWait: [16, 60], getupWait: [12, 36], tech: 0.15 });
+CPU_LEVELS.lv3 = fighterLevel(3, 'MEDIUM', { reaction: 10, think: [3, 7], sloppy: 0.08, defReact: 5, defend: 0.6, defMix: { shield: 5, spotDodge: 2, roll: 2, bluff: 1 }, airDodge: 0.35, jumpIn: 0.3, shoot: 0.18, grab: 0.15, mash: true, edgeguard: true, upRecover: true, ledgeWait: [6, 40], getupWait: [4, 20], tech: 0.55 });
+CPU_LEVELS.lv4 = fighterLevel(4, 'HARD', { reaction: 7, think: [2, 5], sloppy: 0.03, defReact: 4, defend: 0.72, defMix: { shield: 5, spotDodge: 3, roll: 2, bluff: 1 }, airDodge: 0.45, jumpIn: 0.35, shoot: 0.2, grab: 0.22, mash: true, edgeguard: true, upRecover: true, ledgeWait: [4, 28], getupWait: [2, 14], tech: 0.75 });
+CPU_LEVELS.lv5 = fighterLevel(5, 'EXPERT', { reaction: 4, think: [1, 3], sloppy: 0, defReact: 3, defend: 0.85, defMix: { shield: 4, spotDodge: 3, roll: 3, bluff: 1 }, airDodge: 0.55, jumpIn: 0.4, shoot: 0.22, grab: 0.3, mash: true, edgeguard: true, upRecover: true, ledgeWait: [2, 20], getupWait: [1, 10], tech: 0.9 });
+// Old name for level 3 (older saved settings and tests use it).
+CPU_LEVELS.fighter = CPU_LEVELS.lv3;
 
 const ACTIONABLE_GROUND = { idle: 1, walk: 1, dash: 1, run: 1, brake: 1, crouch: 1, crawl: 1 };
 
 export class CpuController {
   constructor(level = 'fighter', seed = 1) {
+    this.level = level;
+    if (!CPU_LEVELS[level]) level = 'lv3';
     this.level = level;
     this.cfg = CPU_LEVELS[level];
     this.rng = (seed | 0) || 1;
@@ -156,7 +173,7 @@ export class CpuController {
     // double jump once it drops to about ledge height
     if (me.jumpsLeft > 0 && me.vy >= 0 && dy > -8) return m | this.press(BTN.JUMP);
     // out of jumps and well below the ledge: up special
-    if (me.jumpsLeft === 0 && me.state === 'air' && me.vy > 0 && dy > 30) return m | BTN.UP | this.press(BTN.SPECIAL);
+    if (this.cfg.upRecover !== false && me.jumpsLeft === 0 && me.state === 'air' && me.vy > 0 && dy > 30) return m | BTN.UP | this.press(BTN.SPECIAL);
     // out of jumps and still low: air dodge up toward the ledge if it can reach
     if (me.jumpsLeft === 0 && !me.airDodged && me.vy > 0 && dy > 4 && dy < 26 && dx < 34) {
       return m | BTN.UP | this.press(BTN.SHIELD);
@@ -204,6 +221,12 @@ export class CpuController {
   // Fighting. Looks at where the opponent was `reaction` frames ago.
   think(me, opp, view, stage) {
     const c = this.cfg;
+    // lower levels waste some turns: standing about or wandering
+    if (c.sloppy && this.rand() < c.sloppy) {
+      this.wait = this.between([6, 18]);
+      const r = this.rand();
+      return r < 0.6 || !me.grounded ? 0 : r < 0.8 ? BTN.LEFT : BTN.RIGHT;
+    }
     if (opp.state === 'dead' || opp.state === 'out') return this.walkTo(me, stage.respawn.x * FX);
     const dx = view.x - me.x, dy = view.y - me.y;       // dy < 0: opponent above
     const adx = Math.abs(dx) / FX, ady = Math.abs(dy) / FX;
@@ -367,7 +390,7 @@ export class CpuController {
 }
 
 // Used by menus: the order the CPU levels cycle through.
-export const CPU_ORDER = ['dummy', 'fighter'];
-export const cpuLabel = (level) => CPU_LEVELS[level].label;
+export const CPU_ORDER = ['dummy', 'lv1', 'lv2', 'lv3', 'lv4', 'lv5'];
+export const cpuLabel = (level) => (CPU_LEVELS[level] || CPU_LEVELS.lv3).label;
 // Characters are looked up so future CPUs can read each fighter's data.
 export const cpuKnows = (charId) => !!getCharacter(charId);

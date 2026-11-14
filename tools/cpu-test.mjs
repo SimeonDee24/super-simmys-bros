@@ -131,4 +131,34 @@ for (const stageId of ['nest', 'cloudrest']) {
   check('CPU Luca recovers from below the ledge with Wire Transfer', usedUp && back, `${usedUp ? 'used it' : 'did not use it'}, ${k.state}`);
 }
 
+// Five levels, and a higher level really is stronger: over several matches
+// level 5 beats level 1 clearly, and level 4 beats level 2.
+{
+  const { CPU_ORDER, CPU_LEVELS, cpuLabel } = await import('../engine/cpu.js');
+  check('training dummy plus five fighting levels', CPU_ORDER.join() === 'dummy,lv1,lv2,lv3,lv4,lv5' && CPU_ORDER.every((l) => CPU_LEVELS[l] && cpuLabel(l)));
+  const duel = (hi, lo, games) => {
+    let hiWins = 0, hiDmg = 0, loDmg = 0;
+    for (let g = 0; g < games; g++) {
+      const chars = ['simeon', 'kaelyn', 'luca'];
+      const s = createMatch({ stageId: ['nest', 'balcony', 'cloudrest'][g % 3], players: [{ charId: chars[g % 3], alt: 0 }, { charId: chars[(g + 1) % 3], alt: 1 }], stocks: 2, seed: 100 + g });
+      // swap sides every other game so neither side has an edge
+      const hiSlot = g & 1;
+      const cpus = [];
+      cpus[hiSlot] = new CpuController(hi, 300 + g); cpus[1 - hiSlot] = new CpuController(lo, 400 + g);
+      for (let t = 0; t < 9000; t++) {
+        const before = s.fighters.map((f) => f.percent);
+        step(s, [cpus[0].sample(s, 0), cpus[1].sample(s, 1)]);
+        s.fighters.forEach((f, i) => { const d = Math.max(0, f.percent - before[i]); if (i === hiSlot) loDmg += d; else hiDmg += d; });
+        if (s.fighters.some((f) => f.state === 'out')) break;
+      }
+      const [a, b] = [s.fighters[hiSlot], s.fighters[1 - hiSlot]];
+      if (b.stocks < a.stocks || (b.stocks === a.stocks && b.percent > a.percent)) hiWins++;
+    }
+    return { hiWins, hiDmg: Math.round(hiDmg / 10), loDmg: Math.round(loDmg / 10) };
+  };
+  const r51 = duel('lv5', 'lv1', 6), r42 = duel('lv4', 'lv2', 6);
+  check('level 5 beats level 1', r51.hiWins >= 5 && r51.hiDmg > r51.loDmg * 2, `${r51.hiWins}/6 wins, damage ${r51.hiDmg}% vs ${r51.loDmg}%`);
+  check('level 4 beats level 2', r42.hiWins >= 4 && r42.hiDmg > r42.loDmg, `${r42.hiWins}/6 wins, damage ${r42.hiDmg}% vs ${r42.loDmg}%`);
+}
+
 process.exit(fails ? 1 : 0);

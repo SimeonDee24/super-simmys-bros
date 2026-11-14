@@ -13,7 +13,7 @@ const DEFAULTS = {
   muted: false,       // M toggles sound
   showBoxes: false,   // hurtbox / hitbox / ledge-box display
   showDebug: false,   // tick, state hash, fighter state
-  cpuLevel: 'fighter', // P2 CPU: 'dummy' (training) or 'fighter'
+  cpuLevel: 'lv3',     // P2 CPU: 'dummy' (training) or 'lv1' to 'lv5'
   picks: [{ char: 0, alt: 0 }, { char: 0, alt: 1 }],   // character and skin for P1 and the CPU
 };
 
@@ -21,6 +21,7 @@ export function loadSettings() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { /* ignore */ }
   const oldBindings = (saved.bindingsVersion || 1) < BINDINGS_VERSION;
+  if (saved.cpuLevel === 'fighter') saved.cpuLevel = 'lv3';   // renamed when levels 1-5 arrived
   return {
     ...DEFAULTS, ...saved,
     bindingsVersion: BINDINGS_VERSION,
