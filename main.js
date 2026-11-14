@@ -28,6 +28,7 @@ let match = null;       // { state, sources, recorder, endTimer }
 const stageTiles = [...STAGES.map((stage) => ({ stage })), { random: true }];
 let stageIndex = 0;
 let paused = false;
+let toast = null;       // short message at the top of the screen, e.g. after a hotkey
 let updateMessage = null;
 let fps = 0, fpsFrames = 0, fpsTime = 0, slowSeconds = 0;
 
@@ -49,7 +50,7 @@ function startMatch(stage = STAGES[0]) {
   });
   match = {
     state,
-    sources: [new KeyboardSource(keyboard, settings.bindings), new CpuController(settings.cpuLevel, CONFIG.DEFAULT_SEED ^ 0x2c9)],
+    sources: [new KeyboardSource(keyboard, settings.bindings, () => settings.tapJump), new CpuController(settings.cpuLevel, CONFIG.DEFAULT_SEED ^ 0x2c9)],
     recorder: new InputRecorder(),
     endTimer: 0,
   };
@@ -76,6 +77,15 @@ function tick() {
 }
 
 function render() {
+  drawScreen();
+  if (toast) {
+    const left = toast.until - performance.now();
+    if (left <= 0) toast = null;
+    else renderer.drawToast(toast.text, Math.min(1, left / 300));
+  }
+}
+
+function drawScreen() {
   if (screen === 'title') {
     renderer.drawTitle(STAGES[0], { charId: CHARACTERS[0].id, updateMessage });
     return;
@@ -118,7 +128,7 @@ function render() {
       'LEDGE  GRABBED AUTOMATICALLY WHEN FALLING NEXT TO IT',
       '       TOWARD STAGE = GET UP, J = LEDGE ATTACK, I = LEDGE ROLL, SPACE = JUMP, S = DROP',
       '',
-      'M  SOUND ON / OFF',
+      'M  SOUND ON / OFF      0  TAP JUMP ON / OFF (W ALSO JUMPS)  NOW ' + (settings.tapJump ? 'ON' : 'OFF'),
       'F1  DEBUG INFO AND STATE HASH',
       'F2  HITBOXES (RED), HURTBOXES (YELLOW), LEDGE BOXES',
       '',
@@ -134,6 +144,13 @@ window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   sfx.unlock();
   // M mutes and unmutes the sound on any screen
+  // 0 switches tap jump (W also jumps) on and off, on any screen
+  if (e.code === 'Digit0' || e.code === 'Numpad0') {
+    settings.tapJump = !settings.tapJump; saveSettings(settings);
+    sfx.play(settings.tapJump ? 'menuOk' : 'menuBack');
+    toast = { text: 'TAP JUMP ' + (settings.tapJump ? 'ON: W ALSO JUMPS' : 'OFF: ONLY SPACE JUMPS'), until: performance.now() + 1800 };
+    return;
+  }
   if (e.code === 'KeyM') { settings.muted = !settings.muted; sfx.setMuted(settings.muted); saveSettings(settings); if (!settings.muted) sfx.play('menuOk'); return; }
   menuSound(e.code);
   if (screen === 'title') {

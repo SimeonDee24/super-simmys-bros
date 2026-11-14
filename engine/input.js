@@ -36,9 +36,11 @@ export class Keyboard {
 }
 
 // Turns keyboard state + key bindings into a bitmask once per tick.
+// tapJump: a function returning true when "up also jumps" is switched on.
 export class KeyboardSource {
-  constructor(keyboard, bindings) {
+  constructor(keyboard, bindings, tapJump = () => false) {
     this.kb = keyboard;
+    this.tapJump = tapJump;
     this.setBindings(bindings);
   }
   setBindings(bindings) {
@@ -50,6 +52,9 @@ export class KeyboardSource {
     for (let i = 0; i < ACTIONS.length; i++) {
       if (this.kb.held(this.bindings[ACTIONS[i]])) mask |= 1 << i;
     }
+    // Tap jump: up counts as jump too, except when it is part of an up
+    // attack, up special or grab pressed together with it.
+    if (this.tapJump() && (mask & BTN.UP) && !(mask & (BTN.ATTACK | BTN.SPECIAL | BTN.GRAB))) mask |= BTN.JUMP;
     return mask;
   }
 }

@@ -880,6 +880,17 @@ export class Renderer {
     });
   }
 
+  // A short notice at the top of the screen (fades out as alpha drops).
+  drawToast(text, alpha = 1) {
+    const ctx = this.ctx;
+    this.ui();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(8,8,24,0.85)'; ctx.fillRect(W / 2 - 120, 26, 240, 16);
+    ctx.fillStyle = '#ffe14a'; ctx.fillRect(W / 2 - 120, 26, 240, 1);
+    drawText(ctx, text, W / 2, 30, '#ffffff', 1, 'center', '#000000');
+    ctx.globalAlpha = 1;
+  }
+
   drawBanner(text) {
     const ctx = this.ctx;
     this.ui();

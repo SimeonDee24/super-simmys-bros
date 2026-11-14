@@ -959,4 +959,24 @@ for (const hold of [0, 30]) {
   check('top blast zone is 335px above the stage on every stage', ['nest', 'balcony', 'cloudrest'].every((id) => getStage(id).solids[0].y - getStage(id).blast.top === 335));
 }
 
+// Tap jump (0 key): W also jumps, unless pressed together with an attack, special or grab
+{
+  const { KeyboardSource, DEFAULT_BINDINGS } = await import('../engine/input.js');
+  const kb = { blocked: new Set(), keys: new Set(), held(c) { return this.keys.has(c); } };
+  const b = DEFAULT_BINDINGS;
+  let on = false;
+  const src = new KeyboardSource(kb, b, () => on);
+  const press = (...codes) => { kb.keys = new Set(codes); return src.sample(); };
+  check('tap jump off: W is only up', !(press(b.up) & BTN.JUMP) && (press(b.up) & BTN.UP));
+  on = true;
+  check('tap jump on: W is up and jump', (press(b.up) & BTN.JUMP) && (press(b.up) & BTN.UP));
+  check('tap jump on: W + attack is still an up attack, not a jump', !(press(b.up, b.attack) & BTN.JUMP) && !(press(b.up, b.special) & BTN.JUMP) && !(press(b.up, b.grab) & BTN.JUMP));
+  check('tap jump on: Space still jumps', press(b.jump) & BTN.JUMP);
+  // in a match: holding W with tap jump jumps
+  const s = createMatch(setup); const a = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  step(s, [press(b.up), 0]);
+  for (let i = 0; i < 6; i++) step(s, [press(b.up), 0]);
+  check('tap jump on: pressing W leaves the ground', !a.grounded);
+}
+
 process.exit(fails ? 1 : 0);

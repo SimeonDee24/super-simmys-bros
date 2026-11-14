@@ -11,6 +11,7 @@ const DEFAULTS = {
   bindings: { ...DEFAULT_BINDINGS },
   volume: 0.6,
   muted: false,       // M toggles sound
+  tapJump: false,     // 0 toggles: up (W) also jumps
   showBoxes: false,   // hurtbox / hitbox / ledge-box display
   showDebug: false,   // tick, state hash, fighter state
   cpuLevel: 'lv3',     // P2 CPU: 'dummy' (training) or 'lv1' to 'lv5'
