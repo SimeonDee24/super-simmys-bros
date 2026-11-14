@@ -562,8 +562,8 @@ for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BT
   for (let i = 0; i < 14; i++) step(s, [0, 0]);
   check('grab while running is a dash grab', dg === 'dashGrab');
 }
-// Specials by direction in the air: none = Jump Shot, sideways = Fast Break, up = Rotor Cap
-for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['holding sideways', BTN.RIGHT, 6, 'fastBreak'], ['holding up', BTN.UP, 20, 'rotorCap']]) {
+// Specials by direction in the air: none = Jump Shot, sideways = Fast Break, up = Alley-Oop
+for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['holding sideways', BTN.RIGHT, 6, 'fastBreak'], ['holding up', BTN.UP, 20, 'alleyOop']]) {
   const s = createMatch(setup); const a = s.fighters[0]; s.fighters[1].x = 900 * FX;
   step(s, [BTN.JUMP, 0]); for (let i = 0; i < wait; i++) step(s, [BTN.JUMP | hold, 0]);
   step(s, [BTN.SPECIAL | hold, 0]);
@@ -624,35 +624,36 @@ for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['
     const inp = i === 2 ? BTN.JUMP | toward : i === 30 ? BTN.SPECIAL | BTN.UP : toward;
     step(r, [inp, 0]); saved = b.state === 'ledge' || b.grounded === 1;
   }
-  check('from below the screen, double jump + rotor cap gets back', saved, b.state + ' y ' + (b.y / FX).toFixed(0));
+  check('from below the screen, double jump + alley-oop gets back', saved, b.state + ' y ' + (b.y / FX).toFixed(0));
 }
-// Rotor Cap (up special): flies up, steerable, hits above, then helpless
+// Alley-Oop (up special): rising kicks that carry, a launching last kick, then helpless
 {
   let s = createMatch(setup); let [a, v] = s.fighters; v.x = 900 * FX;
-  const y0 = a.y, x0 = a.x; let top = y0, helpless = false, jumped = false;
+  const y0 = a.y, x0 = a.x; let top = y0, helpless = false, jumped = false, peakAt = 0;
   step(s, [BTN.SPECIAL | BTN.UP, 0]);
-  for (let i = 0; i < 260; i++) {
-    step(s, [(i < 40 ? BTN.LEFT : 0) | (a.state === 'helpless' ? BTN.JUMP | BTN.ATTACK : 0), 0]);
-    top = Math.min(top, a.y);
+  for (let i = 0; i < 200; i++) {
+    step(s, [(i < 30 ? BTN.LEFT : 0) | (a.state === 'helpless' ? BTN.JUMP | BTN.ATTACK : 0), 0]);
+    if (a.y < top) { top = a.y; peakAt = i; }
     if (a.state === 'helpless') { helpless = true; if (a.vy < -FX || a.move) jumped = true; }
     if (helpless && a.grounded) break;
   }
-  check('rotor cap lifts him well over 100px and can be steered', (y0 - top) / FX > 110 && a.x < x0 - 20 * FX, `${((y0 - top) / FX).toFixed(0)}px up, ${((a.x - x0) / FX).toFixed(0)}px sideways`);
-  check('rotor cap ends in a helpless fall: no jump or attack until he lands', helpless && !jumped);
+  check('alley-oop shoots up about 110px fast, with only a little steering', (y0 - top) / FX > 95 && (y0 - top) / FX < 130 && peakAt < 46 && Math.abs(a.x - x0) / FX < 40, `${((y0 - top) / FX).toFixed(0)}px up in ${peakAt} frames, ${((a.x - x0) / FX).toFixed(0)}px sideways`);
+  check('alley-oop ends in a helpless fall: no jump or attack until he lands', helpless && !jumped);
   check('landing from the helpless fall has landing lag', a.state === 'land' && a.landLag === 14, a.state + ' ' + a.landLag);
-  // blades hit someone above several times
-  s = createMatch(setup); [a, v] = s.fighters; v.x = a.x; v.y = a.y - 64 * FX; v.grounded = 0; v.ground = -1; v.state = 'air';
-  let hitsN = 0, last = 0;
+  // the kicks carry a nearby opponent up with him, and the last one launches them sideways
+  s = createMatch(setup); [a, v] = s.fighters; v.x = a.x + 14 * FX;
+  let hitsN = 0, last = 0, lastAngle = -1, carried = v.y;
   step(s, [BTN.SPECIAL | BTN.UP, 0]);
-  for (let i = 0; i < 90; i++) { step(s, [0, 0]); if (v.percent !== last) { hitsN++; last = v.percent; } }
-  check('rotor cap blades hit an opponent above more than once, 3% each', hitsN >= 2 && v.percent === hitsN * 30, `${hitsN} hits, ${v.percent / 10}%`);
+  for (let i = 0; i < 60; i++) { step(s, [0, 0]); if (v.percent !== last) { hitsN++; last = v.percent; lastAngle = v.kbAngle; } if (hitsN < 7) carried = Math.min(carried, v.y); }
+  check('alley-oop: all seven kicks connect for 15%, carrying them up', hitsN === 7 && v.percent === 150 && (170 * FX - carried) / FX > 50, `${hitsN} hits, ${v.percent / 10}%, carried ${((170 * FX - carried) / FX).toFixed(0)}px up`);
+  check('alley-oop: the last kick launches them sideways, not straight up', lastAngle === 48, 'angle ' + lastAngle);
   // recovering from below the ledge: it grabs the ledge on the way up
   s = createMatch(setup); [a, v] = s.fighters; v.x = 900 * FX;
   a.x = 56 * FX; a.y = 290 * FX; a.grounded = 0; a.ground = -1; a.state = 'air'; a.jumpsLeft = 0; a.vy = 0;
   step(s, [BTN.SPECIAL | BTN.UP, 0]);
   let grabbed = false;
   for (let i = 0; i < 120 && !grabbed; i++) { step(s, [0, 0]); grabbed = a.state === 'ledge'; }
-  check('rotor cap from far below the stage reaches and grabs the ledge', grabbed, a.state + ' y ' + (a.y / FX).toFixed(0));
+  check('alley-oop from far below the stage reaches and grabs the ledge', grabbed, a.state + ' y ' + (a.y / FX).toFixed(0));
 }
 // Body push: no running through standing opponents, no pushing off edges, rolls still pass
 {

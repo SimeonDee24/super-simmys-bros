@@ -266,8 +266,10 @@ const FB_CHARGE = { hip: [-2, 6], torso: -26, head: 10, armF: [-75, 85], armB: [
 const FB_DIVE = { rot: 84, torso: 0, head: -62, armF: [172, 6], armB: [160, 12], legF: [6, -3], legB: [-8, -3], footF: -70, footB: -70, ...FISTS, face: 'yell' };
 // misfire: blasted off out of control, arms and legs trailing
 const FB_MISFIRE = { rot: 96, torso: -8, head: -40, armF: [20, 25], armB: [-35, 30], legF: [22, -30], legB: [-18, -22], footF: -60, footB: -60, handF: 'open', handB: 'open', face: 'hurt' };
-// Rotor Cap (up special): hanging under the propeller, legs dangling
-const RC_HANG = { torso: 3, head: -8, armF: [24, 22], armB: [-22, 18], legF: [12, -14], legB: [-8, -10], footF: 32, footB: 36, face: 'smile' };
+// Alley-Oop (up special): rising kicks, then a spinning side kick
+const AO_KICK_A = { torso: -14, head: -10, armF: [-50, 40], armB: [-100, 30], legF: [128, -6], legB: [-6, -40], footF: -20, ...FISTS, face: 'yell' };
+const AO_KICK_B = { torso: -6, head: -10, armF: [60, 60], armB: [-60, 40], legF: [84, -96], legB: [-14, -10], footB: 30, ...FISTS, face: 'yell' };
+const AO_FINAL = { torso: -26, head: 4, armF: [-70, 30], armB: [-120, 20], legF: [92, -2], legB: [20, -100], footF: -10, ...FISTS, face: 'yell' };
 // bluff: card held up in front of his face, other hand on his hip
 const BLUFF_HOLD = { torso: -4, head: -6, armF: [70, 95], armB: [-30, 70], legF: [8, -6], legB: [-8, -4], face: 'smile' };
 // jump shot: ball gathered at the chest, set overhead, then released up and forward
@@ -407,18 +409,18 @@ const animations = {
   // Fast Break: coils back (holding here while charging), then launches
   // head first with both fists out.
   fastBreak: anim(false, [
-    [6, { hip: [-1, 3], torso: -12, armF: [-40, 60], armB: [-60, 50], legF: [40, -70], legB: [10, -50], ...FISTS }],
-    [8, FB_CHARGE],
+    [4, { hip: [-1, 3], torso: -12, armF: [-40, 60], armB: [-60, 50], legF: [40, -70], legB: [10, -50], ...FISTS }],
+    [6, FB_CHARGE],
     [2, FB_CHARGE],
-    [30, FB_DIVE],
+    [26, FB_DIVE],
     [8, { ...FB_DIVE, rot: 92 }],
     [8, { rot: 40, torso: 10, armF: [90, 40], armB: [40, 50], legF: [30, -50], legB: [0, -40] }],
     [1, AIR],
   ]),
   // The misfire: same wind-up, then he is flung out of control.
   fastBreakMisfire: anim(false, [
-    [6, { hip: [-1, 3], torso: -12, armF: [-40, 60], armB: [-60, 50], legF: [40, -70], legB: [10, -50], ...FISTS }],
-    [8, FB_CHARGE],
+    [4, { hip: [-1, 3], torso: -12, armF: [-40, 60], armB: [-60, 50], legF: [40, -70], legB: [10, -50], ...FISTS }],
+    [6, FB_CHARGE],
     [2, FB_CHARGE],
     [12, FB_MISFIRE],
     [12, { ...FB_MISFIRE, rot: 88, armF: [35, 40], armB: [-20, 20], legF: [10, -40], legB: [-30, -12] }],
@@ -427,16 +429,16 @@ const animations = {
     [8, { rot: 40, torso: 10, armF: [90, 40], armB: [40, 50], legF: [30, -50], legB: [0, -40], face: 'hurt' }],
     [1, AIR],
   ]),
-  // Rotor Cap: pulls the cap on, then hangs under it as it lifts him,
-  // swaying a little.
-  rotorCap: anim(false, [
-    [5, { hip: [0, 4], torso: 10, armF: [140, 70], armB: [130, 80], legF: [38, -72], legB: [18, -58] }],
-    [7, { hip: [0, 5], torso: 6, head: 6, armF: [165, 60], armB: [155, 70], legF: [42, -80], legB: [22, -64] }],
-    ...Array.from({ length: 9 }, (_, i) => [10, i & 1
-      ? { ...RC_HANG, torso: -2, legF: [-4, -10], legB: [-20, -6], armF: [14, 26], armB: [-30, 14] }
-      : RC_HANG]),
-    [6, { ...RC_HANG, face: 'hurt' }],
-  ]),
+  // Alley-Oop: crouches, then rockets upward kicking, alternating knees,
+  // and whips round into a last side kick at the top.
+  alleyOop: anim(false, [
+    [4, { hip: [0, 7], torso: 16, armF: [30, 60], armB: [-20, 50], legF: [56, -100], legB: [34, -84], ...FISTS }],
+    ...Array.from({ length: 6 }, (_, i) => [3, i & 1 ? AO_KICK_B : AO_KICK_A]),
+    [3, AO_FINAL],
+    [8, AO_FINAL],
+    [10, { torso: 4, armF: [80, 30], armB: [-70, 30], legF: [30, -40], legB: [-10, -30], ...FISTS }],
+    [4, AIR],
+  ], { ease: false }),
   // Helpless fall: flailing until he lands or grabs a ledge.
   helpless: anim(true, [
     [6, { torso: 8, head: -6, armF: [150, 30], armB: [-140, -20], legF: [30, -40], legB: [-20, -25], footF: 30, footB: 40, handF: 'open', handB: 'open', face: 'hurt' }],
@@ -767,35 +769,39 @@ const moves = {
   // Side special: Fast Break. Hold the button to charge (up to a second),
   // let go to launch head first. Damage 6% to 21% and distance grow with the
   // charge. One time in ten it misfires instead: see fastBreakMisfire.
-  fastBreak: { faf: 62, landLag: 16, landContinue: true, noDrift: true, float: { gravity: 20, fall: 25 },
-    charge: { at: 14, max: 60 },
-    rocket: { frame: 16, frames: 30, speed: [px(2.6), px(4.2)], lift: px(1.0), gravity: 30, drag: 12, bounce: [px(0.7), px(1.4)],
+  fastBreak: { faf: 54, landLag: 16, landContinue: true, noDrift: true, float: { gravity: 20, fall: 25 },
+    charge: { at: 10, max: 60 },
+    rocket: { frame: 12, frames: 26, speed: [px(3.3), px(5.0)], lift: px(1.0), gravity: 30, drag: 12, bounce: [px(0.7), px(1.4)],
       misfire: { chance: 10, move: 'fastBreakMisfire' } },
-    ledgeGrab: { from: 28 },
-    trail: { part: 'neck', from: 16, to: 46, width: 8, straight: true },
+    ledgeGrab: { from: 22 },
+    trail: { part: 'neck', from: 12, to: 38, width: 8, straight: true },
     hitboxes: [
-      hit(16, 46, 'neck', 7, 6, 361, 20, 80, { chargeScale: [60, 210] }),
-      hit(16, 46, 'chest', 6, 6, 361, 20, 80, { chargeScale: [60, 210] }),
+      hit(12, 38, 'neck', 7, 6, 361, 20, 80, { chargeScale: [60, 210] }),
+      hit(12, 38, 'chest', 6, 6, 361, 20, 80, { chargeScale: [60, 210] }),
     ] },
   // The misfire: ignores the charge, flies much further and faster, 25%.
-  fastBreakMisfire: { faf: 70, landLag: 22, burst: true, noDrift: true, float: { gravity: 20, fall: 25 },
-    charge: { at: 14, max: 60 },
-    rocket: { frame: 16, frames: 36, speed: [px(5.0), px(5.0)], lift: px(1.3), gravity: 22, drag: 10, bounce: [px(0.9), px(1.8)] },
-    ledgeGrab: { from: 34 },
-    trail: { part: 'neck', from: 16, to: 52, width: 12, straight: true },
+  fastBreakMisfire: { faf: 62, landLag: 22, burst: true, noDrift: true, float: { gravity: 20, fall: 25 },
+    charge: { at: 10, max: 60 },
+    rocket: { frame: 12, frames: 30, speed: [px(6.0), px(6.0)], lift: px(1.3), gravity: 22, drag: 10, bounce: [px(0.9), px(1.8)] },
+    ledgeGrab: { from: 28 },
+    trail: { part: 'neck', from: 12, to: 44, width: 12, straight: true },
     hitboxes: [
-      hit(16, 52, 'neck', 9, 25, 40, 20, 100),
-      hit(16, 52, 'chest', 8, 25, 40, 20, 100),
+      hit(12, 44, 'neck', 9, 25, 40, 20, 100),
+      hit(12, 44, 'chest', 8, 25, 40, 20, 100),
     ] },
-  // Up special: Rotor Cap. A propeller cap lifts him a long way, steerable
-  // left and right. The spinning blades hit above him (3% each, several
-  // times) but his body is unprotected. He falls helpless afterwards.
-  rotorCap: { faf: 100, landLag: 14, helpless: true, float: { gravity: 15, fall: 20 },
-    fly: { frame: 12, frames: 78, rise: px(2.3), accel: px(0.3), drift: px(1.3), steer: px(0.09) },
-    ledgeGrab: { from: 12, rising: true },
-    prop: { from: 5, to: 100 },
-    hitboxes: Array.from({ length: 11 }, (_, i) =>
-      hit(12 + i * 7, 18 + i * 7, 'neck', 7, 3, 85, 0, 100, { off: [0, -13], group: i, fkb: 45 })) },
+  // Up special: Alley-Oop. Shoots straight up with a flurry of rising kicks
+  // that carry the opponent with him (4%, then five hits of 1.2%), and ends
+  // with a spinning kick that launches them sideways (5%). Very little
+  // steering. He falls helpless afterwards.
+  alleyOop: { faf: 46, landLag: 16, helpless: true, twirl: [[23, 30]],
+    fly: { frame: 4, frames: 19, rise: px(4.2), accel: px(1.8), drift: px(0.7), steer: px(0.06) },
+    ledgeGrab: { from: 4, rising: true },
+    trail: [{ part: 'toeF', from: 4, to: 22, width: 7 }, { part: 'toeF', from: 22, to: 28, width: 10, arc: true }],
+    hitboxes: [
+      ...hits(4, 6, [['toeF', 8], ['kneeF', 7], ['hip', 6]], 4, 88, 0, 100, { fkb: 105, group: 0 }),
+      ...[0, 1, 2, 3, 4].flatMap((i) => hits(7 + i * 3, 9 + i * 3, [['toeF', 8], ['kneeF', 7], ['hip', 6]], 1.2, 88, 0, 100, { fkb: 105, group: 1 + i })),
+      ...hits(23, 26, [['toeF', 10], ['shinF', 8], ['hip', 6]], 5, 48, 60, 128, { group: 6, lagMult: 150 }),
+    ] },
   // Down special: Bluff (counter). If he is hit on frames 5-26 he takes no
   // damage and flips the card back at them for 1.2x the damage (at least 8%).
   // In the air, Bluff floats: the fall stops and he drifts down slowly.
@@ -882,7 +888,7 @@ export const SIMEON = {
   moves: { ...SHARED_MOVES, ...moves },
   throws: THROWS,
   // Which move each special input uses. Missing slots do nothing yet.
-  specials: { neutral: 'jumpShot', side: 'fastBreak', up: 'rotorCap', down: 'bluff' },
+  specials: { neutral: 'jumpShot', side: 'fastBreak', up: 'alleyOop', down: 'bluff' },
 
   // Projectiles his moves can create (see engine/projectiles.js).
   // Speeds are pixels per frame; charge adds chargeSpeed per frame charged.

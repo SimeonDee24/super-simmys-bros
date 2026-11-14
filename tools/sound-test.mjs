@@ -58,7 +58,7 @@ const has = (names, ...want) => want.every((w) => names.includes(w));
   const n = hear(s, [[1, BTN.SPECIAL], [30, BTN.SPECIAL], [150, 0]]);
   check('Simeon jump shot: charge ticks, the shot, bounces', has(n, 'charge', 'shoot', 'bounce'), [...new Set(n)].join(' '));
   const u = hear(mk(), [[1, BTN.SPECIAL | BTN.UP], [200, 0]]);
-  check('Simeon rotor cap: propeller buzz', u.filter((x) => x === 'prop').length > 8);
+  check('Simeon alley-oop: a run of kick swings', u.filter((x) => x.startsWith('swing')).length >= 5, u.join(' '));
   let mis = false;
   for (let sd = 1; sd < 60 && !mis; sd++) { const m = createMatch({ stageId: 'cloudrest', players: [{ charId: 'simeon', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: sd }); m.fighters[1].x = 900 * FX; if (hear(m, [[1, BTN.SPECIAL | BTN.RIGHT], [60, 0]]).includes('misfire')) mis = true; }
   check('Simeon fast break: launch, and a misfire sounds different', has(hear(s, [[1, BTN.SPECIAL | BTN.RIGHT], [60, 0]]), 'rocket') && mis);
