@@ -416,7 +416,7 @@ const STATES = {
     if (f.stateFrame < CONFIG.KO_RESPAWN_DELAY) return;
     if (f.stocks <= 0) { setState(f, 'out', 'idle'); return; }
     const stage = getStage(c.match.stageId);
-    f.x = (stage.respawn.x + (f.slot === 0 ? -1 : 1) * CONFIG.RESPAWN_SLOT_OFFSET) * FX;
+    f.x = (stage.respawn.x + [-1, 1, -3, 3][f.slot & 3] * CONFIG.RESPAWN_SLOT_OFFSET) * FX;
     f.y = (stage.respawn.y - CONFIG.RESPAWN_DROP_PX) * FX;
     f.facing = f.slot === 0 ? 1 : -1;
     f.invuln = 2;

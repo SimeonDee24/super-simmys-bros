@@ -152,6 +152,8 @@ export const BALCONY = {
   spawns: [
     { x: 175, y: 170, facing: 1, ground: 0 },
     { x: 305, y: 170, facing: -1, ground: 0 },
+    { x: 115, y: 170, facing: 1, ground: 0 },    // third and fourth fighters start further out
+    { x: 365, y: 170, facing: -1, ground: 0 },
   ],
   respawn: { x: 240, y: 90 },
 

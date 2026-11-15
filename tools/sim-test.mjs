@@ -1029,4 +1029,25 @@ for (const hold of [0, 30]) {
   { const s = mk(); const [a, v] = s.fighters; v.x = a.x + 26 * FX; v.percent = 300; step(s, [BTN.SMASH, 0]); let ko = false; for (let i = 0; i < 300 && !ko; i++) { step(s, [0, 0]); ko = v.state === 'dead'; } check('...but not at 30%', !ko); }
 }
 
+// Free-for-all: up to four fighters, and one swing can hit several of them.
+{
+  const four = { stageId: 'cloudrest', players: ['simeon', 'kaelyn', 'luca', 'simeon'].map((charId, i) => ({ charId, alt: i & 1 })), stocks: 3, seed: 3 };
+  const s = createMatch(four);
+  check('a match can start with four fighters, each on the stage', s.fighters.length === 4 && new Set(s.fighters.map((f) => f.x)).size === 4 && s.fighters.every((f) => f.grounded));
+  const [a, v1, v2, far] = s.fighters;
+  v1.x = a.x + 26 * FX; v2.x = a.x + 24 * FX;
+  step(s, [BTN.SMASH, 0, 0, 0]);
+  for (let i = 0; i < 60; i++) step(s, [0, 0, 0, 0]);
+  check('one forward smash hits both fighters in front, each once', v1.percent > 0 && v1.percent === v2.percent && far.percent === 0, `${v1.percent / 10}% / ${v2.percent / 10}%`);
+  // standing fighters are pushed apart whoever they are
+  const t = createMatch(four); const [p, q, r2] = t.fighters;
+  q.x = p.x + 2 * FX; r2.x = p.x + 4 * FX;
+  for (let i = 0; i < 90; i++) step(t, [0, 0, 0, 0]);
+  check('three fighters standing in one spot are pushed apart', Math.abs(q.x - p.x) > 8 * FX && Math.abs(r2.x - q.x) > 8 * FX, `${(q.x - p.x) / FX} / ${(r2.x - q.x) / FX}`);
+  // a KO'd fighter with no stocks is out, and the others carry on
+  const u = createMatch(four); u.fighters[3].stocks = 1; u.fighters[3].y = 500 * FX; u.fighters[3].grounded = false;
+  for (let i = 0; i < 200; i++) step(u, [0, 0, 0, 0]);
+  check('a fighter out of stocks leaves a four-fighter match to the other three', u.fighters[3].state === 'out' && u.fighters.filter((f) => f.state !== 'out').length === 3);
+}
+
 process.exit(fails ? 1 : 0);

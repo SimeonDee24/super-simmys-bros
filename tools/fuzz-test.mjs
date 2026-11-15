@@ -26,5 +26,24 @@ for (const stage of STAGES) {
     }
   }
 }
+// Free-for-alls: three and four fighters, a mix of mashing and CPUs.
+for (const stage of STAGES) {
+  for (let g = 0; g < 8; g++) {
+    games++;
+    const n = 3 + (g & 1), ids = ['simeon', 'kaelyn', 'luca'];
+    const s = createMatch({ stageId: stage.id, players: Array.from({ length: n }, (_, i) => ({ charId: ids[(g + i) % 3], alt: i & 1 })), stocks: 3, seed: g + 50 });
+    const cpus = Array.from({ length: n }, (_, i) => ((i + g) % 2 ? new CpuController(['lv1', 'lv3', 'lv5'][(i + g) % 3], g * 13 + i) : null));
+    const held = new Array(n).fill(0);
+    try {
+      for (let t = 0; t < 3000; t++) {
+        for (let k = 0; k < n; k++) if (r() < 0.15) { held[k] = 0; for (let b = 0; b < 10; b++) if (r() < 0.25) held[k] |= 1 << b; }
+        step(s, held.map((h, i) => (cpus[i] ? cpus[i].sample(s, i) : h)));
+      }
+    } catch (e) {
+      crashes++;
+      if (crashes <= 3) console.log(`CRASH on ${stage.id}, free-for-all ${g}:`, e.stack.split('\n').slice(0, 3).join(' | '));
+    }
+  }
+}
 console.log(`${crashes ? 'FAIL' : 'PASS'} ${games} mashing games, ${crashes} crashes`);
 process.exit(crashes ? 1 : 0);

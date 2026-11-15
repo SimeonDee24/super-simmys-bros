@@ -48,7 +48,7 @@ export class SoundDirector {
           else if (s === 'throwing') add('throw');
           else if (s === 'ledge') add('ledge');
           else if (s === 'dead') add('ko');
-          else if (s === 'out') add('game');
+          else if (s === 'out') add(state.fighters.filter((o) => o.state !== 'out').length <= 1 ? 'game' : 'ko');
           else if (s === 'respawn') add('respawn');
           else if (s === 'knockdown') add('knockdown');
           else if (s === 'dash') add('dash');

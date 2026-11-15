@@ -12,7 +12,7 @@ import { resolveHits } from './combat.js';
 import { stepProjectiles, resolveProjectileHits } from './projectiles.js';
 import { resolveGrabs } from './grabs.js';
 
-// setup = { stageId, players: [{ charId, alt }, { charId, alt }], stocks, seed }
+// setup = { stageId, players: [{ charId, alt }, ...] (two to four), stocks, seed }
 export function createMatch(setup) {
   const stage = getStage(setup.stageId);
   const stocks = setup.stocks || CONFIG.DEFAULT_STOCKS;

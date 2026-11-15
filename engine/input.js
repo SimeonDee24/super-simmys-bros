@@ -66,11 +66,11 @@ export class IdleSource {
   sample() { return 0; }
 }
 
-// Stores every frame's inputs for both players: [p1, p2, p1, p2, ...].
+// Stores every frame's inputs for every player: [p1, p2, (p3, p4,) p1, p2, ...].
 // This is the replay format and the future network payload.
 export class InputRecorder {
-  constructor() { this.data = []; }
-  push(inputs) { this.data.push(inputs[0] | 0, inputs[1] | 0); }
-  get frames() { return this.data.length >> 1; }
-  get(frame) { return [this.data[frame * 2], this.data[frame * 2 + 1]]; }
+  constructor(players = 2) { this.data = []; this.players = players; }
+  push(inputs) { for (let i = 0; i < this.players; i++) this.data.push(inputs[i] | 0); }
+  get frames() { return Math.floor(this.data.length / this.players); }
+  get(frame) { return this.data.slice(frame * this.players, (frame + 1) * this.players); }
 }

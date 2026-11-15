@@ -161,7 +161,10 @@ const NO_PUSH = {
   ledge: 1, ledgeGetup: 1, ledgeRoll: 1, roll: 1, spotdodge: 1, getupRoll: 1, knockdown: 1,
 };
 export function pushApart(state, stage) {
-  const [a, b] = state.fighters;
+  const fs = state.fighters;
+  for (let i = 0; i < fs.length; i++) for (let j = i + 1; j < fs.length; j++) pushPair(fs[i], fs[j], stage);
+}
+function pushPair(a, b, stage) {
   if (!a || !b || !a.grounded || !b.grounded || a.ground !== b.ground) return;
   if (NO_PUSH[a.state] || NO_PUSH[b.state] || a.intangible > 0 || b.intangible > 0) return;
   const dist = Math.abs(b.x - a.x);

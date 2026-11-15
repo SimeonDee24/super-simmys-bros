@@ -27,6 +27,10 @@ const JOINT = {
 
 export const jointAt = (solved, name) => JOINT[name](solved);
 
+// A hitbox group can hit each opponent once per move. f.hitGroups keeps eight
+// bits (groups 0-7) for each of up to four opponents.
+const spentBit = (hb, vic) => 1 << ((hb.group || 0) + (vic.slot & 3) * 8);
+
 // Hitboxes that are out on this exact frame of the fighter's current move,
 // as circles in world fixed-point: { cx, cy, r, def }.
 export function activeHitboxes(f, ch, includeSpent = false) {
@@ -37,7 +41,7 @@ export function activeHitboxes(f, ch, includeSpent = false) {
   const out = [];
   for (const hb of mv.hitboxes) {
     if (fr < hb.frames[0] || fr > hb.frames[1]) continue;
-    if (!includeSpent && (f.hitGroups & (1 << (hb.group || 0)))) continue;
+    if (!includeSpent && (f.hitGroups & (0x01010101 << (hb.group || 0)))) continue;   // already hit someone
     s = s || fighterSolve(f, ch);
     const j = JOINT[hb.at](s);
     const ox = hb.off ? hb.off[0] * FX : 0, oy = hb.off ? hb.off[1] * FX : 0;
@@ -100,7 +104,7 @@ export function applyHit(state, att, vic, hit, proj = null) {
   // Hitlag: short for normal moves; a move can ask for more (smash attacks will).
   const lag = lagFor(hb);
   vic.hitlag = lag;
-  if (!proj) { att.hitlag = lag; att.hitGroups |= 1 << (hb.group || 0); }
+  if (!proj) { att.hitlag = lag; att.hitGroups |= spentBit(hb, vic); }
 
   const lifts = angle > 0 && angle < 180;
   if (lifts || !vic.grounded) { vic.grounded = 0; vic.ground = -1; }
@@ -147,7 +151,7 @@ function lagFor(hb) {
 export function applyShieldHit(state, att, vic, hb, proj = null) {
   const lag = lagFor(hb);
   vic.hitlag = lag;
-  if (!proj) { att.hitlag = lag; att.hitGroups |= 1 << (hb.group || 0); }
+  if (!proj) { att.hitlag = lag; att.hitGroups |= spentBit(hb, vic); }
   vic.shieldHitTick = state.tick;
   vic.shieldHp -= Math.trunc((hb.damage * CONFIG.SHIELD_DMG_MULT * 100) / 100);
   if (vic.shieldHp <= 0) { breakShield(vic); vic.breakTick = state.tick; return; }
@@ -164,7 +168,7 @@ export function applyShieldHit(state, att, vic, hb, proj = null) {
 export function applyParry(state, att, vic, hb, proj = null) {
   const lag = lagFor(hb);
   vic.hitlag = lag;
-  if (!proj) { att.hitlag = lag + CONFIG.PARRY_FREEZE; att.hitGroups |= 1 << (hb.group || 0); }
+  if (!proj) { att.hitlag = lag + CONFIG.PARRY_FREEZE; att.hitGroups |= spentBit(hb, vic); }
   vic.parryTick = state.tick;
   setState(vic, 'idle', 'idle');
 }
@@ -181,7 +185,7 @@ export function inCounter(f) {
 }
 
 export function applyCounter(state, att, vic, hb, ctr, proj = null) {
-  if (!proj) att.hitGroups |= 1 << (hb.group || 0);
+  if (!proj) att.hitGroups |= spentBit(hb, vic);
   vic.counterDmg = Math.max(ctr.min, Math.trunc((hb.damage * ctr.mult) / 100));
   vic.counterTick = state.tick;
   vic.facing = (proj ? proj.x : att.x) >= vic.x ? 1 : -1;
@@ -200,7 +204,7 @@ export function resolveHits(state) {
   const hits = [];
   for (const att of state.fighters) {
     if (att.state !== 'attack') continue;
-    const boxes = activeHitboxes(att, getCharacter(att.charId));
+    const boxes = activeHitboxes(att, getCharacter(att.charId), true);
     if (!boxes.length) continue;
     for (const vic of state.fighters) {
       if (vic === att || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state]) continue;
@@ -214,6 +218,7 @@ export function resolveHits(state) {
       let found = null;
       for (let i = 0; i < boxes.length && !found; i++) {
         const b = boxes[i];
+        if (att.hitGroups & spentBit(b.def, vic)) continue;   // this group already hit this fighter
         if (b.def.downed && vic.state !== 'knockdown') continue;
         if (b.def.onlyGround && !vic.grounded) continue;   // separate versions for grounded
         if (b.def.onlyAir && vic.grounded) continue;       // and airborne targets

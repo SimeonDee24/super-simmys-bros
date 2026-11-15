@@ -161,4 +161,28 @@ for (const stageId of ['nest', 'cloudrest']) {
   check('level 4 beats level 2', r42.hiWins >= 4 && r42.hiDmg > r42.loDmg, `${r42.hiWins}/6 wins, damage ${r42.hiDmg}% vs ${r42.loDmg}%`);
 }
 
+// Free-for-all: three and four CPUs play to the end. Exactly one is left,
+// everyone took part, and the same seeds give the same match.
+for (const n of [3, 4]) {
+  const chars = ['simeon', 'kaelyn', 'luca', 'simeon'];
+  const play = () => {
+    const s = createMatch({ stageId: n === 3 ? 'nest' : 'cloudrest', players: chars.slice(0, n).map((charId, i) => ({ charId, alt: i === 3 ? 1 : 0 })), stocks: 3, seed: 9 });
+    const cpus = chars.slice(0, n).map((_, i) => new CpuController('lv4', 31 + i * 7));
+    const dealtTo = new Array(n).fill(0);
+    let t = 0;
+    for (; t < 60 * 60 * 8; t++) {
+      const before = s.fighters.map((f) => f.percent);
+      step(s, cpus.map((c, i) => c.sample(s, i)));
+      s.fighters.forEach((f, i) => { if (f.percent > before[i]) dealtTo[i] += f.percent - before[i]; });
+      if (s.fighters.filter((f) => f.state !== 'out').length <= 1) break;
+    }
+    return { s, t, dealtTo };
+  };
+  const a = play(), b = play();
+  const left = a.s.fighters.filter((f) => f.state !== 'out').length;
+  check(`${n}-fighter free-for-all ends with one winner`, left === 1 && a.dealtTo.every((d) => d > 300),
+    `${Math.round(a.t / 60)}s, stocks ${a.s.fighters.map((f) => f.stocks).join(' / ')}, damage taken ${a.dealtTo.map((d) => Math.round(d / 10)).join(' / ')}%`);
+  check(`${n}-fighter free-for-all replays identically`, JSON.stringify(a.s) === JSON.stringify(b.s));
+}
+
 process.exit(fails ? 1 : 0);

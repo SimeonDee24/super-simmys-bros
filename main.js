@@ -32,28 +32,46 @@ let toast = null;       // short message at the top of the screen, e.g. after a 
 let updateMessage = null;
 let fps = 0, fpsFrames = 0, fpsTime = 0, slowSeconds = 0;
 
-// The saved character and skin picks, kept valid if the roster changes.
-function picks() {
-  const ps = settings.picks;
-  for (const p of ps) { p.char = ((p.char | 0) % CHARACTERS.length + CHARACTERS.length) % CHARACTERS.length; p.alt = (p.alt | 0) % CHARACTERS[p.char].palettes.length; }
-  // same fighter, same skin: give the CPU the other one so they can be told apart
-  if (ps[0].char === ps[1].char && ps[0].alt === ps[1].alt) ps[1].alt = (ps[1].alt + 1) % CHARACTERS[ps[1].char].palettes.length;
-  return ps;
+let selSlot = 0;        // fighter select: the slot the keys are moving
+
+// The four saved fighter slots, kept valid if the roster changes. Slot 1 is
+// always the keyboard player, and there are always at least two fighters.
+function slots() {
+  const ss = settings.slots, n = CHARACTERS.length;
+  ss.forEach((sl, i) => {
+    sl.char = ((sl.char | 0) % n + n) % n;
+    sl.alt = ((sl.alt | 0) % CHARACTERS[sl.char].palettes.length + CHARACTERS[sl.char].palettes.length) % CHARACTERS[sl.char].palettes.length;
+    if (!CPU_ORDER.includes(sl.level)) sl.level = 'lv3';
+    sl.type = i === 0 ? 'human' : sl.type === 'off' ? 'off' : 'cpu';
+  });
+  if (!ss.some((sl, i) => i > 0 && sl.type !== 'off')) ss[1].type = 'cpu';
+  return ss;
+}
+// Same fighter in the same skin as someone else: move slot i to a skin nobody
+// is using, if the fighter has one left (with more players than skins, some share).
+function freeSkin(i, dir = 1) {
+  const ss = slots(), sl = ss[i], m = CHARACTERS[sl.char].palettes.length;
+  const taken = (alt) => ss.some((o, k) => k !== i && o.type !== 'off' && o.char === sl.char && o.alt === alt);
+  for (let k = 0; k < m && taken(sl.alt); k++) sl.alt = (sl.alt + dir + m) % m;
 }
 
 function startMatch(stage = STAGES[0]) {
+  const active = slots().map((sl, port) => ({ ...sl, port })).filter((sl) => sl.type !== 'off');
   const state = createMatch({
     stageId: stage.id,
-    players: picks().map((p) => ({ charId: CHARACTERS[p.char].id, alt: p.alt })),
+    players: active.map((sl) => ({ charId: CHARACTERS[sl.char].id, alt: sl.alt })),
     stocks: CONFIG.DEFAULT_STOCKS,
     seed: CONFIG.DEFAULT_SEED,
   });
   match = {
     state,
-    sources: [new KeyboardSource(keyboard, settings.bindings, () => settings.tapJump), new CpuController(settings.cpuLevel, CONFIG.DEFAULT_SEED ^ 0x2c9)],
-    recorder: new InputRecorder(),
+    sources: active.map((sl) => (sl.type === 'human'
+      ? new KeyboardSource(keyboard, settings.bindings, () => settings.tapJump)
+      : new CpuController(sl.level, CONFIG.DEFAULT_SEED ^ (0x2c9 * sl.port)))),
+    recorder: new InputRecorder(active.length),
     endTimer: 0,
   };
+  renderer.setPlayers(active.map((sl) => ({ port: sl.port, label: sl.type === 'human' ? 'P' + (sl.port + 1) : 'CPU' })));
   renderer.resetEffects();
   director.reset();
   sfx.play('start');
@@ -67,9 +85,9 @@ function tick() {
     match.recorder.push(inputs);
     step(match.state, inputs);
     for (const e of director.update(match.state)) sfx.play(e.name, e.strength, e.pan);
-    // Someone is out of stocks: show GAME!, then leave. (The victory screen
-    // replaces this in milestone 5.)
-    if (match.state.fighters.some((f) => f.state === 'out') && ++match.endTimer >= CONFIG.GAME_END_FRAMES) {
+    // One fighter (or nobody) left standing: show GAME!, then leave. (The
+    // victory screen replaces this in milestone 5.)
+    if (match.state.fighters.filter((f) => f.state !== 'out').length <= 1 && ++match.endTimer >= CONFIG.GAME_END_FRAMES) {
       screen = 'stageSelect'; match = null;
     }
   }
@@ -90,8 +108,8 @@ function drawScreen() {
     renderer.drawTitle(STAGES[0], { charId: CHARACTERS[0].id, updateMessage });
     return;
   }
-  if (screen === 'charSelect') { renderer.drawCharSelect(CHARACTERS, picks(), 'CPU ' + cpuLabel(settings.cpuLevel)); return; }
-  if (screen === 'stageSelect') { renderer.drawStageSelect(stageTiles, stageIndex, 'P2 CPU: ' + cpuLabel(settings.cpuLevel)); return; }
+  if (screen === 'charSelect') { renderer.drawCharSelect(CHARACTERS, slots(), selSlot, (i) => cpuLabel(slots()[i].level)); return; }
+  if (screen === 'stageSelect') { renderer.drawStageSelect(stageTiles, stageIndex); return; }
   const opts = { showBoxes: settings.showBoxes };
   if (settings.showDebug) {
     const f = match.state.fighters[0];
@@ -159,22 +177,22 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (screen === 'charSelect') {
-    const ps = picks(), n = CHARACTERS.length;
-    const move = (i, dc, da) => {
-      const p = ps[i];
-      if (dc) { p.char = (p.char + dc + n) % n; p.alt = Math.min(p.alt, CHARACTERS[p.char].palettes.length - 1); }
-      if (da) { const m = CHARACTERS[p.char].palettes.length; p.alt = (p.alt + da + m) % m; }
-      // never the same fighter in the same skin: skip past the other player's
-      const o = ps[1 - i];
-      if (p.char === o.char && p.alt === o.alt) { const m = CHARACTERS[p.char].palettes.length; p.alt = (p.alt + (da || 1) + m) % m; }
-      saveSettings(settings);
-    };
-    if (e.code === 'KeyA') move(0, -1, 0); else if (e.code === 'KeyD') move(0, 1, 0);
-    else if (e.code === 'KeyW') move(0, 0, -1); else if (e.code === 'KeyS') move(0, 0, 1);
-    else if (e.code === 'ArrowLeft') move(1, -1, 0); else if (e.code === 'ArrowRight') move(1, 1, 0);
-    else if (e.code === 'ArrowUp') move(1, 0, -1); else if (e.code === 'ArrowDown') move(1, 0, 1);
-    else if (e.code === 'KeyJ' || e.code === 'Enter' || e.code === 'Space') screen = 'stageSelect';
-    else if (e.code === 'Escape') screen = 'title';
+    const c = e.code, sl = slots()[selSlot], n = CHARACTERS.length;
+    const digit = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(c) >= 0 ? ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(c) : ['Numpad1', 'Numpad2', 'Numpad3', 'Numpad4'].indexOf(c);
+    if (digit >= 0) selectSlot(digit);
+    else if (c === 'Tab') selectSlot((selSlot + (e.shiftKey ? 3 : 1)) % 4, false);
+    else if (c === 'KeyA' || c === 'ArrowLeft') pickChar(selSlot, (sl.char + n - 1) % n);
+    else if (c === 'KeyD' || c === 'ArrowRight') pickChar(selSlot, (sl.char + 1) % n);
+    else if (c === 'KeyW' || c === 'ArrowUp' || c === 'KeyS' || c === 'ArrowDown') {
+      // up and down move a row in the roster grid
+      const cols = renderer.charGrid(n).cols, to = sl.char + (c === 'KeyW' || c === 'ArrowUp' ? -cols : cols);
+      if (to >= 0 && to < n) pickChar(selSlot, to);
+    }
+    else if (c === 'KeyK') nextSkin(selSlot);
+    else if (c === 'KeyL') toggleSlot(selSlot);
+    else if (c === 'KeyU' || c === 'KeyI') changeLevel(selSlot, c === 'KeyU' ? -1 : 1);
+    else if (c === 'KeyJ' || c === 'Enter' || c === 'Space') screen = 'stageSelect';
+    else if (c === 'Escape') screen = 'title';
     return;
   }
   if (screen === 'stageSelect') {
@@ -182,11 +200,6 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') stageIndex = (stageIndex + n - 1) % n;
     else if (e.code === 'KeyD' || e.code === 'ArrowRight') stageIndex = (stageIndex + 1) % n;
     else if (e.code === 'KeyJ' || e.code === 'Enter' || e.code === 'Space') chooseStage(stageIndex);
-    else if (e.code === 'KeyW' || e.code === 'KeyS' || e.code === 'ArrowUp' || e.code === 'ArrowDown') {
-      const i = CPU_ORDER.indexOf(settings.cpuLevel);
-      settings.cpuLevel = CPU_ORDER[(i + (e.code === 'KeyW' || e.code === 'ArrowUp' ? CPU_ORDER.length - 1 : 1)) % CPU_ORDER.length];
-      saveSettings(settings);
-    }
     else if (e.code === 'Escape') screen = 'charSelect';
     return;
   }
@@ -196,10 +209,49 @@ window.addEventListener('keydown', (e) => {
   else if (e.code === 'F2') { settings.showBoxes = !settings.showBoxes; saveSettings(settings); }
 });
 
+// --- Fighter select actions (shared by the keys and the mouse) ---
+// Make a slot the one the keys move. Choosing a slot that is off adds it as a CPU.
+function selectSlot(i, turnOn = true) {
+  selSlot = i;
+  const sl = slots()[i];
+  if (turnOn && sl.type === 'off') { sl.type = 'cpu'; freeSkin(i); }
+  saveSettings(settings);
+}
+function pickChar(i, char) {
+  const sl = slots()[i];
+  if (sl.type === 'off') sl.type = 'cpu';
+  sl.char = char; sl.alt = 0;
+  freeSkin(i);
+  saveSettings(settings);
+}
+function nextSkin(i) {
+  const sl = slots()[i];
+  if (sl.type === 'off') return;
+  sl.alt = (sl.alt + 1) % CHARACTERS[sl.char].palettes.length;
+  freeSkin(i);
+  saveSettings(settings);
+}
+// Slots 2-4 can be switched between CPU and off, as long as two fighters remain.
+function toggleSlot(i) {
+  const ss = slots(), sl = ss[i];
+  if (i === 0) { toast = { text: 'PLAYER 1 IS ALWAYS IN', until: performance.now() + 1400 }; return; }
+  if (sl.type === 'off') { sl.type = 'cpu'; freeSkin(i); }
+  else if (ss.filter((o) => o.type !== 'off').length > 2) sl.type = 'off';
+  else toast = { text: 'A MATCH NEEDS AT LEAST TWO FIGHTERS', until: performance.now() + 1600 };
+  saveSettings(settings);
+}
+function changeLevel(i, d) {
+  const sl = slots()[i];
+  if (sl.type !== 'cpu') return;
+  sl.level = CPU_ORDER[(CPU_ORDER.indexOf(sl.level) + d + CPU_ORDER.length) % CPU_ORDER.length];
+  saveSettings(settings);
+}
+
 // Clicks and blips for the menus and the pause screen.
 function menuSound(code) {
   const ok = code === 'KeyJ' || code === 'Enter' || code === 'Space';
-  const dirKey = ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(code);
+  const dirKey = ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(code)
+    || (screen === 'charSelect' && /^(Digit|Numpad)[1-4]$|^Key[KLUI]$|^Tab$/.test(code));
   if (screen === 'title') { if (!['F5', 'F12'].includes(code)) sfx.play('menuOk'); }
   else if (screen === 'charSelect' || screen === 'stageSelect') {
     if (code === 'Escape') sfx.play('menuBack');
@@ -218,15 +270,28 @@ function chooseStage(i) {
   startMatch(t.stage || STAGES[Math.floor(Math.random() * STAGES.length)]);
 }
 
-// Mouse: click a stage tile to pick it.
+// Mouse: click a roster tile, a player panel or a stage tile.
 renderer.canvas.addEventListener('click', (e) => {
-  if (screen !== 'stageSelect') return;
   const b = renderer.canvas.getBoundingClientRect();
   const x = ((e.clientX - b.left) / b.width) * CONFIG.SCREEN_W, y = ((e.clientY - b.top) / b.height) * CONFIG.SCREEN_H;
-  stageTiles.forEach((_, i) => {
-    const r = renderer.stageTileRect(i, stageTiles.length);
-    if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) chooseStage(i);
-  });
+  const inside = (r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
+  if (screen === 'charSelect') {
+    sfx.unlock();
+    CHARACTERS.forEach((_, k) => { if (inside(renderer.charTileRect(k, CHARACTERS.length))) { pickChar(selSlot, k); sfx.play('menuMove'); } });
+    for (let i = 0; i < 4; i++) {
+      const r = renderer.slotPanelRect(i);
+      if (!inside(r)) continue;
+      // the coloured header switches a slot on and off, the rest of the panel selects it
+      // (clicking the fighter of the selected slot changes skin)
+      if (y < r.y + 13 && i > 0 && slots()[i].type !== 'off') toggleSlot(i);
+      else if (i === selSlot && slots()[i].type !== 'off') nextSkin(i);
+      else selectSlot(i);
+      sfx.play('menuMove');
+    }
+    return;
+  }
+  if (screen !== 'stageSelect') return;
+  stageTiles.forEach((_, i) => { if (inside(renderer.stageTileRect(i, stageTiles.length))) chooseStage(i); });
 });
 
 // --- Update check (title screen only) ---

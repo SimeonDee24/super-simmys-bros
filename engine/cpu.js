@@ -82,6 +82,7 @@ export class CpuController {
     this.downTimer = -1;
     this.lastThreat = null; // the last threat it judged
     this.oosPending = false;
+    this.target = -1;       // slot of the fighter it is currently fighting
   }
 
   rand() { let x = this.rng; x ^= x << 13; x ^= x >>> 17; x ^= x << 5; this.rng = x | 0; return (x >>> 0) / 4294967296; }
@@ -105,7 +106,7 @@ export class CpuController {
 
   decide(state, slot) {
     const me = state.fighters[slot];
-    const opp = state.fighters[1 - slot];
+    const opp = this.pickTarget(state, slot);
     const stage = getStage(state.stageId);
 
     // remember what the opponent looked like, to react a little late
@@ -373,6 +374,24 @@ export class CpuController {
     }
     this.queue = new Array(this.between([12, 26])).fill(BTN.SHIELD);
     return BTN.SHIELD;
+  }
+
+  // Who to fight: the nearest opponent still in the match. It sticks with
+  // its target unless they are KO'd or someone else gets much closer, and
+  // starts watching afresh when it switches.
+  pickTarget(state, slot) {
+    const me = state.fighters[slot];
+    let best = null, bestD = Infinity;
+    for (const f of state.fighters) {
+      if (f.slot === slot || f.state === 'out') continue;
+      let d = Math.abs(f.x - me.x) + Math.abs(f.y - me.y);
+      if (f.state === 'dead' || f.state === 'respawn') d += 400 * FX;   // prefer someone who can be fought now
+      if (f.slot === this.target) d -= 40 * FX;
+      if (d < bestD) { bestD = d; best = f; }
+    }
+    if (!best) best = state.fighters.find((f) => f.slot !== slot);   // everyone else is out: the match is over
+    if (best.slot !== this.target) { this.target = best.slot; this.seen = []; this.lastThreat = null; }
+    return best;
   }
 
   // Height of the floor (or platform) under a fighter, or null.
