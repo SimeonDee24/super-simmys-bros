@@ -1,5 +1,5 @@
 {
-  "version": "0.26.0",
+  "version": "0.27.0",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -17,6 +17,7 @@
     "characters/kaelyn.js",
     "characters/library.js",
     "characters/luca.js",
+    "characters/sara.js",
     "characters/shared.js",
     "characters/simeon.js",
     "stages/balcony.js",

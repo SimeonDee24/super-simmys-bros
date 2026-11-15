@@ -3,6 +3,7 @@
 // from recorded input bitmasks. Rendering happens separately, once per
 // browser frame.
 import { CONFIG } from './config/config.js';
+import { GAME_VERSION } from './config/version.js';
 import { Keyboard, KeyboardSource, InputRecorder } from './engine/input.js';
 import { createMatch, step, hashState } from './engine/sim.js';
 import { CpuController, CPU_ORDER, cpuLabel } from './engine/cpu.js';
@@ -174,6 +175,14 @@ function tick() {
 
 function render() {
   drawScreen();
+  if (online && match && match.online) {
+    const w = online.room.waiting();
+    if (w) {
+      const who = w.slot === online.room.me ? 'YOU' : 'P' + (w.slot + 1);
+      renderer.drawWaiting(w.away ? who + '\'S GAME IS MINIMISED OR IN ANOTHER TAB' : 'WAITING FOR ' + who + '...',
+        w.seconds >= 8 ? (w.away ? 'IT CANNOT RUN THERE. ASK THEM TO SWITCH BACK.  ' : 'THEIR CONNECTION MAY HAVE DROPPED.  ') + 'ESC THEN Q LEAVES THE ROOM' : '');
+    }
+  }
   if (toast) {
     const left = toast.until - performance.now();
     if (left <= 0) toast = null;
@@ -236,6 +245,8 @@ function drawScreen() {
       '         W + K = KICKFLIP (RISE, THEN DIVE) S + K = HALF PIPE (FLIP JUMP; PRESS K OR J AGAIN TO KICK)',
       '   LUCA  K = BASS DROP (HOLD TO CHARGE)      A / D + K = SUPPLY & DEMAND (TAP: UP ARROW, HOLD: CRASH)',
       '         W + K = WIRE TRANSFER (TELEPORT)   S + K = STAGE DIVE (LEAPING KICK)',
+      '   SARA  K = TO-GO (CUP. HOLD: DOUBLE SHOT)  A / D + K = BOARDING CALL (RIDES HER SUITCASE FORWARD)',
+      '         W + K = TAKEOFF (PAPER PLANE, STEER) S + K = FRESH POT (SWING, AND COFFEE ALONG THE FLOOR)',
       'TECH  PRESS I JUST BEFORE HITTING THE FLOOR, A WALL OR THE CEILING WHILE TUMBLING',
       '      (+ A / D TO TECH ROLL).  MASHING I WILL NOT WORK',
       'KNOCKED DOWN  J = GETUP ATTACK, A / D = ROLL, SPACE OR W = STAND UP',
@@ -255,8 +266,15 @@ function drawScreen() {
   }
 }
 
+// An online game cannot run in a background tab: tell the others why it stopped.
+document.addEventListener('visibilitychange', () => { if (online) online.room.setAway(document.visibilityState === 'hidden'); });
+
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
+  if (e.code === 'F8' && crash) {
+    navigator.clipboard.writeText(crash.details).then(() => say('ERROR DETAILS COPIED. PASTE THEM TO CLAUDE', 3000), () => say('COULD NOT COPY. TAKE A SCREENSHOT INSTEAD', 3000));
+    return;
+  }
   sfx.unlock();
   // typing a room code comes first: its letters must not set off the hotkeys below
   if (screen === 'join') {
@@ -456,11 +474,20 @@ const STEP_MS = 1000 / CONFIG.TICK_RATE;
 let last = performance.now(), acc = 0;
 // If something ever throws, report it once and keep the game loop alive
 // instead of freezing the page.
+// The first error is also shown on screen (F8 copies the details), so a
+// crash or freeze can be reported.
 let lastError = '';
+let crash = null;       // { text, details }
 function safely(fn) {
   try { fn(); } catch (e) {
     const msg = String(e && e.stack || e);
     if (msg !== lastError) { lastError = msg; console.error(e); }
+    if (!crash) {
+      crash = {
+        text: String(e && e.message || e).toUpperCase().slice(0, 70),
+        details: 'Super Simmy\'s Bros v' + GAME_VERSION + '\nscreen: ' + screen + (online ? ' (online, ' + (online.room.isHost ? 'host' : 'friend') + ')' : '') + '\n' + navigator.userAgent + '\n\n' + msg,
+      };
+    }
   }
 }
 function frame(now) {
@@ -468,6 +495,7 @@ function frame(now) {
   last = now;
   while (acc >= STEP_MS) { safely(tick); acc -= STEP_MS; }
   safely(render);
+  if (crash) { try { renderer.drawCrash(crash.text); } catch (e) { /* nothing more we can do */ } }
   fpsFrames++;
   if (now - fpsTime >= 1000) {
     fps = fpsFrames; fpsFrames = 0; fpsTime = now;

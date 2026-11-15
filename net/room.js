@@ -39,6 +39,8 @@ export class Room {
     this.error = null;                // set when the room is finished: why
     this.ping = 0;                    // milliseconds there and back
     this.ticks = 0;
+    this.matchNo = 0;                 // host: counts matches, so messages from an earlier match are ignored
+    this.away = new Set();            // slots whose game is in a background tab (it cannot run there)
   }
   emit(type, text = '') { this.events.push({ type, text }); }
   fail(text) { if (this.error) return; this.error = text; this.emit('error', text); this.leave(); }
@@ -84,11 +86,14 @@ export class Room {
       this.sendLobby();
     } else if (m.t === 'i') {
       // only the owner of a fighter may send its inputs
-      if (!this.session || !this.match || this.match.owners[m.s] !== id || !Array.isArray(m.v)) return;
+      if (!this.session || !this.match || m.m !== this.match.id || this.match.owners[m.s] !== id || !Array.isArray(m.v)) return;
       this.session.receive(m.s, m.f | 0, m.v, typeof m.a === 'number' ? m.a : null);
       for (const [other, l] of this.links) if (other !== id && l.joined) l.send(m);
     } else if (m.t === 'h') {
-      if (this.session) this.session.receiveHash(m.f, m.h);
+      if (this.session && m.m === this.match.id) this.session.receiveHash(m.f, m.h);
+    } else if (m.t === 'away') {
+      const i = this.slotOf(id);
+      if (i >= 0) { if (m.v) this.away.add(i); else this.away.delete(i); this.broadcast({ t: 'away', s: i, v: !!m.v }); }
     } else if (m.t === 'p') link.send({ t: 'q', c: m.c });
     else if (m.t === 'q') this.ping = Math.round(performance.now() - m.c);
   }
@@ -104,10 +109,11 @@ export class Room {
       if (k >= 0 && this.session.ended[k] < 0) {
         const f = this.session.inputs[k].length;
         this.session.drop(k, f);
-        this.broadcast({ t: 'drop', s: k, f });
+        this.broadcast({ t: 'drop', s: k, f, m: this.match.id });
       }
     }
     Object.assign(this.slots[i], { type: 'off', owner: -1 });
+    this.away.delete(i);
     this.emit('left', 'P' + (i + 1) + ' LEFT');
     this.sendLobby();
   }
@@ -158,6 +164,7 @@ export class Room {
     const ports = this.slots.map((s, i) => (s.type !== 'off' ? i : -1)).filter((i) => i >= 0);
     if (ports.length < 2) return false;
     const info = {
+      id: ++this.matchNo,
       setup: { stageId, players: ports.map((i) => ({ charId: CHARACTERS[this.slots[i].char].id, alt: this.slots[i].alt })), stocks: CONFIG.DEFAULT_STOCKS, seed },
       ports,                                                                                  // fighter number -> slot
       owners: ports.map((i) => (this.slots[i].type === 'human' ? this.slots[i].owner : 0)),   // fighter number -> machine that plays it
@@ -187,9 +194,10 @@ export class Room {
       if (!this.session) this.phase = m.phase;
       if (first) this.emit('entered');
     } else if (m.t === 'start') this.begin(m.info);
-    else if (m.t === 'i') { if (this.session) this.session.receive(m.s, m.f, m.v, typeof m.a === 'number' ? m.a : null); }
-    else if (m.t === 'h') { if (this.session) this.session.receiveHash(m.f, m.h); }
-    else if (m.t === 'drop') { if (this.session) { this.session.drop(m.s, m.f); this.emit('left', 'P' + (this.match.ports[m.s] + 1) + ' LEFT'); } }
+    else if (m.t === 'i') { if (this.session && m.m === this.match.id) this.session.receive(m.s, m.f, m.v, typeof m.a === 'number' ? m.a : null); }
+    else if (m.t === 'h') { if (this.session && m.m === this.match.id) this.session.receiveHash(m.f, m.h); }
+    else if (m.t === 'away') { if (m.v) this.away.add(m.s); else this.away.delete(m.s); }
+    else if (m.t === 'drop') { if (this.session && m.m === this.match.id) { this.session.drop(m.s, m.f); this.emit('left', 'P' + (this.match.ports[m.s] + 1) + ' LEFT'); } }
     else if (m.t === 'p') this.hostLink.send({ t: 'q', c: m.c });
     else if (m.t === 'q') this.ping = Math.round(performance.now() - m.c);
   }
@@ -216,10 +224,24 @@ export class Room {
     if (!this.session) return false;
     const s = this.session;
     const moved = s.tick((p, state) => (this.cpus[p] ? this.cpus[p].sample(state, p) : human(state)));
-    for (const m of s.outbox) { if (this.isHost) this.broadcast(m); else this.hostLink.send(m); }
+    for (const m of s.outbox) { m.m = this.match.id; if (this.isHost) this.broadcast(m); else this.hostLink.send(m); }
     s.outbox.length = 0;
     if (s.desync >= 0 && !this.toldDesync) { this.toldDesync = true; this.emit('desync'); }
     return moved;
+  }
+  // Tell the others this game went into (or came back from) a background tab.
+  setAway(v) {
+    if (this.isHost) { if (v) this.away.add(0); else this.away.delete(0); this.broadcast({ t: 'away', s: 0, v: !!v }); }
+    else if (this.hostLink) this.hostLink.send({ t: 'away', v: !!v });
+  }
+  // While the match is stuck waiting for someone: { slot, away, seconds }, else null.
+  waiting() {
+    const s = this.session;
+    if (!s || s.stuck < 30) return null;
+    const k = s.waitingFor();
+    if (k < 0) return null;
+    const slot = this.match.ports[k];
+    return { slot, away: this.away.has(slot), seconds: Math.floor(s.stuck / 60) };
   }
   // Back to the lobby when the match is over.
   endMatch() {

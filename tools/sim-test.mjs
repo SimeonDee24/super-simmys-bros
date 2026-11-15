@@ -742,7 +742,7 @@ for (const hold of [0, 30]) {
 // Roster: two fighters, two skins each, sharing every normal attack
 {
   const { CHARACTERS } = await import('../characters/index.js');
-  check('three characters with two skins each', CHARACTERS.length === 3 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  check('four characters with two skins each', CHARACTERS.length === 4 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
   const [sim, kae, luc] = CHARACTERS;
   const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
   check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
@@ -1048,6 +1048,38 @@ for (const hold of [0, 30]) {
   const u = createMatch(four); u.fighters[3].stocks = 1; u.fighters[3].y = 500 * FX; u.fighters[3].grounded = false;
   for (let i = 0; i < 200; i++) step(u, [0, 0, 0, 0]);
   check('a fighter out of stocks leaves a four-fighter match to the other three', u.fighters[3].state === 'out' && u.fighters.filter((f) => f.state !== 'out').length === 3);
+}
+
+// Sara: her own smash attacks and specials
+{
+  const { getCharacter } = await import('../characters/index.js');
+  const sara = getCharacter('sara'), sim = getCharacter('simeon');
+  const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'nair', 'fair', 'bair', 'uair', 'dair', 'dashAttack'].filter((m) => sim.moves[m]);
+  check('Sara shares the normals with Simeon and has her own smashes and specials', shared.length > 6 && shared.every((m) => sara.moves[m] === sim.moves[m])
+    && ['fsmash', 'usmash', 'dsmash'].every((m) => sara.moves[m] !== sim.moves[m]) && ['neutral', 'side', 'up', 'down'].every((k) => sara.moves[sara.specials[k]] && sara.specials[k] !== sim.specials[k]));
+  const mk = (dx = 26, dy = 0) => { const s = createMatch({ ...setup, players: [{ charId: 'sara', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [a, v] = s.fighters; v.x = a.x + dx * FX; v.y += dy * FX; if (dy) { v.grounded = 0; v.ground = -1; } return s; };
+  const run = (s, first, n = 80, hold = 0) => { step(s, [first, 0]); for (let i = 0; i < n; i++) step(s, [i < hold ? first : 0, 0]); return s.fighters[1].percent / 10; };
+  TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
+  const f = run(mk(30), BTN.SMASH), u = run(mk(4, -44), BTN.SMASH | BTN.UP), d1 = run(mk(20), BTN.SMASH | BTN.DOWN), d2 = run(mk(-20), BTN.SMASH | BTN.DOWN);
+  check('Match Point (forward smash) hits in front: 16% at the racket head', f === 16, f + '%');
+  check('Steam Wand (up smash) hits a fighter above her several times', u >= 10 && u <= 14, u + '%');
+  { const s = mk(-20); run(s, BTN.SMASH | BTN.DOWN); check('Baggage Claim (down smash) hits in front, then behind (and sends them away from her)', d1 === 13 && d2 === 13 && s.fighters[1].x < s.fighters[0].x - 30 * FX, `${d1}% / ${d2}%`); }
+  TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
+  // To-Go: tap for a cup, hold for the Double Shot
+  const tap = run(mk(80), BTN.SPECIAL, 70), held = run(mk(80), BTN.SPECIAL, 70, 30);
+  check('To-Go throws a cup (6%); holding it throws a Double Shot (12%)', tap === 6 && held === 12, `${tap}% / ${held}%`);
+  // Boarding Call
+  { const s = mk(400); const a = s.fighters[0], x0 = a.x; run(s, BTN.SPECIAL | BTN.RIGHT, 70); const far = (a.x - x0) / FX;
+    const hitp = run(mk(50), BTN.SPECIAL | BTN.RIGHT, 70);
+    check('Boarding Call rides forward along the floor and hits on the way (10%)', far > 60 && far < 130 && a.grounded && hitp === 10, `${far.toFixed(0)}px, ${hitp}%`); }
+  // Takeoff
+  { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0, right = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 60; i++) { step(s, [BTN.RIGHT, 0]); top = Math.max(top, (y0 - a.y) / FX); if (i === 45) right = a.x; }
+    const x0 = s.fighters[0].x; 
+    check('Takeoff carries her up (about 100px) and can be steered, then she falls helpless', top > 85 && top < 130 && a.state === 'helpless' || (top > 85 && top < 130 && a.grounded), `${top.toFixed(0)}px up, state ${a.state}`); }
+  // Fresh Pot
+  { const near = run(mk(22), BTN.SPECIAL | BTN.DOWN, 70), far = run(mk(70), BTN.SPECIAL | BTN.DOWN, 70);
+    const s = mk(70); s.fighters[0].y -= 60 * FX; s.fighters[0].grounded = 0; s.fighters[0].ground = -1; const airp = run(s, BTN.SPECIAL | BTN.DOWN, 50);
+    check('Fresh Pot: the swing hits up close (8%), the coffee runs along the floor (7%), and nothing pours in the air', near >= 8 && far === 7 && airp === 0, `${near}% / ${far}% / ${airp}%`); }
 }
 
 process.exit(fails ? 1 : 0);

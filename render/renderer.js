@@ -307,6 +307,78 @@ export class Renderer {
       ctx.fillStyle = '#474b60'; ctx.fillRect(mx - 0.8, my, 1.6, 4.4);
       ctx.fillStyle = '#c9ced8'; ctx.beginPath(); ctx.arc(mx, my - 2, 2.4, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(mx - 0.8, my - 2.8, 0.8, 0, Math.PI * 2); ctx.fill();
+    } else if (g.kind === 'racket') held(() => {
+      // tennis racket: grip, throat and an oval strung head
+      ctx.fillStyle = OUT; ctx.fillRect(-1.3, -4, 2.6, 13);
+      ctx.beginPath(); ctx.ellipse(0, 14.2, 5.2, 6.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2a2a33'; ctx.fillRect(-0.7, -3.4, 1.4, 6);
+      ctx.fillStyle = '#e9eef5'; ctx.fillRect(-0.6, 2.6, 1.2, 6);
+      ctx.fillStyle = '#ff7a59'; ctx.beginPath(); ctx.ellipse(0, 14.2, 4.4, 5.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff3df'; ctx.beginPath(); ctx.ellipse(0, 14.2, 3.3, 4.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(42,42,51,0.45)'; ctx.lineWidth = 0.3;
+      for (let k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(k * 1.2, 10.2); ctx.lineTo(k * 1.2, 18.2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-3, 14.2 + k * 1.6); ctx.lineTo(3, 14.2 + k * 1.6); ctx.stroke(); }
+    });
+    else if (g.kind === 'suitcase') held(() => {
+      // hard-shell suitcase swung by its handle
+      ctx.fillStyle = OUT; ctx.fillRect(-0.9, -1, 1.8, 5); ctx.fillRect(-5.6, 3.4, 11.2, 13.2);
+      ctx.fillStyle = '#c9ced8'; ctx.fillRect(-0.4, -0.4, 0.8, 4);
+      ctx.fillStyle = '#2f9e8f'; ctx.fillRect(-4.9, 4.1, 9.8, 11.8);
+      ctx.fillStyle = '#58c4b5'; ctx.fillRect(-4.9, 4.1, 2.2, 11.8);
+      ctx.fillStyle = '#1f7468'; ctx.fillRect(-4.9, 9.4, 9.8, 0.9);
+      ctx.fillStyle = '#ffd23a'; ctx.fillRect(1.2, 5.4, 2.6, 2);   // a travel sticker
+      ctx.fillStyle = OUT; ctx.fillRect(-4.4, 16.2, 1.8, 1.6); ctx.fillRect(2.6, 16.2, 1.8, 1.6);
+    });
+    else if (g.kind === 'suitcaseRide') {
+      // the same suitcase on its side, rolling under her
+      const x = f.x / FX, y = f.y / FX, roll = ((fr * 3) & 3);
+      ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
+      ctx.fillStyle = OUT; ctx.fillRect(-9.6, -10.4, 19.2, 9); 
+      ctx.fillStyle = '#2f9e8f'; ctx.fillRect(-8.9, -9.7, 17.8, 7.6);
+      ctx.fillStyle = '#58c4b5'; ctx.fillRect(-8.9, -9.7, 17.8, 1.8);
+      ctx.fillStyle = '#1f7468'; ctx.fillRect(-0.5, -9.7, 0.9, 7.6);
+      ctx.fillStyle = '#ffd23a'; ctx.fillRect(3, -6.6, 2.6, 2);
+      ctx.fillStyle = '#c9ced8'; ctx.fillRect(-12.4, -7.6, 3.2, 0.9);
+      for (const wx of [-6, 6]) {
+        ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(wx, -1.5, 1.9, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#c9ced8'; ctx.fillRect(wx - 0.5 + (roll & 1 ? 0.5 : -0.5), -2 + (roll & 2 ? 0.5 : -0.5), 1, 1);
+      }
+      ctx.restore();
+    } else if (g.kind === 'plane') {
+      // a paper plane she hangs from, nose forward and tilted up
+      ctx.save(); ctx.translate(hx, hy - 3); ctx.scale(dir, 1); ctx.rotate(-0.16 + Math.sin(fr * 0.35) * 0.05);
+      poly([[17, -1.5], [-13, -9.5], [-9.5, -1.5], [-13, 4.6]], OUT);
+      poly([[15, -1.5], [-11.6, -8.4], [-8.4, -1.7]], '#ffffff');
+      poly([[15, -1.5], [-8.4, -1.7], [-11.6, 3.6]], '#d5dbe6');
+      poly([[15, -1.5], [-8.4, -1.7], [-6, 1.8]], '#aab3c2');
+      ctx.fillStyle = '#ff7a59'; ctx.fillRect(-9, -5.4, 4, 0.9);
+      ctx.restore();
+    } else if (g.kind === 'pot') held(() => {
+      // glass coffee pot: handle, dark band and what is left of the coffee
+      ctx.fillStyle = OUT; ctx.fillRect(-1, -1.5, 2, 5);
+      ctx.beginPath(); ctx.ellipse(0, 9.4, 5.2, 5.6, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(-3.4, 2.6, 6.8, 3);
+      ctx.fillStyle = '#dff3ff'; ctx.beginPath(); ctx.ellipse(0, 9.4, 4.4, 4.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = cols[0]; ctx.beginPath(); ctx.ellipse(0, 10.6, 4.1, 3.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2a2a33'; ctx.fillRect(-2.8, 3.2, 5.6, 1.8);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-2.6, 6.6, 1, 2.4);
+    });
+    else if (g.kind === 'pitcher') {
+      if (act >= 0) {
+        // the steam column: pale puffs billowing up from the pitcher
+        const top = 40 * Math.min(1, act * 3) * (act > 0.75 ? 1.18 : 1);
+        for (let k = 0; k < 16; k++) {
+          const u = k / 15, wob = Math.sin(state.tick * 0.8 + k * 1.9) * (1.5 + u * 4);
+          ctx.fillStyle = k % 3 === 0 ? '#ffffff' : k % 3 === 1 ? '#e6edf5' : cols[2];
+          ctx.globalAlpha = (0.85 - u * 0.35) * (act > 0.75 ? 1 : 0.85);
+          ctx.beginPath(); ctx.arc(hx + wob, hy - 6 - u * top, 3 + u * 4.2 + (act > 0.75 ? 1.6 : 0), 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      held(() => {
+        poly([[-3.4, 0.6], [3.4, 0.6], [2.8, 9.4], [-2.8, 9.4]], OUT);
+        poly([[-2.6, 1.3], [2.6, 1.3], [2.1, 8.7], [-2.1, 8.7]], '#c9ced8');
+        poly([[-2.6, 1.3], [-0.8, 1.3], [-0.6, 8.7], [-2.1, 8.7]], '#f1f4f8');
+        ctx.fillStyle = OUT; ctx.fillRect(3, 2.4, 2.2, 0.9); ctx.fillRect(4.4, 2.4, 0.9, 4.4); ctx.fillRect(2.8, 6, 2.4, 0.9);
+      });
     } else if (g.kind === 'speakers') {
       const pop = Math.min(1, (fr - g.from) / 4, (g.to - fr) / 4), fy = f.y / FX;
       for (const side of [-1, 1]) {
@@ -738,6 +810,22 @@ export class Renderer {
       ctx.restore();
       return;
     }
+    if (d.draw === 'cup') {
+      // a to-go coffee cup tumbling through the air, trailing a few drops
+      const k = d.r / 4;
+      ctx.save();
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = '#8a5a36';
+      for (let n = 1; n <= 3; n++) { ctx.beginPath(); ctx.arc(x - (p.vx / FX) * n * 1.7, y - (p.vy / FX) * n * 1.7 + n * 0.8, (1.5 - n * 0.3) * k, 0, Math.PI * 2); ctx.fill(); }
+      ctx.translate(x, y); ctx.rotate((p.vx >= 0 ? 1 : -1) * (0.5 + Math.sin(p.life * 0.5) * 0.25)); ctx.scale(k, k);
+      const quad = (pts, fill) => { ctx.fillStyle = fill; ctx.beginPath(); pts.forEach(([px2, py2], i) => (i ? ctx.lineTo(px2, py2) : ctx.moveTo(px2, py2))); ctx.closePath(); ctx.fill(); };
+      quad([[-3.8, -5], [3.8, -5], [2.9, 5], [-2.9, 5]], '#100d16');
+      quad([[-3, -3.4], [3, -3.4], [2.3, 4.3], [-2.3, 4.3]], '#fff3df');
+      quad([[-2.8, -1.2], [2.8, -1.2], [2.5, 2], [-2.5, 2]], '#b5533c');
+      quad([[-3.3, -4.4], [3.3, -4.4], [3.1, -3.2], [-3.1, -3.2]], '#f6f6f2');
+      ctx.restore();
+      return;
+    }
     if (d.draw === 'arrow') {
       // a chart arrow: a zigzag line ending in an arrowhead, pointing the way it flies
       ctx.save();
@@ -999,6 +1087,23 @@ export class Renderer {
   }
 
   // A short notice at the top of the screen (fades out as alpha drops).
+  // Something threw: a red bar along the bottom so it can be reported.
+  drawCrash(text) {
+    const ctx = this.ctx;
+    this.ui();
+    ctx.fillStyle = 'rgba(120,14,24,0.92)'; ctx.fillRect(0, H - 30, W, 30);
+    drawText(ctx, 'SOMETHING WENT WRONG: ' + text, W / 2, H - 26, '#ffffff', 1, 'center', '#000000');
+    drawText(ctx, 'PRESS F8 TO COPY THE DETAILS, THEN SEND THEM TO CLAUDE', W / 2, H - 14, '#ffe14a', 1, 'center', '#000000');
+  }
+  // Online match paused while someone's inputs have not arrived.
+  drawWaiting(text, sub) {
+    const ctx = this.ctx;
+    this.ui();
+    ctx.fillStyle = 'rgba(8,8,24,0.85)'; ctx.fillRect(0, 96, W, sub ? 40 : 26);
+    drawText(ctx, text, W / 2, 102, '#ffe14a', 2, 'center', '#000000');
+    if (sub) drawText(ctx, sub, W / 2, 124, '#ffffff', 1, 'center', '#000000');
+  }
+
   drawToast(text, alpha = 1) {
     const ctx = this.ctx;
     this.ui();

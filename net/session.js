@@ -44,6 +44,17 @@ export class RollbackSession {
     this.cooldown = 0;
     this.lead = 0;                         // ahead(), smoothed so one late packet does not look like drift
     this.stats = { rollbacks: 0, resimmed: 0, maxRollback: 0, waits: 0, syncWaits: 0 };
+    this.stuck = 0;                        // ticks in a row spent waiting for someone
+  }
+
+  // The fighter whose inputs are furthest behind (the one being waited for), or -1.
+  waitingFor() {
+    let who = -1, least = Infinity;
+    for (let p = 0; p < this.n; p++) {
+      if (this.local.includes(p) || this.ended[p] >= 0) continue;
+      if (this.inputs[p].length < least) { least = this.inputs[p].length; who = p; }
+    }
+    return who;
   }
 
   known(p) { return this.ended[p] >= 0 ? Infinity : this.inputs[p].length; }
@@ -123,7 +134,8 @@ export class RollbackSession {
     this.dirty = Infinity;
     this.lead += (this.ahead() - this.lead) * 0.1;
     // 3. too far ahead of what is known: wait for the others
-    if (this.frame - this.cframe >= NET.MAX_AHEAD) { this.stats.waits++; return false; }
+    if (this.frame - this.cframe >= NET.MAX_AHEAD) { this.stats.waits++; this.stuck++; return false; }
+    this.stuck = 0;
     // running ahead of the other machines: let them catch up, a frame at a time
     if (this.cooldown > 0) this.cooldown--;
     else {

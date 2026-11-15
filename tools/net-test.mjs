@@ -159,5 +159,33 @@ for (const [name, friends, lag, cpu] of [
   for (let t = 0; t < 400; t++) { p.net.advance(TICK); p.rooms.forEach((r, i) => r.tick(mash[i])); if (t === 100) { p.rooms[1].session.confirmed.fighters[0].percent += 10; p.rooms[1].session.dirty = 0; } }
   check('games that drift apart are detected', p.rooms.every((r) => r.session.desync >= 0) && p.rooms[0].events.some((e) => e.type === 'desync'));
 }
+// The host starts a new match while a friend is still finishing the last one:
+// messages from the old match must not leak into the new one.
+{
+  const p = party(1, { delay: 60, jitter: 20 });
+  const [host, a] = p.rooms;
+  host.start('nest', 11); for (let i = 0; i < 20; i++) p.net.advance(TICK);
+  const mash = mashers(p.rooms);
+  for (let t = 0; t < 900; t++) { p.net.advance(TICK); host.tick(mash[0]); a.tick(mash[1]); }
+  host.endMatch();
+  host.start('cloudrest', 12);   // the friend has not left the old match yet: its old inputs and hashes are still arriving
+  for (let t = 0; t < 120; t++) { p.net.advance(TICK); host.tick(mash[0]); if (t > 30) a.tick(mash[1]); }
+  for (let t = 0; t < 1500; t++) { p.net.advance(TICK); host.tick(mash[0]); a.tick(mash[1]); }
+  check('messages from the last match are ignored by the next one', host.match.id === 2 && a.match.id === 2 && sameGame([host, a]) && host.session.desync < 0 && a.session.desync < 0);
+}
+// A friend whose game stops (a background tab): the others are told who they are waiting for, and why.
+{
+  const p = party(1, { delay: 20 });
+  const [host, a] = p.rooms;
+  host.start('nest', 4); for (let i = 0; i < 20; i++) p.net.advance(TICK);
+  const mash = mashers(p.rooms);
+  for (let t = 0; t < 200; t++) { p.net.advance(TICK); host.tick(mash[0]); a.tick(mash[1]); }
+  a.setAway(true);
+  for (let t = 0; t < 120; t++) { p.net.advance(TICK); host.tick(mash[0]); }
+  const w = host.waiting();
+  a.setAway(false);
+  for (let t = 0; t < 120; t++) { p.net.advance(TICK); host.tick(mash[0]); a.tick(mash[1]); }
+  check('when a friend\'s game stops, the host is told who and why, and it carries on when they are back', !!w && w.slot === a.me && w.away && !host.waiting() && sameGame([host, a]), JSON.stringify(w));
+}
 check('version in the hello matches the game', typeof GAME_VERSION === 'string');
 process.exit(fails ? 1 : 0);
