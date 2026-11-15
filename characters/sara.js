@@ -15,7 +15,8 @@ const stats = {
 
 // ---------------------------------------------------------------------------
 // Body parts: pixel art at 2 art pixels per world pixel, facing right.
-// Caramel hair in a high ponytail, a white tee under a barista apron, jeans.
+// Dark hair pulled back into a low ponytail, a black long-sleeved team
+// shirt (or her shop apron in the second skin).
 // ---------------------------------------------------------------------------
 const HEAD = [
   '...kkkkkkk....',
@@ -38,37 +39,43 @@ const face = (...edits) => {
   for (const [r, c, str] of edits) for (let i = 0; i < str.length; i++) rows[r][c + i] = str[i];
   return { pivot: [5, 14], px: rows.map((r) => r.join('')) };
 };
-// Hair swept back over the top of her head into a ponytail that sticks out
-// behind and hangs to her shoulders, with a scrunchie (S) where it is tied.
-// (hair column = head column + 7, row = head row + 4)
+// Dark hair pulled straight back off her forehead into a low ponytail, tied
+// at the nape (S) and hanging down her back.
+// (hair column = head column + 5, row = head row + 4)
 const HAIR = [
-  '...........hhhhhh',
-  '.........hhhhhhhhhh',
-  '........hhhHhhhhnhhh',
-  '.......hhhHhhhhnhhhhh',
-  '......hhhHhhhhhhhhhhh',
-  '...hhShhhHhhhhhhhhhh',
-  '.hhhhShhhhHhhhhhhh',
-  'hhhHhhShhhhhhhhhh',
-  'hhHhhh.hhhhhhhh',
-  'hhHhh...hhhhh',
-  'hhHhh....hhh',
-  '.hHhh.....h',
+  '',
+  '',
+  '.........hhhhh',
+  '.......hhhnhhhhh',
+  '......hhhHhhnhhhh',
+  '.....hhhHhhhnhh',
+  '....hhhHhhhhh',
+  '....hhHhhhh',
+  '....hhHhhh',
+  '....hhHhh',
+  '....hhHh',
+  '...hhHhh',
+  '..ShHhh',
+  '..ShHh',
   '.hhHhh',
-  '..hHhh',
-  '..hhHh',
-  '...hhh',
-  '....h',
-].map((r) => r.padEnd(22, '.'));
+  '.hhHh',
+  '.hHhh',
+  '.hHhh',
+  '.hhHh',
+  '.hHh',
+  '.hhh',
+  '..h',
+].map((r) => r.padEnd(18, '.'));
 const rows = (n, fn) => Array.from({ length: n }, (_, i) => fn(i));
 const parts = {
-  ...SIMEON.parts,   // hands, bare forearms and sneakers are shared
+  ...SIMEON.parts,   // hands, legs and sneakers are shared
   head_neutral: face(),
   head_smile: face([10, 9, 'ppp']),
   head_yell: face([4, 9, 'kbb'], [10, 9, 'krr'], [11, 9, 'rr']),
   head_hurt: face([5, 9, 'kkkk'], [6, 9, 'eee'], [10, 10, 'rr']),
-  hair: { pivot: [12, 18], px: HAIR },
-  // white tee, with an apron (a / A) on a neck strap and tied at the waist
+  hair: { pivot: [10, 18], px: HAIR },
+  // long-sleeved top with lettering across the chest (d). The apron (a / A)
+  // only shows in the skins that colour it differently from the top.
   torso: {
     pivot: [6, 26],
     px: [
@@ -80,13 +87,13 @@ const parts = {
       '.TTttAaaaaatu.',
       '.TTtAaaaaaatu.',
       '.TTtAaaaaaatu.',
-      '.TTtAaaaaaatu.',
+      '.TTtAdddadatu.',
       '.TTxAaaaaaauu.',
-      '.TTtAaaaaaatu.',
+      '.TTtAddadddtu.',
       '..TtAaaaaaau..',
-      '..TtAaadaaau..',
-      '..TxAadDdaau..',
-      '..TtAaadaaau..',
+      '..TtAaddddau..',
+      '..TxAaaaaaau..',
+      '..TtAaaDDaau..',
       '..TtAaaaaaau..',
       '..TtAaaaaaau..',
       '..TAAaaaaaAA..',
@@ -102,16 +109,16 @@ const parts = {
       '..JJjjjjjjii..',
     ],
   },
-  // short sleeves
-  upperArm: { pivot: [2, 0], px: ['TTtuu', 'TTttu', 'TTttu', 'TTxtu', 'xTTtx', 'Kkkkl', 'Kkkkl', 'Kkkkl', 'KKkkl', 'Kkkkl', 'Kkkkl', 'Kkkkl', '.Kkk.'] },
+  // long sleeves, with a cuff at the wrist
+  upperArm: { pivot: [2, 0], px: rows(13, (i) => (i === 12 ? '.Ttt.' : i === 6 ? 'TTxtu' : 'TTttu')) },
+  lowerArm: { pivot: [2, 0], px: rows(11, (i) => (i >= 9 ? '.xTx.' : i === 4 ? 'TTxtu' : i > 6 ? '.Tttu' : 'TTttu')) },
 };
 
 const darker = (hex, k) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
 const BASE_COLORS = {
   ...SIMEON.palettes[0].colors,
-  k: '#f0cdb0', K: '#d6a585', l: '#fbe2cc', q: '#bd876a', o: '#efb9a4', p: '#d07f86',   // skin, blush, lips
-  h: '#a8672f', H: '#84491d', n: '#d79a56', b: '#6e3d1a',                               // caramel hair, brows
-  d: '#fff3df', D: '#8a5a36',                                                           // the coffee bean badge on the apron
+  k: '#f4d5c0', K: '#dcae98', l: '#fde8da', q: '#c38e78', o: '#eea596', p: '#d27f86',   // fair skin, rosy cheeks, lips
+  h: '#1d1512', H: '#2e221c', n: '#4d3a30', b: '#2a1c16',                               // very dark brown hair, brows
   g: '#ff7a59',
 };
 const alt = (name, tee, apron, jeans, scrunchie, extra = {}) => ({
@@ -119,8 +126,10 @@ const alt = (name, tee, apron, jeans, scrunchie, extra = {}) => ({
   colors: { ...BASE_COLORS, t: tee[0], T: tee[1], u: tee[2], x: darker(tee[1], 0.85), a: apron, A: darker(apron, 0.72), j: jeans[0], J: jeans[1], i: jeans[2], y: darker(jeans[1], 0.78), S: scrunchie, ...extra },
 });
 const palettes = [
-  alt('House Blend', ['#f4f1ea', '#cfcabd', '#ffffff'], '#b5533c', ['#3f6fb8', '#2c5190', '#5b8cd4'], '#ffd23a'),
-  alt('Away Kit', ['#2b3a67', '#1d2848', '#40548c'], '#f2ede2', ['#26262e', '#18181f', '#383842'], '#ff7a59', { g: '#ffd23a', D: '#2b3a67', d: '#ff7a59' }),
+  // black long-sleeved team shirt with white lettering, grey joggers
+  alt('Game Day', ['#2a2a32', '#1b1b22', '#3d3d48'], '#2a2a32', ['#9aa0ad', '#787e8c', '#b9bfca'], '#1b1b22', { A: '#2a2a32', d: '#f6f6f2', D: '#f6f6f2', g: '#f6f6f2' }),
+  // at the shop: cream top under a terracotta apron, jeans
+  alt('House Blend', ['#f1ebdd', '#cfc7b4', '#fffaf0'], '#b5533c', ['#3f6fb8', '#2c5190', '#5b8cd4'], '#ffd23a', { d: '#fff3df', D: '#8a5a36' }),
 ];
 
 // ---------------------------------------------------------------------------
