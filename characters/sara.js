@@ -40,7 +40,7 @@ const face = (...edits) => {
   return { pivot: [5, 14], px: rows.map((r) => r.join('')) };
 };
 // Dark hair pulled straight back off her forehead into a low ponytail, tied
-// at the nape (S) and hanging down her back.
+// at the nape (S) and hanging halfway down her back.
 // (hair column = head column + 5, row = head row + 4)
 const HAIR = [
   '',
@@ -62,7 +62,15 @@ const HAIR = [
   '.hHhh',
   '.hHhh',
   '.hhHh',
-  '.hHh',
+  '.hHhh',
+  '.hhHh',
+  '.hHhh',
+  'hhHhh',
+  'hhhHh',
+  'hhHhh',
+  'hhhHh',
+  '.hHhh',
+  '.hhHh',
   '.hhh',
   '..h',
 ].map((r) => r.padEnd(18, '.'));
@@ -117,7 +125,7 @@ const parts = {
 const darker = (hex, k) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
 const BASE_COLORS = {
   ...SIMEON.palettes[0].colors,
-  k: '#f4d5c0', K: '#dcae98', l: '#fde8da', q: '#c38e78', o: '#eea596', p: '#d27f86',   // fair skin, rosy cheeks, lips
+  k: '#ecc4a4', K: '#cf9c7c', l: '#f8dcc4', q: '#b47e62', o: '#e59a86', p: '#cb7880',   // lightly tanned skin, rosy cheeks, lips
   h: '#1d1512', H: '#2e221c', n: '#4d3a30', b: '#2a1c16',                               // very dark brown hair, brows
   g: '#ff7a59',
 };
