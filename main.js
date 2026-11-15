@@ -13,6 +13,8 @@ import { loadSettings, saveSettings } from './ui/settings.js';
 import { checkForUpdate, UPDATE_MESSAGE } from './ui/updatecheck.js';
 import { sfx } from './audio/sfx.js';
 import { SoundDirector } from './audio/director.js';
+import { Room, freeSkin } from './net/room.js';
+import { hostOnline, joinOnline, CODE_LENGTH, CODE_LETTERS } from './net/peer.js';
 
 const settings = loadSettings();
 sfx.setVolume(settings.volume);
@@ -22,8 +24,15 @@ const renderer = new Renderer(document.getElementById('game'));
 const keyboard = new Keyboard();
 ['F1', 'F2', 'Escape', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].forEach((k) => keyboard.blocked.add(k));
 
-let screen = 'title';   // 'title' | 'charSelect' | 'stageSelect' | 'match'
-let match = null;       // { state, sources, recorder, endTimer }
+let screen = 'title';   // 'title' | 'menu' | 'join' | 'charSelect' | 'stageSelect' | 'match'
+let match = null;       // { state, sources, recorder, endTimer }, or { online: true, state, endTimer }
+// Online play: the room we are in (net/room.js), its code, and how to hang up.
+let online = null;      // { room, code, close() }
+const MENU = ['PLAY ON THIS COMPUTER', 'HOST AN ONLINE ROOM', 'JOIN AN ONLINE ROOM'];
+let menuIndex = 0, menuNote = '';
+let joinCode = '', joinStatus = '';
+let attempt = 0;        // counts connection attempts, so one that was cancelled is ignored when it finishes
+const keySource = new KeyboardSource(keyboard, settings.bindings, () => settings.tapJump);
 // Stage select tiles: every stage, then Random.
 const stageTiles = [...STAGES.map((stage) => ({ stage })), { random: true }];
 let stageIndex = 0;
@@ -47,13 +56,10 @@ function slots() {
   if (!ss.some((sl, i) => i > 0 && sl.type !== 'off')) ss[1].type = 'cpu';
   return ss;
 }
-// Same fighter in the same skin as someone else: move slot i to a skin nobody
-// is using, if the fighter has one left (with more players than skins, some share).
-function freeSkin(i, dir = 1) {
-  const ss = slots(), sl = ss[i], m = CHARACTERS[sl.char].palettes.length;
-  const taken = (alt) => ss.some((o, k) => k !== i && o.type !== 'off' && o.char === sl.char && o.alt === alt);
-  for (let k = 0; k < m && taken(sl.alt); k++) sl.alt = (sl.alt + dir + m) % m;
-}
+// The slots shown on the fighter select: the room's when online, else the saved ones.
+const lobbySlots = () => (online ? online.room.slots : slots());
+// The slot this player's keys change: friends in a room only have their own.
+const curSlot = () => (online && !online.room.isHost ? Math.max(0, online.room.me) : selSlot);
 
 function startMatch(stage = STAGES[0]) {
   const active = slots().map((sl, port) => ({ ...sl, port })).filter((sl) => sl.type !== 'off');
@@ -79,8 +85,80 @@ function startMatch(stage = STAGES[0]) {
   screen = 'match';
 }
 
+// --- Online ---
+function startOnlineMatch() {
+  const room = online.room, info = room.match;
+  match = { online: true, state: room.session.state, endTimer: 0 };
+  renderer.setPlayers(info.ports.map((port, k) => ({ port, label: info.levels[k] !== null ? 'CPU' : 'P' + (port + 1) })));
+  renderer.resetEffects();
+  director.reset();
+  sfx.play('start');
+  paused = false;
+  screen = 'match';
+}
+function leaveOnline() {
+  attempt++;
+  if (online) { online.room.leave(); online.close(); online = null; }
+  if (match && match.online) match = null;
+  paused = false;
+}
+function say(text, ms = 2600) { toast = { text, until: performance.now() + ms }; }
+// Open a room and wait in its lobby for friends.
+function hostRoom() {
+  const mine = slots()[0], room = new Room(true, { char: mine.char, alt: mine.alt }), my = ++attempt;
+  menuNote = 'OPENING A ROOM...';
+  hostOnline((link) => room.accept(link)).then((r) => {
+    if (my !== attempt) { r.close(); return; }
+    enterRoom(room, r.code, r.close);
+  }).catch((e) => { if (my === attempt) { menuNote = ''; say(e.message, 4000); sfx.play('menuBack'); } });
+}
+function enterRoom(room, code, close) {
+  online = { room, code, close };
+  menuNote = ''; selSlot = 0; screen = 'charSelect';
+  sfx.play('menuOk');
+}
+// Join the room whose code was typed.
+function joinRoom(code) {
+  const my = ++attempt;
+  joinStatus = 'CONNECTING...';
+  joinOnline(code).then((link) => {
+    if (my !== attempt) { link.close(); return; }
+    const room = new Room(false);
+    online = { room, code, close: () => link.close() };
+    room.join(link);   // the lobby opens when the host answers (see roomEvents)
+  }).catch((e) => { if (my === attempt) { joinStatus = e.message; joinCode = ''; sfx.play('menuBack'); } });
+}
+// React to what happened in the room since the last tick.
+function roomEvents() {
+  if (!online) return;
+  const room = online.room, events = room.events.splice(0);
+  for (const e of events) {
+    if (e.type === 'entered') { screen = 'charSelect'; joinStatus = ''; sfx.play('menuOk'); }
+    else if (e.type === 'joined') { say(e.text, 1800); sfx.play('menuOk'); }
+    else if (e.type === 'left') { say(e.text, 1800); sfx.play('menuBack'); }
+    else if (e.type === 'start') startOnlineMatch();
+    else if (e.type === 'desync') say('THE GAMES WENT OUT OF SYNC. THIS MATCH MAY NOT LOOK THE SAME FOR EVERYONE', 6000);
+    else if (e.type === 'error') {
+      leaveOnline(); joinCode = ''; joinStatus = ''; screen = 'menu';
+      say(e.text, 6000); sfx.play('menuBack');
+      return;
+    }
+  }
+}
+
 function tick() {
-  if (screen === 'match' && !paused) {
+  roomEvents();
+  if (online && screen === 'match' && match && match.online) {
+    // Online: the room runs the match (with rollback) and tells us if it moved on a frame.
+    const room = online.room;
+    const moved = room.tick(() => keySource.sample());
+    match.state = room.session.state;
+    if (moved) for (const e of director.update(match.state)) sfx.play(e.name, e.strength, e.pan);
+    if (room.session.over && ++match.endTimer >= CONFIG.GAME_END_FRAMES) {
+      room.endMatch(); match = null; paused = false; selSlot = 0; screen = 'charSelect';
+    }
+  } else if (online) online.room.tick(() => 0);
+  else if (screen === 'match' && !paused) {
     const inputs = match.sources.map((s, i) => s.sample(match.state, i));
     match.recorder.push(inputs);
     step(match.state, inputs);
@@ -108,6 +186,20 @@ function drawScreen() {
     renderer.drawTitle(STAGES[0], { charId: CHARACTERS[0].id, updateMessage });
     return;
   }
+  if (screen === 'menu') { renderer.drawMenu('PLAY', MENU, menuIndex, menuNote || ['', 'YOU GET A ROOM CODE TO GIVE TO YOUR FRIENDS', 'TYPE THE ROOM CODE A FRIEND GAVE YOU'][menuIndex]); return; }
+  if (screen === 'join') { renderer.drawJoin(joinCode, CODE_LENGTH, joinStatus); return; }
+  if (screen === 'charSelect' && online) {
+    const room = online.room, host = room.isHost;
+    renderer.drawCharSelect(CHARACTERS, room.slots, curSlot(), (i) => cpuLabel(room.slots[i].level), {
+      title: 'ROOM CODE  ' + online.code,
+      right: host ? 'J  PICK A STAGE     ESC  CLOSE THE ROOM' : 'THE HOST STARTS THE MATCH     ESC  LEAVE',
+      tag: (i) => (i === room.me ? 'YOU' : room.slots[i].owner === 0 ? 'HOST' : 'FRIEND'),
+      offText: (i) => (host ? 'OPEN.  ' + (i + 1) + '  ADDS A CPU' : 'OPEN'),
+      hint: host ? null : 'W A S D  FIGHTER     K  SKIN',
+      banner: !host && room.phase === 'stage' ? 'THE HOST IS CHOOSING A STAGE' : null,
+    });
+    return;
+  }
   if (screen === 'charSelect') { renderer.drawCharSelect(CHARACTERS, slots(), selSlot, (i) => cpuLabel(slots()[i].level)); return; }
   if (screen === 'stageSelect') { renderer.drawStageSelect(stageTiles, stageIndex); return; }
   const opts = { showBoxes: settings.showBoxes };
@@ -117,13 +209,17 @@ function drawScreen() {
       'TICK ' + match.state.tick + '  HASH ' + hashState(match.state) + '  FPS ' + fps,
       'P1 ' + (f.move || f.state) + ' ' + f.stateFrame + '  VX ' + f.vx + ' VY ' + f.vy + '  SHIELD ' + (f.shieldHp / 1000).toFixed(1),
     ];
+    if (match.online) {
+      const se = online.room.session, st = se.stats;
+      opts.debugLines.push('ONLINE  PING ' + online.room.ping + ' MS  GUESSING ' + (se.frame - se.cframe) + ' FRAMES  ROLLBACKS ' + st.rollbacks + ' (LONGEST ' + st.maxRollback + ')  WAITS ' + (st.waits + st.syncWaits));
+    }
   }
   renderer.drawMatch(match.state, opts);
   if (match.endTimer > 0) renderer.drawBanner('GAME!');
   if (paused) {
     renderer.drawPause([
-      'PAUSED',
-      'ESC  RESUME        Q  QUIT TO STAGE SELECT',
+      match.online ? 'CONTROLS  (ONLINE MATCHES CANNOT BE PAUSED)' : 'PAUSED',
+      match.online ? 'ESC  CLOSE         Q  LEAVE THE ROOM' : 'ESC  RESUME        Q  QUIT TO STAGE SELECT',
       '',
       'MOVE  W A S D      DOUBLE-TAP A / D TO DASH AND RUN',
       'JUMP  SPACE        TAP = SHORT HOP, HOLD = FULL HOP',
@@ -162,6 +258,18 @@ function drawScreen() {
 window.addEventListener('keydown', (e) => {
   if (e.repeat) return;
   sfx.unlock();
+  // typing a room code comes first: its letters must not set off the hotkeys below
+  if (screen === 'join') {
+    if (e.code === 'Escape') { attempt++; if (online) leaveOnline(); joinCode = ''; joinStatus = ''; screen = 'menu'; sfx.play('menuBack'); }
+    else if (e.code === 'Backspace') { if (joinStatus !== 'CONNECTING...') { joinCode = joinCode.slice(0, -1); joinStatus = ''; } }
+    else if (/^Key[A-Z]$/.test(e.code) && joinStatus !== 'CONNECTING...') {
+      const ch = e.code[3];
+      if (!CODE_LETTERS.includes(ch)) { joinStatus = 'ROOM CODES NEVER USE THE LETTERS I OR O'; return; }
+      if (joinCode.length < CODE_LENGTH) { joinCode += ch; joinStatus = ''; sfx.play('menuMove'); }
+      if (joinCode.length === CODE_LENGTH) joinRoom(joinCode);
+    }
+    return;
+  }
   // M mutes and unmutes the sound on any screen
   // 0 switches tap jump (W also jumps) on and off, on any screen
   if (e.code === 'Digit0' || e.code === 'Numpad0') {
@@ -173,26 +281,44 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyM') { settings.muted = !settings.muted; sfx.setMuted(settings.muted); saveSettings(settings); if (!settings.muted) sfx.play('menuOk'); return; }
   menuSound(e.code);
   if (screen === 'title') {
-    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.code !== 'F5' && e.code !== 'F12') screen = 'charSelect';
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && e.code !== 'F5' && e.code !== 'F12') screen = 'menu';
+    return;
+  }
+  if (screen === 'menu') {
+    const c = e.code, n = MENU.length;
+    if (menuNote) { if (c === 'Escape') { attempt++; menuNote = ''; } return; }   // opening a room: Esc cancels
+    if (c === 'KeyW' || c === 'ArrowUp') menuIndex = (menuIndex + n - 1) % n;
+    else if (c === 'KeyS' || c === 'ArrowDown') menuIndex = (menuIndex + 1) % n;
+    else if (c === 'KeyJ' || c === 'Enter' || c === 'Space') {
+      if (menuIndex === 0) screen = 'charSelect';
+      else if (menuIndex === 1) hostRoom();
+      else { joinCode = ''; joinStatus = ''; screen = 'join'; }
+    }
+    else if (c === 'Escape') screen = 'title';
     return;
   }
   if (screen === 'charSelect') {
-    const c = e.code, sl = slots()[selSlot], n = CHARACTERS.length;
+    const c = e.code, at = curSlot(), sl = lobbySlots()[at], n = CHARACTERS.length;
     const digit = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(c) >= 0 ? ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(c) : ['Numpad1', 'Numpad2', 'Numpad3', 'Numpad4'].indexOf(c);
     if (digit >= 0) selectSlot(digit);
     else if (c === 'Tab') selectSlot((selSlot + (e.shiftKey ? 3 : 1)) % 4, false);
-    else if (c === 'KeyA' || c === 'ArrowLeft') pickChar(selSlot, (sl.char + n - 1) % n);
-    else if (c === 'KeyD' || c === 'ArrowRight') pickChar(selSlot, (sl.char + 1) % n);
+    else if (c === 'KeyA' || c === 'ArrowLeft') pickChar(at, (sl.char + n - 1) % n);
+    else if (c === 'KeyD' || c === 'ArrowRight') pickChar(at, (sl.char + 1) % n);
     else if (c === 'KeyW' || c === 'ArrowUp' || c === 'KeyS' || c === 'ArrowDown') {
       // up and down move a row in the roster grid
       const cols = renderer.charGrid(n).cols, to = sl.char + (c === 'KeyW' || c === 'ArrowUp' ? -cols : cols);
-      if (to >= 0 && to < n) pickChar(selSlot, to);
+      if (to >= 0 && to < n) pickChar(at, to);
     }
-    else if (c === 'KeyK') nextSkin(selSlot);
-    else if (c === 'KeyL') toggleSlot(selSlot);
-    else if (c === 'KeyU' || c === 'KeyI') changeLevel(selSlot, c === 'KeyU' ? -1 : 1);
-    else if (c === 'KeyJ' || c === 'Enter' || c === 'Space') screen = 'stageSelect';
-    else if (c === 'Escape') screen = 'title';
+    else if (c === 'KeyK') nextSkin(at);
+    else if (c === 'KeyL') toggleSlot(at);
+    else if (c === 'KeyU' || c === 'KeyI') changeLevel(at, c === 'KeyU' ? -1 : 1);
+    else if (c === 'KeyJ' || c === 'Enter' || c === 'Space') {
+      if (!online) screen = 'stageSelect';
+      else if (!online.room.isHost) say('THE HOST STARTS THE MATCH', 1600);
+      else if (online.room.activeCount() < 2) say('WAIT FOR A FRIEND TO JOIN, OR PRESS 2 TO ADD A CPU', 2600);
+      else { online.room.setPhase('stage'); screen = 'stageSelect'; }
+    }
+    else if (c === 'Escape') { if (online) leaveOnline(); screen = 'menu'; }
     return;
   }
   if (screen === 'stageSelect') {
@@ -200,10 +326,11 @@ window.addEventListener('keydown', (e) => {
     if (e.code === 'KeyA' || e.code === 'ArrowLeft') stageIndex = (stageIndex + n - 1) % n;
     else if (e.code === 'KeyD' || e.code === 'ArrowRight') stageIndex = (stageIndex + 1) % n;
     else if (e.code === 'KeyJ' || e.code === 'Enter' || e.code === 'Space') chooseStage(stageIndex);
-    else if (e.code === 'Escape') screen = 'charSelect';
+    else if (e.code === 'Escape') { if (online) online.room.setPhase('lobby'); screen = 'charSelect'; }
     return;
   }
   if (e.code === 'Escape') paused = !paused;
+  else if (e.code === 'KeyQ' && paused && online) { leaveOnline(); screen = 'menu'; }
   else if (e.code === 'KeyQ' && paused) { screen = 'stageSelect'; match = null; }
   else if (e.code === 'F1') { settings.showDebug = !settings.showDebug; saveSettings(settings); }
   else if (e.code === 'F2') { settings.showBoxes = !settings.showBoxes; saveSettings(settings); }
@@ -212,35 +339,52 @@ window.addEventListener('keydown', (e) => {
 // --- Fighter select actions (shared by the keys and the mouse) ---
 // Make a slot the one the keys move. Choosing a slot that is off adds it as a CPU.
 function selectSlot(i, turnOn = true) {
+  if (online) {
+    const room = online.room;
+    if (!room.isHost) return;   // friends only have their own slot
+    if (!room.canEdit(i)) { say('THAT SLOT IS A FRIEND\'S', 1400); return; }
+    selSlot = i;
+    if (turnOn && room.slots[i].type === 'off') room.toggleCpu(i);
+    return;
+  }
   selSlot = i;
   const sl = slots()[i];
-  if (turnOn && sl.type === 'off') { sl.type = 'cpu'; freeSkin(i); }
+  if (turnOn && sl.type === 'off') { sl.type = 'cpu'; freeSkin(slots(), i); }
   saveSettings(settings);
 }
 function pickChar(i, char) {
+  if (online) { online.room.pick(i, char, 0); return; }
   const sl = slots()[i];
   if (sl.type === 'off') sl.type = 'cpu';
   sl.char = char; sl.alt = 0;
-  freeSkin(i);
+  freeSkin(slots(), i);
   saveSettings(settings);
 }
 function nextSkin(i) {
-  const sl = slots()[i];
+  const sl = lobbySlots()[i];
   if (sl.type === 'off') return;
+  if (online) { online.room.pick(i, sl.char, sl.alt + 1); return; }
   sl.alt = (sl.alt + 1) % CHARACTERS[sl.char].palettes.length;
-  freeSkin(i);
+  freeSkin(slots(), i);
   saveSettings(settings);
 }
 // Slots 2-4 can be switched between CPU and off, as long as two fighters remain.
 function toggleSlot(i) {
+  if (online) {
+    if (!online.room.isHost) return;
+    if (i === 0) say('THAT IS YOUR OWN SLOT', 1400);
+    else if (!online.room.toggleCpu(i)) say('THAT SLOT IS A FRIEND\'S', 1400);
+    return;
+  }
   const ss = slots(), sl = ss[i];
-  if (i === 0) { toast = { text: 'PLAYER 1 IS ALWAYS IN', until: performance.now() + 1400 }; return; }
-  if (sl.type === 'off') { sl.type = 'cpu'; freeSkin(i); }
+  if (i === 0) { say('PLAYER 1 IS ALWAYS IN', 1400); return; }
+  if (sl.type === 'off') { sl.type = 'cpu'; freeSkin(ss, i); }
   else if (ss.filter((o) => o.type !== 'off').length > 2) sl.type = 'off';
-  else toast = { text: 'A MATCH NEEDS AT LEAST TWO FIGHTERS', until: performance.now() + 1600 };
+  else say('A MATCH NEEDS AT LEAST TWO FIGHTERS', 1600);
   saveSettings(settings);
 }
 function changeLevel(i, d) {
+  if (online) { online.room.changeLevel(i, d); return; }
   const sl = slots()[i];
   if (sl.type !== 'cpu') return;
   sl.level = CPU_ORDER[(CPU_ORDER.indexOf(sl.level) + d + CPU_ORDER.length) % CPU_ORDER.length];
@@ -253,9 +397,9 @@ function menuSound(code) {
   const dirKey = ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(code)
     || (screen === 'charSelect' && /^(Digit|Numpad)[1-4]$|^Key[KLUI]$|^Tab$/.test(code));
   if (screen === 'title') { if (!['F5', 'F12'].includes(code)) sfx.play('menuOk'); }
-  else if (screen === 'charSelect' || screen === 'stageSelect') {
+  else if (screen === 'charSelect' || screen === 'stageSelect' || screen === 'menu') {
     if (code === 'Escape') sfx.play('menuBack');
-    else if (ok && screen === 'charSelect') sfx.play('menuOk');
+    else if (ok && screen !== 'stageSelect') sfx.play('menuOk');
     else if (dirKey) sfx.play('menuMove');
   } else if (screen === 'match') {
     if (code === 'Escape') sfx.play('pause');
@@ -267,7 +411,12 @@ function chooseStage(i) {
   stageIndex = i;
   const t = stageTiles[i];
   // Random picks outside the simulation, so Math.random is fine here.
-  startMatch(t.stage || STAGES[Math.floor(Math.random() * STAGES.length)]);
+  const stage = t.stage || STAGES[Math.floor(Math.random() * STAGES.length)];
+  if (online) {
+    // everyone starts when the room says so (see roomEvents)
+    if (!online.room.start(stage.id)) { online.room.setPhase('lobby'); screen = 'charSelect'; say('A MATCH NEEDS AT LEAST TWO FIGHTERS', 2200); }
+  }
+  else startMatch(stage);
 }
 
 // Mouse: click a roster tile, a player panel or a stage tile.
@@ -277,20 +426,20 @@ renderer.canvas.addEventListener('click', (e) => {
   const inside = (r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
   if (screen === 'charSelect') {
     sfx.unlock();
-    CHARACTERS.forEach((_, k) => { if (inside(renderer.charTileRect(k, CHARACTERS.length))) { pickChar(selSlot, k); sfx.play('menuMove'); } });
+    CHARACTERS.forEach((_, k) => { if (inside(renderer.charTileRect(k, CHARACTERS.length))) { pickChar(curSlot(), k); sfx.play('menuMove'); } });
     for (let i = 0; i < 4; i++) {
       const r = renderer.slotPanelRect(i);
       if (!inside(r)) continue;
       // the coloured header switches a slot on and off, the rest of the panel selects it
       // (clicking the fighter of the selected slot changes skin)
-      if (y < r.y + 13 && i > 0 && slots()[i].type !== 'off') toggleSlot(i);
-      else if (i === selSlot && slots()[i].type !== 'off') nextSkin(i);
+      if (y < r.y + 13 && i > 0 && lobbySlots()[i].type === 'cpu') toggleSlot(i);
+      else if (i === curSlot() && lobbySlots()[i].type !== 'off') nextSkin(i);
       else selectSlot(i);
       sfx.play('menuMove');
     }
     return;
   }
-  if (screen !== 'stageSelect') return;
+  if (screen !== 'stageSelect' || (online && !online.room.isHost)) return;
   stageTiles.forEach((_, i) => { if (inside(renderer.stageTileRect(i, stageTiles.length))) chooseStage(i); });
 });
 
@@ -332,4 +481,4 @@ function frame(now) {
 requestAnimationFrame(frame);
 
 // Handy for testing from the browser console.
-window.__game = { get match() { return match; }, get screen() { return screen; }, settings, renderer, startMatch };
+window.__game = { get match() { return match; }, get screen() { return screen; }, get online() { return online; }, settings, renderer, startMatch, enterRoom };

@@ -1022,7 +1022,9 @@ export class Renderer {
   // portrait tiles on top, one panel per player slot along the bottom.
   // slots = [{ type: 'human' | 'cpu' | 'off', char, alt, level }] x 4,
   // active = the slot the keys are moving, levelText(slot) = its CPU label.
-  drawCharSelect(chars, slots, active, levelText) {
+  // opts (all optional, used by online rooms): title, right (top-right text),
+  // tag(i) (who plays a human slot), offText(i), hint, banner.
+  drawCharSelect(chars, slots, active, levelText, opts = {}) {
     const ctx = this.ctx;
     this.ui();
     this.time++;
@@ -1033,8 +1035,8 @@ export class Renderer {
     ctx.fillStyle = 'rgba(255,255,255,0.035)';
     for (let x = -H + ((t >> 1) % 40); x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.lineTo(x + H + 16, 0); ctx.lineTo(x + 16, H); ctx.closePath(); ctx.fill(); }
     ctx.fillStyle = 'rgba(8,8,24,0.82)'; ctx.fillRect(0, 0, W, 22);
-    drawText(ctx, 'CHOOSE YOUR FIGHTERS', 8, 6, '#ffe14a', 2, 'left', '#000000');
-    drawText(ctx, 'J OR ENTER  CONTINUE     ESC  BACK', W - 8, 9, '#ffffff', 1, 'right');
+    drawText(ctx, opts.title || 'CHOOSE YOUR FIGHTERS', 8, 6, '#ffe14a', 2, 'left', '#000000');
+    drawText(ctx, opts.right || 'J OR ENTER  CONTINUE     ESC  BACK', W - 8, 9, '#ffffff', 1, 'right');
 
     // --- the roster ---
     const acol = PLAYER_COLORS[active];
@@ -1075,7 +1077,7 @@ export class Renderer {
         ctx.fillStyle = shade(col, 0.35); ctx.fillRect(r.x, r.y, r.w, 13);
         drawText(ctx, 'P' + (i + 1), r.x + 5, r.y + 4, shade(col, 0.8), 1, 'left');
         drawText(ctx, 'OFF', cx, r.y + 44, '#5d5a80', 3, 'center');
-        drawText(ctx, act ? 'L  ADD A CPU' : 'PRESS ' + (i + 1), cx, r.y + 70, '#8a86b0', 1, 'center');
+        drawText(ctx, opts.offText ? opts.offText(i) : act ? 'L  ADD A CPU' : 'PRESS ' + (i + 1), cx, r.y + 70, '#8a86b0', 1, 'center');
         return;
       }
       const ch = chars[sl.char];
@@ -1092,7 +1094,7 @@ export class Renderer {
       // header: who plays this slot
       ctx.fillStyle = col; ctx.fillRect(r.x, r.y, r.w, 13);
       drawText(ctx, 'P' + (i + 1), r.x + 5, r.y + 4, '#101020', 1, 'left');
-      drawText(ctx, sl.type === 'human' ? 'PLAYER' : 'CPU ' + levelText(i), r.x + r.w - 5, r.y + 4, '#101020', 1, 'right');
+      drawText(ctx, sl.type === 'human' ? (opts.tag ? opts.tag(i) : 'PLAYER') : 'CPU ' + levelText(i), r.x + r.w - 5, r.y + 4, '#101020', 1, 'right');
       ctx.fillStyle = 'rgba(8,8,24,0.8)'; ctx.fillRect(r.x, r.y + r.h - 24, r.w, 24);
       drawText(ctx, ch.name, cx, r.y + r.h - 22, '#ffffff', 2, 'center', '#000000');
       drawText(ctx, ch.palettes[sl.alt].name, cx, r.y + r.h - 8, col, 1, 'center');
@@ -1100,7 +1102,52 @@ export class Renderer {
     });
     const a = slots[active];
     const hint = '1-4  SLOT     W A S D  FIGHTER     K  SKIN' + (active > 0 ? '     L  ' + (a.type === 'off' ? 'ADD' : 'REMOVE') : '') + (a.type === 'cpu' ? '     U / I  CPU LEVEL' : '');
-    drawText(ctx, hint, W / 2, H - 10, '#ffffff', 1, 'center', '#000000');
+    drawText(ctx, opts.hint || hint, W / 2, H - 10, '#ffffff', 1, 'center', '#000000');
+    if (opts.banner) {
+      ctx.fillStyle = 'rgba(8,8,24,0.86)'; ctx.fillRect(0, 70, W, 26);
+      drawText(ctx, opts.banner, W / 2, 78, '#ffe14a', 2, 'center', '#000000');
+    }
+  }
+
+  // A plain list menu: items = [text], index = highlighted one, note = small text under it.
+  drawMenu(title, items, index, note) {
+    const ctx = this.ctx;
+    this.ui();
+    this.time++;
+    this.menuBackdrop(title, 'W / S  CHOOSE     J OR ENTER  OK     ESC  BACK');
+    items.forEach((text, i) => {
+      const y = 78 + i * 34, on = i === index;
+      ctx.fillStyle = on ? '#ffe14a' : '#2b2a4a'; ctx.fillRect(W / 2 - 122, y - 2, 244, 28);
+      ctx.fillStyle = on ? '#3a2456' : '#16142e'; ctx.fillRect(W / 2 - 120, y, 240, 24);
+      drawText(ctx, text, W / 2, y + 6, on ? '#ffe14a' : '#b9b6d8', 2, 'center', '#000000');
+    });
+    if (note) drawText(ctx, note, W / 2, 78 + items.length * 34 + 10, '#ffffff', 1, 'center', '#000000');
+  }
+  // Typing a room code: code = letters so far, length = how many it needs, status = text under it.
+  drawJoin(code, length, status) {
+    const ctx = this.ctx;
+    this.ui();
+    this.time++;
+    this.menuBackdrop('JOIN A ROOM', 'TYPE THE CODE     BACKSPACE  FIX     ESC  BACK');
+    drawText(ctx, 'ASK THE HOST FOR THEIR ROOM CODE', W / 2, 70, '#ffffff', 1, 'center', '#000000');
+    for (let i = 0; i < length; i++) {
+      const x = W / 2 + (i - (length - 1) / 2) * 44, cur = i === code.length;
+      ctx.fillStyle = cur && (this.time >> 4) & 1 ? '#ffe14a' : '#2b2a4a'; ctx.fillRect(x - 19, 92, 38, 46);
+      ctx.fillStyle = '#16142e'; ctx.fillRect(x - 17, 94, 34, 42);
+      if (code[i]) drawText(ctx, code[i], x, 102, '#ffe14a', 4, 'center', '#000000');
+    }
+    if (status) drawText(ctx, status, W / 2, 156, '#ffffff', 1, 'center', '#000000');
+  }
+  menuBackdrop(title, right) {
+    const ctx = this.ctx;
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#1b1a3a'); g.addColorStop(1, '#3a2456');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,255,255,0.035)';
+    for (let x = -H + ((this.time >> 1) % 40); x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.lineTo(x + H + 16, 0); ctx.lineTo(x + 16, H); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = 'rgba(8,8,24,0.82)'; ctx.fillRect(0, 0, W, 22);
+    drawText(ctx, title, 8, 6, '#ffe14a', 2, 'left', '#000000');
+    drawText(ctx, right, W - 8, 9, '#ffffff', 1, 'right');
   }
   // Where roster tile k of n goes. Tiles shrink as the roster grows.
   charGrid(n) {

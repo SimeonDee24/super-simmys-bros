@@ -1,5 +1,5 @@
 {
-  "version": "0.25.0",
+  "version": "0.26.0",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -31,6 +31,10 @@
     "ui/updatecheck.js",
     "audio/director.js",
     "audio/sfx.js",
-    "net/handshake.js"
+    "net/handshake.js",
+    "net/links.js",
+    "net/peer.js",
+    "net/room.js",
+    "net/session.js"
   ]
 }

@@ -62,6 +62,19 @@ No Node? Edit the version by hand in **both** `config/version.js` and
 - `net/handshake.js` already contains the version handshake the future online
   mode must use before starting a match.
 
+## Online play
+
+Title screen, any key, then **Host an online room** or **Join an online room**.
+The host gets a four-letter room code; friends type it to join (up to four
+fighters, CPUs included). Everyone must be on the same game version.
+
+- Game data goes straight between the browsers (WebRTC). The free public
+  PeerJS server is only used to introduce them; the library is loaded from
+  unpkg the first time someone goes online.
+- The netcode is rollback with 2 frames of input delay: see `net/session.js`.
+- `node tools/net-test.mjs` plays whole online matches over pretend links with
+  lag, and checks every machine ends with the same game.
+
 ## Project layout
 
 | Folder | What lives there |
@@ -73,7 +86,7 @@ No Node? Edit the version by hand in **both** `config/version.js` and
 | `render/` | Canvas drawing: paper-doll characters, background, HUD, pixel font |
 | `ui/` | Settings (localStorage), update check; menus arrive in milestone 5 |
 | `audio/` | Sound effects (stub until milestone 5) |
-| `net/` | Online play (stub: version handshake only) |
+| `net/` | Online play: rollback netcode (`session.js`), rooms and lobby (`room.js`), browser-to-browser links through PeerJS (`peer.js`), version handshake |
 | `tools/` | `release.mjs`, `sim-test.mjs`, `cpu-test.mjs`, `fuzz-test.mjs`, `sound-test.mjs` and `audio-check.mjs` (headless checks), `pose-sheet.html` (art preview) |
 
 **Add a character:** copy `characters/simeon.js`, change the data, and add it
