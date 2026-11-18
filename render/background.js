@@ -4,6 +4,9 @@
 // frame. Render only: floats and its own RNG are fine here because nothing
 // feeds back into the simulation.
 import { drawText } from './font.js';
+import { DollRenderer } from './doll.js';
+import { anim, samplePose } from '../engine/skeleton.js';
+import { getCharacter } from '../characters/index.js';
 
 const W = 480, H = 270, LAYER_W = 720, LAYER_H = H + 60;
 
@@ -129,7 +132,18 @@ const LAYER_BUILDERS = {
   },
 };
 
-const TOOLS = { rng32, disc, drawText };
+// A real fighter drawn into a backdrop (e.g. students at a table), in any
+// pose: fighter(ctx, 'simeon', alt, { torso, armF, ... }, feetX, feetY, facing, scale).
+let doll = null;
+function fighter(ctx, id, alt, pose, x, y, facing = 1, scale = 1) {
+  const ch = getCharacter(id);
+  if (!ch) return;
+  doll = doll || new DollRenderer();
+  ctx.save(); ctx.translate(x, y); ctx.scale(scale, scale);
+  doll.draw(ctx, ch, alt, samplePose(anim(false, [[1, pose]]), 0), 0, 0, facing);
+  ctx.restore();
+}
+const TOOLS = { rng32, disc, drawText, fighter };
 // Custom paintings and the platform art are drawn with room on every side,
 // because the camera zooms out and pans.
 const MARGIN_X = 200, MARGIN_TOP = 70, CUSTOM_W = W + MARGIN_X * 2, CUSTOM_H = 480;

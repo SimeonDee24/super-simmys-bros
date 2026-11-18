@@ -266,7 +266,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
 // Every stage loads and has the pieces the engine needs.
 {
   const { STAGES } = await import('../stages/index.js');
-  check('3 stages registered with collision, ledges and art', STAGES.length === 3 && STAGES.every((st) => st.solids.length && st.ledges.length === 2 && typeof st.art.draw === 'function'));
+  check('4 stages registered with collision, ledges (or a walk-off floor) and art', STAGES.length === 4 && STAGES.every((st) => st.solids.length && (st.ledges.length === 2 || st.solids[0].x < st.blast.left) && typeof st.art.draw === 'function'));
 }
 // Ledge attack
 {
@@ -1183,6 +1183,18 @@ for (const hold of [0, 30]) {
     const k = run(mk(8, -20), BTN.SPECIAL | BTN.UP, 50);
     check('Flying Knee rises about 120px and hits hard early (12% plus follow-up)', top > 70 && top < 140 && k >= 12, `${top.toFixed(0)}px, ${k}%`); }
   check('Ground and Pound: three hammer fists and a heavy last blow (15%)', run(mk(18), BTN.SPECIAL | BTN.DOWN, 70) === 15, run(mk(18), BTN.SPECIAL | BTN.DOWN, 70) + '%');
+}
+
+// Walter Gage Ballroom: a flat floor with nothing to fall off; only the side and top blast zones KO.
+{
+  const s = createMatch({ ...setup, stageId: 'ballroom' });
+  const f = s.fighters[0]; s.fighters[1].x = 900 * FX;
+  let stayed = true;
+  for (let i = 0; i < 400 && f.stocks === 3; i++) { step(s, [BTN.LEFT, 0]); if (f.state !== 'dead' && !f.grounded) stayed = false; }
+  check('Ballroom: walking left he stays on the floor all the way out, and is KO\'d by the side blast zone', stayed && (f.state === 'dead' || f.stocks === 2 || f.state === 'respawn'), `state ${f.state}, stocks ${f.stocks}`);
+  const { getStage } = await import('../stages/index.js');
+  const st = getStage('ballroom');
+  check('Ballroom: the floor runs past both side blast zones and there are no ledges', st.solids[0].x < st.blast.left && st.solids[0].x + st.solids[0].w > st.blast.right && st.ledges.length === 0);
 }
 
 process.exit(fails ? 1 : 0);
