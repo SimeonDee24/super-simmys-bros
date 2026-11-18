@@ -742,7 +742,7 @@ for (const hold of [0, 30]) {
 // Roster: two fighters, two skins each, sharing every normal attack
 {
   const { CHARACTERS } = await import('../characters/index.js');
-  check('eight characters with two skins each', CHARACTERS.length === 8 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  check('nine characters with two skins each', CHARACTERS.length === 9 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
   const [sim, kae, luc] = CHARACTERS;
   const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
   check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
@@ -1218,6 +1218,30 @@ for (const hold of [0, 30]) {
     check('Big Rip rides a plume up about 120px', top > 70 && top < 140, `${top.toFixed(0)}px`); }
   { const under = run(mk(8), BTN.SPECIAL | BTN.DOWN, 60), side = run(mk(-16), BTN.SPECIAL | BTN.DOWN, 60);
     check('Stub Out: 9% under his heel, embers on both sides (5%)', under >= 9 && side === 5, `${under}% / ${side}%`); }
+}
+
+// Sam: melee, plus a powder stream
+{
+  const { getCharacter } = await import('../characters/index.js');
+  const sm = getCharacter('sam'), sim = getCharacter('simeon');
+  const projMoves = Object.entries(sm.moves).filter(([n, m]) => (m.spawn || m.stream || m.spawns) && sm.moves[n] !== sim.moves[n]).map(([n]) => n);
+  check('Sam has his own smashes and specials, and the powder is his only projectile', ['fsmash', 'usmash', 'dsmash'].every((m) => sm.moves[m] !== sim.moves[m]) && ['neutral', 'side', 'up', 'down'].every((k) => sm.moves[sm.specials[k]])
+    && projMoves.join() === 'powderBlast', projMoves.join());
+  const mk = (dx = 26, dy = 0) => { const s = createMatch({ ...setup, players: [{ charId: 'sam', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [a, v] = s.fighters; v.x = a.x + dx * FX; v.y += dy * FX; if (dy) { v.grounded = 0; v.ground = -1; } return s; };
+  const run = (s, first, n = 80) => { step(s, [first, 0]); for (let i = 0; i < n; i++) step(s, [0, 0]); return s.fighters[1].percent / 10; };
+  TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
+  const f = run(mk(30), BTN.SMASH), u = run(mk(3, -44), BTN.SMASH | BTN.UP), d1 = run(mk(16), BTN.SMASH | BTN.DOWN), d2 = run(mk(-16), BTN.SMASH | BTN.DOWN);
+  check('Drop the Beat 18%, Order in the Court 15%, Spin Kick 13% in front and behind', f === 18 && u === 15 && d1 === 13 && d2 === 13, `${f}% / ${u}% / ${d1}% / ${d2}%`);
+  TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
+  { const s = mk(50); const a = s.fighters[0], v = s.fighters[1]; step(s, [BTN.SPECIAL, 0]); for (let i = 0; i < 90; i++) step(s, [BTN.SPECIAL, 0]);
+    check('Powder Blast: a held stream (small hits) that uses up fuel', v.percent >= 60 && a.fuel < 600, `${v.percent / 10}%`); }
+  check('Objection! lunges in with the gavel: 11%', run(mk(40), BTN.SPECIAL | BTN.RIGHT, 70) === 11);
+  { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); }
+    check('Appeal spins him up about 120px', top > 70 && top < 140, `${top.toFixed(0)}px`); }
+  { const s = mk(400); const a = s.fighters[0], x0 = a.x; run(s, BTN.SPECIAL | BTN.DOWN, 50); const slide = (a.x - x0) / FX; const g = run(mk(60), BTN.SPECIAL | BTN.DOWN, 60);
+    const air = mk(400); const b = air.fighters[0]; b.y -= 90 * FX; b.grounded = 0; b.ground = -1; b.state = 'air'; const by = b.y, bx = b.x;
+    step(air, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 30; i++) step(air, [0, 0]);
+    check('Falcon Kick: slides forward on the ground (14%), dives down at an angle in the air', slide > 50 && a.grounded && g === 14 && b.move === 'falconKickAir' && b.y > by + 20 * FX && b.x > bx + 20 * FX, `${slide.toFixed(0)}px, ${g}%`); }
 }
 
 process.exit(fails ? 1 : 0);

@@ -461,7 +461,24 @@ export class Renderer {
         ctx.fillStyle = '#ffb43a'; ctx.beginPath(); ctx.ellipse(lx, ly - 2, 1.4, 2.6 + ((fr >> 1) & 1), 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.ellipse(lx, ly - 1.4, 0.7, 1.4, 0, 0, Math.PI * 2); ctx.fill();
       }
-    } else if (g.kind === 'plume') {
+    } else if (g.kind === 'gavel') held(() => {
+      // a judge's gavel: dark wood handle, a barrel head across the end
+      ctx.fillStyle = OUT; ctx.fillRect(-1.2, -3, 2.4, 15); ctx.fillRect(-4.6, 10, 9.2, 6);
+      ctx.fillStyle = '#6b3f22'; ctx.fillRect(-0.6, -2.4, 1.2, 13);
+      ctx.fillStyle = '#8a5530'; ctx.fillRect(-4, 10.6, 8, 4.8);
+      ctx.fillStyle = '#b07646'; ctx.fillRect(-4, 10.6, 8, 1.4);
+      ctx.fillStyle = '#e0b84a'; ctx.fillRect(-3, 10.6, 1, 4.8); ctx.fillRect(2, 10.6, 1, 4.8);
+    });
+    else if (g.kind === 'djboard') held(() => {
+      // a DJ controller held by one end: two jog wheels, a mixer and pads
+      ctx.fillStyle = OUT; ctx.fillRect(-4.2, -1, 8.4, 22);
+      ctx.fillStyle = '#26262e'; ctx.fillRect(-3.6, -0.4, 7.2, 20.8);
+      for (const cy of [4.5, 15.5]) { ctx.fillStyle = '#5a5f6b'; ctx.beginPath(); ctx.arc(0, cy, 3, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#c9ced8'; ctx.beginPath(); ctx.arc(0, cy, 1, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = '#3fb8c4'; ctx.fillRect(-2.6, 9, 1.4, 1.4); ctx.fillRect(1.2, 9, 1.4, 1.4);
+      ctx.fillStyle = '#ff5a8a'; ctx.fillRect(-2.6, 11, 1.4, 1.4); ctx.fillRect(1.2, 11, 1.4, 1.4);
+      ctx.fillStyle = (fr >> 2) & 1 ? '#7dffb0' : '#2f9e5b'; ctx.fillRect(-0.4, 8.6, 0.8, 4);
+    });
+    else if (g.kind === 'plume') {
       // the column of vapour he rides up on
       const t = (fr - g.from) / (g.to - g.from);
       for (let k = 0; k < 12; k++) {
@@ -1022,6 +1039,15 @@ export class Renderer {
       const r = ace ? 2.6 : 1.2;
       ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0); ctx.closePath(); ctx.fill();
       if (ace) { ctx.fillStyle = '#ffd23a'; ctx.fillRect(-w / 2 + 1, -h / 2 + 1, 1.4, 2.4); ctx.fillRect(w / 2 - 2.4, h / 2 - 3.4, 1.4, 2.4); }
+      ctx.restore();
+      return;
+    }
+    if (d.draw === 'puff') {
+      // one puff of white powder: grows and thins as it travels
+      const age = d.life - p.life, rr = 2 + age * 0.35;
+      ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, p.life / 6)) * 0.8;
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#e8ecf2'; ctx.beginPath(); ctx.arc(x + rr * 0.4, y + rr * 0.3, rr * 0.7, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       return;
     }

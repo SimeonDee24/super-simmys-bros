@@ -191,6 +191,8 @@ function trySpecial(c, air) {
   // `once` moves can be used one time in the air until he lands, grabs a ledge or is hit
   if (mv.once && air) { if (f.airUsed) return false; f.airUsed = 1; }
   if (slot === 'side' && c.dir) f.facing = c.dir;
+  // a special with its own air version (Falcon Kick dives when used in the air)
+  if (air && mv.air) name = mv.air;
   startMove(f, name, air);
   return true;
 }
