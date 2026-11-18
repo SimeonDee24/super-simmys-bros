@@ -491,7 +491,7 @@ function safely(fn) {
     if (!crash) {
       crash = {
         text: String(e && e.message || e).toUpperCase().slice(0, 70),
-        details: 'Super Simmy\'s Bros v' + GAME_VERSION + '\nscreen: ' + screen + (online ? ' (online, ' + (online.room.isHost ? 'host' : 'friend') + ')' : '') + '\n' + navigator.userAgent + '\n\n' + msg,
+        details: 'UBC Brawl v' + GAME_VERSION + '\nscreen: ' + screen + (online ? ' (online, ' + (online.room.isHost ? 'host' : 'friend') + ')' : '') + '\n' + navigator.userAgent + '\n\n' + msg,
       };
     }
   }

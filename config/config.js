@@ -1,7 +1,7 @@
 // Global tunable values. Character-specific numbers live in /characters,
 // stage-specific numbers in /stages.
 export const CONFIG = {
-  GAME_TITLE: "SUPER SIMMY'S BROS",
+  GAME_TITLE: 'UBC BRAWL',
 
   // --- Simulation ---
   TICK_RATE: 60,            // fixed simulation ticks per second
