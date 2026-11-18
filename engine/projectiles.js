@@ -50,7 +50,14 @@ export function stepProjectiles(state) {
     const p = list[i], d = def(p), r = d.r * FX;
     p.life--;
     if (p.cool > 0) p.cool--;
-    if (d.type === 'boomerang') {
+    if (d.type === 'cloud') {
+      // A puff of smoke: drifts out, slows to a stop, rises a little and
+      // hangs there, hitting again every `rehit` frames until it fades.
+      p.spin += 1;
+      p.vx = approach(p.vx, 0, d.drag);
+      p.vy = approach(p.vy, -d.rise, d.drag);
+      p.x += p.vx; p.y += p.vy;
+    } else if (d.type === 'boomerang') {
       // Flies out, slows, and comes back to whoever threw it. Passes through
       // the stage. Caught (removed) when it reaches its owner again.
       p.spin += d.spinRate;
@@ -154,7 +161,7 @@ export function resolveProjectileHits(state) {
       else if (result === 'parry') applyParry(state, owner, vic, hb, src);
       else if (result === 'shield') applyShieldHit(state, owner, vic, hb, src);
       else applyHit(state, owner, vic, { def: hb, px: p.x >> 8, py: p.y >> 8 }, src);
-      if (d.type === 'boomerang') { p.cool = d.rehit; break; }   // keeps flying, can hit again later
+      if (d.type === 'boomerang' || d.type === 'cloud') { p.cool = d.rehit; break; }   // keeps flying, can hit again later
       if (d.type === 'wave' || d.type === 'dart') { p.spent = 1; p.life = Math.min(p.life, d.type === 'dart' ? 1 : 4); break; }
       // the ball pops off whatever it hit and becomes harmless
       p.spent = 1;

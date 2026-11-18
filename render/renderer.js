@@ -410,6 +410,77 @@ export class Renderer {
         ctx.globalAlpha = 1;
         if (act < 0.25) { ctx.fillStyle = 'rgba(255,240,170,' + (0.8 - act * 3) + ')'; ctx.beginPath(); ctx.arc(ox + dir * 4, oy, 4 + act * 20, 0, Math.PI * 2); ctx.fill(); }
       }
+    } else if (g.kind === 'vape' || g.kind === 'cig' || g.kind === 'lighter') {
+      held(() => {
+        if (g.kind === 'vape') {
+          // a slim pod vape, mouthpiece out past his knuckles
+          ctx.fillStyle = OUT; ctx.fillRect(-1.6, -1, 3.2, 9);
+          ctx.fillStyle = '#5a5f6b'; ctx.fillRect(-1, -0.4, 2, 6.4);
+          ctx.fillStyle = '#9fd8f5'; ctx.fillRect(-1, 4.4, 2, 1.2);
+          ctx.fillStyle = '#2a2a33'; ctx.fillRect(-0.7, 6, 1.4, 2.4);
+        } else if (g.kind === 'cig') {
+          ctx.fillStyle = OUT; ctx.fillRect(-0.9, 1, 1.8, 7);
+          ctx.fillStyle = '#f6f4ee'; ctx.fillRect(-0.5, 1.4, 1, 4.6);
+          ctx.fillStyle = '#d9a25a'; ctx.fillRect(-0.5, 5.8, 1, 1.8);
+          ctx.fillStyle = (fr >> 1) & 1 ? '#ff6a2a' : '#ffd23a'; ctx.fillRect(-0.5, 0.6, 1, 1);
+        } else {
+          // a lighter, and its flame once lit
+          ctx.fillStyle = OUT; ctx.fillRect(-2, -1, 4, 7);
+          ctx.fillStyle = '#d2343c'; ctx.fillRect(-1.4, -0.4, 2.8, 5.6);
+          ctx.fillStyle = '#c9ced8'; ctx.fillRect(-1.4, 5, 2.8, 1);
+        }
+      });
+      const a = (s.armF.low * Math.PI) / 180;
+      const mx = f.x / FX + dir * (s.neck[0] / FX + 3), my = f.y / FX + s.neck[1] / FX - 4;   // his mouth
+      if (g.kind === 'vape' && g.fx === 'jet' && act >= 0) {
+        for (let k = 0; k < 16; k++) {
+          const j = k / 15, d = 4 + j * 42 * Math.min(1, act * 2.4), wob = Math.sin(fr * 0.5 + k) * (1 + j * 3);
+          ctx.globalAlpha = Math.max(0, (1 - act) * (0.9 - j * 0.4)); ctx.fillStyle = k & 1 ? '#eef1f5' : '#c9ced8';
+          ctx.beginPath(); ctx.arc(mx + dir * d, my + wob + j * 3, 2.5 + j * 6, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      } else if (g.kind === 'vape' && g.fx === 'rings' && act >= 0) {
+        for (let k = 0; k < 4; k++) {
+          const u = act * 1.3 - k * 0.22; if (u < 0 || u > 1) continue;
+          ctx.globalAlpha = 1 - u; ctx.strokeStyle = k === 3 ? '#ffffff' : '#d9dde4'; ctx.lineWidth = k === 3 ? 2.6 : 1.8;
+          ctx.beginPath(); ctx.ellipse(mx, my - 6 - u * 40, 4 + u * (k === 3 ? 10 : 6), 1.6 + u * 2, 0, 0, Math.PI * 2); ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
+      } else if (g.kind === 'lighter' && act >= 0) {
+        const fy = f.y / FX;
+        for (const side of [-1, 1]) for (let k = 0; k < 7; k++) {
+          const j = ((k * 37 + 11) % 10) / 10, x = f.x / FX + side * (8 + act * 16 + j * 10), h = (1 - act) * (10 + j * 10);
+          ctx.globalAlpha = Math.max(0, 1 - act * 0.9);
+          ctx.fillStyle = k % 3 === 0 ? '#fff3b0' : k % 3 === 1 ? '#ffb43a' : '#ff5a2a';
+          ctx.beginPath(); ctx.moveTo(x - 3, fy); ctx.quadraticCurveTo(x - 2, fy - h * 0.6, x + Math.sin(fr + k) * 1.5, fy - h); ctx.quadraticCurveTo(x + 2, fy - h * 0.6, x + 3, fy); ctx.closePath(); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+      if (g.kind === 'lighter' && fr >= (g.active ? g.active[0] - 2 : 0)) {
+        const lx = hx + dir * Math.sin(a) * 3, ly = hy + Math.cos(a) * 3 - 3;
+        ctx.fillStyle = '#ffb43a'; ctx.beginPath(); ctx.ellipse(lx, ly - 2, 1.4, 2.6 + ((fr >> 1) & 1), 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.ellipse(lx, ly - 1.4, 0.7, 1.4, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    } else if (g.kind === 'plume') {
+      // the column of vapour he rides up on
+      const t = (fr - g.from) / (g.to - g.from);
+      for (let k = 0; k < 12; k++) {
+        const j = k / 11, y = f.y / FX + 4 + j * 46, w = Math.sin(fr * 0.4 + k * 1.3) * 3;
+        ctx.globalAlpha = Math.max(0, (1 - t * 0.6) * (0.85 - j * 0.6)); ctx.fillStyle = k & 1 ? '#eef1f5' : '#c9ced8';
+        ctx.beginPath(); ctx.arc(f.x / FX + w, y, 4 + j * 6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else if (g.kind === 'embers') {
+      const fy = f.y / FX;
+      for (let k = 0; k < 18; k++) {
+        const side = k & 1 ? 1 : -1, j = ((k * 41 + 7) % 13) / 13;
+        const x = f.x / FX + side * (4 + act * (12 + j * 18)), y = fy - 2 - Math.sin(act * Math.PI) * (4 + j * 10);
+        ctx.globalAlpha = Math.max(0, 1 - act); ctx.fillStyle = k % 3 === 0 ? '#fff3b0' : k % 3 === 1 ? '#ffb43a' : '#ff5a2a';
+        ctx.fillRect(x - 0.8, y - 0.8, 1.6, 1.6);
+      }
+      ctx.fillStyle = '#5a5f6b'; ctx.globalAlpha = Math.max(0, 1 - act * 0.5);
+      ctx.beginPath(); ctx.arc(f.x / FX + dir * 6, fy - 1.5, 3 + act * 6, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
     } else if (g.kind === 'whiskey') held(() => {
       // a square-shouldered bottle of whisky: amber glass, black cap, cream label
       poly([[-1.2, -1], [1.2, -1], [1.4, 5], [3.6, 7], [3.6, 17], [-3.6, 17], [-3.6, 7], [-1.4, 5]], OUT);
@@ -951,6 +1022,29 @@ export class Renderer {
       const r = ace ? 2.6 : 1.2;
       ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0); ctx.closePath(); ctx.fill();
       if (ace) { ctx.fillStyle = '#ffd23a'; ctx.fillRect(-w / 2 + 1, -h / 2 + 1, 1.4, 2.4); ctx.fillRect(w / 2 - 2.4, h / 2 - 3.4, 1.4, 2.4); }
+      ctx.restore();
+      return;
+    }
+    if (d.draw === 'cloud') {
+      // a lumpy cloud of vapour that thins out as it fades
+      const a = Math.min(1, p.life / d.fadeFrames) * (p.spent ? 0.5 : 1);
+      ctx.save();
+      for (let k = 0; k < 7; k++) {
+        const ang = k * 0.9 + p.spin * 0.02, rr = d.r * (0.55 + ((k * 37) % 5) * 0.08);
+        ctx.globalAlpha = a * (k & 1 ? 0.55 : 0.75); ctx.fillStyle = k & 1 ? '#eef1f5' : '#d4d8df';
+        ctx.beginPath(); ctx.arc(x + Math.cos(ang) * d.r * 0.5, y + Math.sin(ang) * d.r * 0.35, rr, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      return;
+    }
+    if (d.draw === 'butt') {
+      // a cigarette butt tumbling end over end, glowing at the tip
+      ctx.save(); ctx.globalAlpha = fade;
+      ctx.translate(x, y); ctx.rotate(p.life * 0.8);
+      ctx.fillStyle = '#100d16'; ctx.fillRect(-3.4, -1.3, 6.8, 2.6);
+      ctx.fillStyle = '#f6f4ee'; ctx.fillRect(-1, -0.8, 3.8, 1.6);
+      ctx.fillStyle = '#d9a25a'; ctx.fillRect(-2.9, -0.8, 1.9, 1.6);
+      ctx.fillStyle = (p.life >> 1) & 1 ? '#ff6a2a' : '#ffd23a'; ctx.fillRect(2.4, -0.8, 1, 1.6);
       ctx.restore();
       return;
     }

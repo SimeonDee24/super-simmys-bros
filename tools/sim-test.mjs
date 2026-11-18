@@ -742,7 +742,7 @@ for (const hold of [0, 30]) {
 // Roster: two fighters, two skins each, sharing every normal attack
 {
   const { CHARACTERS } = await import('../characters/index.js');
-  check('seven characters with two skins each', CHARACTERS.length === 7 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  check('eight characters with two skins each', CHARACTERS.length === 8 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
   const [sim, kae, luc] = CHARACTERS;
   const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
   check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
@@ -1195,6 +1195,29 @@ for (const hold of [0, 30]) {
   const { getStage } = await import('../stages/index.js');
   const st = getStage('ballroom');
   check('Ballroom: the floor runs past both side blast zones and there are no ledges', st.solids[0].x < st.blast.left && st.solids[0].x + st.solids[0].w > st.blast.right && st.ledges.length === 0);
+}
+
+// Zeid: vapes and cigarettes
+{
+  const { getCharacter } = await import('../characters/index.js');
+  const z = getCharacter('zeid'), sim = getCharacter('simeon');
+  check('Zeid has his own smashes and specials', ['fsmash', 'usmash', 'dsmash'].every((m) => z.moves[m] !== sim.moves[m]) && ['neutral', 'side', 'up', 'down'].every((k) => z.moves[z.specials[k]]));
+  const mk = (dx = 26, dy = 0) => { const s = createMatch({ ...setup, players: [{ charId: 'zeid', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [a, v] = s.fighters; v.x = a.x + dx * FX; v.y += dy * FX; if (dy) { v.grounded = 0; v.ground = -1; } return s; };
+  const run = (s, first, n = 80) => { step(s, [first, 0]); for (let i = 0; i < n; i++) step(s, [0, 0]); return s.fighters[1].percent / 10; };
+  TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
+  const f1 = run(mk(16), BTN.SMASH), f3 = run(mk(54), BTN.SMASH), u = run(mk(4, -40), BTN.SMASH | BTN.UP), d1 = run(mk(16), BTN.SMASH | BTN.DOWN), d2 = run(mk(-16), BTN.SMASH | BTN.DOWN);
+  check('Exhale reaches far (16% close, 12% at the far end), Smoke Rings 14%, Lighter Flare 14% both sides', f1 === 16 && f3 === 12 && u === 14 && d1 === 14 && d2 === 14, `${f1}% / ${f3}% / ${u}% / ${d1}% / ${d2}%`);
+  TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
+  { // the cloud hangs and hits more than once
+    const s = mk(60); const v = s.fighters[1]; let hitsTaken = 0, last = 0;
+    step(s, [BTN.SPECIAL, 0]); for (let i = 0; i < 150; i++) { step(s, [0, 0]); if (v.percent > last) { hitsTaken++; last = v.percent; } v.x = s.projectiles[0] ? s.projectiles[0].x : v.x; }
+    check('Cloud Chaser: a cloud that hangs in the air and hits again and again (2% a time)', hitsTaken >= 3 && last % 20 === 0, `${hitsTaken} hits, ${last / 10}%`);
+  }
+  check('Flick: a lit butt, 7%', run(mk(70), BTN.SPECIAL | BTN.RIGHT, 70) === 7);
+  { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); }
+    check('Big Rip rides a plume up about 120px', top > 70 && top < 140, `${top.toFixed(0)}px`); }
+  { const under = run(mk(8), BTN.SPECIAL | BTN.DOWN, 60), side = run(mk(-16), BTN.SPECIAL | BTN.DOWN, 60);
+    check('Stub Out: 9% under his heel, embers on both sides (5%)', under >= 9 && side === 5, `${under}% / ${side}%`); }
 }
 
 process.exit(fails ? 1 : 0);

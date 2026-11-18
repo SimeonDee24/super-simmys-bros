@@ -164,7 +164,7 @@ for (const stageId of ['nest', 'cloudrest']) {
 // Free-for-all: three and four CPUs play to the end. Exactly one is left,
 // everyone took part, and the same seeds give the same match.
 for (const n of [3, 4]) {
-  const chars = ['max', 'malcolm', 'osama', 'sara'];
+  const chars = ['max', 'zeid', 'osama', 'sara'];
   const play = () => {
     const s = createMatch({ stageId: n === 3 ? 'nest' : 'cloudrest', players: chars.slice(0, n).map((charId, i) => ({ charId, alt: i === 3 ? 1 : 0 })), stocks: 3, seed: 9 });
     const cpus = chars.slice(0, n).map((_, i) => new CpuController('lv4', 31 + i * 7));

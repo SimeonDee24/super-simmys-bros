@@ -1,5 +1,5 @@
 {
-  "version": "0.33.0",
+  "version": "0.34.0",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -23,6 +23,7 @@
     "characters/sara.js",
     "characters/shared.js",
     "characters/simeon.js",
+    "characters/zeid.js",
     "stages/balcony.js",
     "stages/ballroom.js",
     "stages/cloudrest.js",
