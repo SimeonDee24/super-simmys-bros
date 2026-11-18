@@ -14,7 +14,8 @@ const stats = {
 
 // ---------------------------------------------------------------------------
 // Body parts: pixel art at 2 art pixels per world pixel, facing right.
-// Thick wavy black hair with a long fringe falling over his eyes, a beaded
+// Thick wavy black hair with a fringe swept down to his brows (one curl
+// hanging past his eye), a beaded
 // necklace with a pendant, a black sleeveless tank. Second skin: wraparound
 // shades (G) and a teal scarf (S).
 // ---------------------------------------------------------------------------
@@ -24,8 +25,8 @@ const HEAD = [
   'kKkkkkkkkkkkl.',
   'kKkkkkkkkkkkl.',
   'KKkkkkkkkbbbk.',
-  'KKkkkkkkGGGGG.',
-  'KkKqkkkkGGeeG.',
+  'KKkkkkkkGYUUG.',
+  'KkKqkkkkGYUUG.',
   'KkKqkkkkkkkkkl',
   'KKkKKkkkkkkkkl',
   'KKkKkkkkkkkkK.',
@@ -49,10 +50,9 @@ const HAIR = [
   'hhhhhhhhhhhhhhhhhh',
   '.hhhhhhhhhhhhhhhhh',
   '..hhhhhhhhhHhhhhhh',
-  '..hh...hhhhhhHhhh.',
-  '..h.....hhhhhHhh..',
-  '.........hhhHh....',
-  '..........hh......',
+  '..hh..hhhhhHhhhhh.',
+  '..h...........hh..',
+  '...............h..',
 ];
 const parts = {
   ...SIMEON.parts,   // hands, legs and sneakers are shared
@@ -110,13 +110,13 @@ const BASE_COLORS = {
 };
 const alt = (name, top, pants, extra = {}) => ({
   name,
-  colors: { ...BASE_COLORS, t: top[0], T: top[1], u: top[2], x: darker(top[1], 0.75), S: top[0], j: pants[0], J: pants[1], i: pants[2], y: darker(pants[1], 0.78), G: SKIN.k, ...extra },
+  colors: { ...BASE_COLORS, t: top[0], T: top[1], u: top[2], x: darker(top[1], 0.75), S: top[0], j: pants[0], J: pants[1], i: pants[2], y: darker(pants[1], 0.78), G: SKIN.k, Y: '#ffffff', U: '#1b1310', ...extra },
 });
 const palettes = [
   // the rave fit: black sleeveless tank, beaded necklace, black cargos
   alt('Rave', ['#2a2b2a', '#1b1c1b', '#3b3c3a'], ['#2a2a30', '#1a1a1f', '#3a3a42'], { B: '#1b1c1b', w: '#e9e9e4', W: '#8a8f99', g: '#2a2b2a' }),
   // festival: a teal paisley scarf, wraparound shades, jeans
-  alt('Festival', ['#2a2b2a', '#1b1c1b', '#3b3c3a'], ['#4f6f9e', '#3a5580', '#6a8cbd'], { S: '#3fb8c4', G: '#c9e3e0', B: '#1b1c1b' }),
+  alt('Festival', ['#2a2b2a', '#1b1c1b', '#3b3c3a'], ['#4f6f9e', '#3a5580', '#6a8cbd'], { S: '#3fb8c4', G: '#c9e3e0', Y: '#9fd8d2', U: '#c9e3e0', B: '#1b1c1b' }),
 ];
 
 // ---------------------------------------------------------------------------
