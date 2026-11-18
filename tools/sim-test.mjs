@@ -1082,6 +1082,20 @@ for (const hold of [0, 30]) {
     check('Fresh Pot: the swing hits up close (8%), the coffee runs along the floor (7%), and nothing pours in the air', near >= 8 && far === 7 && airp === 0, `${near}% / ${far}% / ${airp}%`); }
 }
 
+// Every move that turns into another move (tap / hold, follow-ups, misfires,
+// landings) has an animation to show it with.
+{
+  const { CHARACTERS } = await import('../characters/index.js');
+  const missing = [];
+  for (const c of CHARACTERS) for (const [name, mv] of Object.entries(c.moves)) {
+    if (!mv.hitboxes) continue;
+    for (const to of [name, mv.variant && mv.variant.move, mv.followUp && mv.followUp.move, mv.rocket && mv.rocket.misfire && mv.rocket.misfire.move, mv.plunge && mv.plunge.landMove]) {
+      if (to && to !== 'pivotGrab' && !c.animations[to]) missing.push(c.id + ':' + to);
+    }
+  }
+  check('every special and smash has an animation', missing.length === 0, missing.join(' '));
+}
+
 // Malcolm: card tricks, calisthenics and a pool cue
 {
   const { getCharacter } = await import('../characters/index.js');

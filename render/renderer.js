@@ -234,7 +234,7 @@ export class Renderer {
     const g = mv && mv.gear;
     if (!g || f.stateFrame < g.from || f.stateFrame > g.to) return;
     const ctx = this.ctx, fr = f.stateFrame, dir = f.facing;
-    const s = solve(ch.skeleton, samplePose(ch.animations[f.anim], f.animFrame));
+    const s = solve(ch.skeleton, samplePose(ch.animations[f.anim] || ch.animations.idle, f.animFrame));
     const hx = f.x / FX + dir * (s.armF.c[0] / FX), hy = f.y / FX + s.armF.c[1] / FX;   // front hand
     const act = g.active ? (fr >= g.active[0] && fr <= g.active[1] ? (fr - g.active[0]) / (g.active[1] - g.active[0]) : -1) : -1;
     const cols = ch.trailColors || ['#ff9a3c', '#ffe14a', '#ffffff'];
@@ -545,7 +545,7 @@ export class Renderer {
     const age = f.stateFrame - d.blast;
     if (age >= 0 && age < 14) {
       const hb = mv.hitboxes[0], R = hb.chargeR ? hb.chargeR[0] + (hb.chargeR[1] - hb.chargeR[0]) * k : hb.r;
-      const s = solve(ch.skeleton, samplePose(ch.animations[f.anim], f.animFrame));
+      const s = solve(ch.skeleton, samplePose(ch.animations[f.anim] || ch.animations.idle, f.animFrame));
       const cx = x + dir * ((s.hip[0] + s.neck[0]) / 2 / FX), cy = y + (s.hip[1] + s.neck[1]) / 2 / FX;
       const grow = Math.min(1, (age + 1) / 4), a = 1 - age / 14;
       const colors = ch.trailColors || ['#ff9a3c', '#ffe14a', '#ffffff'];
@@ -1012,7 +1012,7 @@ export class Renderer {
     if (f.state !== 'attack' || !f.move) return;
     const mv = ch.moves[f.move];
     if (!mv.holdBall || f.stateFrame < mv.holdBall[0] || f.stateFrame > mv.holdBall[1]) return;
-    const s = solve(ch.skeleton, samplePose(ch.animations[f.anim], f.animFrame));
+    const s = solve(ch.skeleton, samplePose(ch.animations[f.anim] || ch.animations.idle, f.animFrame));
     const a = jointAt(s, 'fistF'), b = jointAt(s, 'fistB');
     const x = (f.x + f.facing * ((a[0] + b[0]) >> 1)) / FX + f.facing * 2;
     const y = (f.y + ((a[1] + b[1]) >> 1)) / FX - 3;
@@ -1038,7 +1038,7 @@ export class Renderer {
     if (f.state !== 'attack' || !f.move) return;
     const cd = ch.moves[f.move].card;
     if (!cd || f.stateFrame < cd.from || f.stateFrame > cd.to) return;
-    const a = ch.animations[f.anim];
+    const a = ch.animations[f.anim] || ch.animations.idle;
     const hand = jointAt(solve(ch.skeleton, samplePose(a, f.animFrame)), 'fistF');
     const big = cd.size === 'big';
     const w = big ? 11 : 5, h = big ? 15 : 7;
@@ -1070,7 +1070,7 @@ export class Renderer {
     const LEN = 6;
     const newest = Math.min(f.stateFrame, tr.to), oldest = Math.max(tr.from, f.stateFrame - LEN);
     if (newest <= oldest) return;
-    const a = ch.animations[f.anim];
+    const a = ch.animations[f.anim] || ch.animations.idle;
     const pts = [];
     // sample between frames so a fast swing draws a smooth curve
     for (let fr = newest; fr >= oldest - 1e-6; fr -= 0.25) {
