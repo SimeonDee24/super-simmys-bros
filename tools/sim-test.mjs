@@ -742,7 +742,7 @@ for (const hold of [0, 30]) {
 // Roster: two fighters, two skins each, sharing every normal attack
 {
   const { CHARACTERS } = await import('../characters/index.js');
-  check('four characters with two skins each', CHARACTERS.length === 4 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  check('five characters with two skins each', CHARACTERS.length === 5 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
   const [sim, kae, luc] = CHARACTERS;
   const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
   check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
@@ -1080,6 +1080,35 @@ for (const hold of [0, 30]) {
   { const near = run(mk(22), BTN.SPECIAL | BTN.DOWN, 70), far = run(mk(70), BTN.SPECIAL | BTN.DOWN, 70);
     const s = mk(70); s.fighters[0].y -= 60 * FX; s.fighters[0].grounded = 0; s.fighters[0].ground = -1; const airp = run(s, BTN.SPECIAL | BTN.DOWN, 50);
     check('Fresh Pot: the swing hits up close (8%), the coffee runs along the floor (7%), and nothing pours in the air', near >= 8 && far === 7 && airp === 0, `${near}% / ${far}% / ${airp}%`); }
+}
+
+// Malcolm: card tricks, calisthenics and a pool cue
+{
+  const { getCharacter } = await import('../characters/index.js');
+  const mal = getCharacter('malcolm'), sim = getCharacter('simeon');
+  check('Malcolm shares the normals with Simeon and has his own smashes and specials', ['ftilt', 'nair', 'fair', 'bair', 'dashAttack'].every((m) => mal.moves[m] === sim.moves[m])
+    && ['fsmash', 'usmash', 'dsmash'].every((m) => mal.moves[m] !== sim.moves[m]) && ['neutral', 'side', 'up', 'down'].every((k) => mal.moves[mal.specials[k]]));
+  check('Malcolm: glasses in the first skin only', mal.palettes[0].colors.G !== mal.palettes[0].colors.k && mal.palettes[1].colors.G === mal.palettes[1].colors.k);
+  const mk = (dx = 26, dy = 0) => { const s = createMatch({ ...setup, players: [{ charId: 'malcolm', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [a, v] = s.fighters; v.x = a.x + dx * FX; v.y += dy * FX; if (dy) { v.grounded = 0; v.ground = -1; } return s; };
+  const run = (s, first, n = 80) => { step(s, [first, 0]); for (let i = 0; i < n; i++) step(s, [0, 0]); return s.fighters[1].percent / 10; };
+  TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
+  const f = run(mk(34), BTN.SMASH), u = run(mk(2, -40), BTN.SMASH | BTN.UP), d1 = run(mk(16), BTN.SMASH | BTN.DOWN);
+  const sb = mk(-16); const d2 = run(sb, BTN.SMASH | BTN.DOWN);
+  check('Showstopper (forward smash, the confetti popper) reaches well in front: 15%', f === 15, f + '%');
+  check('Handstand Kick (up smash) hits above him: 15%', u === 15, u + '%');
+  check('Windmill (down smash) hits in front (13%) and behind (12%)', d1 === 13 && d2 === 12 && sb.fighters[1].x < sb.fighters[0].x, `${d1}% / ${d2}%`);
+  TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
+  const cards = run(mk(60), BTN.SPECIAL, 60);
+  { const s = mk(400); step(s, [BTN.SPECIAL, 0]); for (let i = 0; i < 14; i++) step(s, [0, 0]); check('Pick a Card throws three cards, 3% each', s.projectiles.length === 3 && cards >= 3 && cards <= 9 && cards % 3 === 0, `${s.projectiles.length} cards, ${cards}%`); }
+  { const near = run(mk(30), BTN.SPECIAL | BTN.RIGHT, 60), far = run(mk(90), BTN.SPECIAL | BTN.RIGHT, 60);
+    check('Corner Pocket: the cue tip hits up close (6%), the cue ball hits further away along the floor', near >= 6 && far >= 4 && far <= 8, `${near}% / ${far}%`); }
+  { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); }
+    check('Muscle-Up rises about 110px, then he falls helpless', top > 70 && top < 130, `${top.toFixed(0)}px`); }
+  { const s = mk(400); step(s, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 60; i++) step(s, [0, 0]);
+    const ace = s.projectiles.find((p) => p.kind === 'ace'); const x0 = ace && ace.x;
+    const v = s.fighters[1]; v.x = ace.x; v.y = ace.y + 10 * FX; v.grounded = 0; v.ground = -1; v.state = 'air';
+    for (let i = 0; i < 10; i++) step(s, [0, 0]);
+    check('Ace Up the Sleeve leaves a card hanging that pops up whoever touches it (9%)', !!ace && v.percent === 90 && v.vy < 0, `${v.percent / 10}%`); }
 }
 
 process.exit(fails ? 1 : 0);

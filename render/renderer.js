@@ -379,6 +379,37 @@ export class Renderer {
         poly([[-2.6, 1.3], [-0.8, 1.3], [-0.6, 8.7], [-2.1, 8.7]], '#f1f4f8');
         ctx.fillStyle = OUT; ctx.fillRect(3, 2.4, 2.2, 0.9); ctx.fillRect(4.4, 2.4, 0.9, 4.4); ctx.fillRect(2.8, 6, 2.4, 0.9);
       });
+    } else if (g.kind === 'cue') held(() => {
+      // pool cue: dark butt in his hand, light shaft out past his knuckles, blue chalked tip
+      poly([[-1.6, -14], [1.6, -14], [0.9, 30], [-0.9, 30]], OUT);
+      poly([[-1, -13.4], [1, -13.4], [0.7, 4], [-0.7, 4]], '#5a3218');
+      poly([[-0.7, 4], [0.7, 4], [0.4, 29], [-0.4, 29]], '#e9cf9a');
+      ctx.fillStyle = '#e9eef5'; ctx.fillRect(-0.5, 27.6, 1, 1.2);
+      ctx.fillStyle = '#3b6fd4'; ctx.fillRect(-0.45, 28.8, 0.9, 1.2);
+    });
+    else if (g.kind === 'popper') {
+      // party popper: a striped cone in his hand, then a burst of black and yellow confetti
+      held(() => {
+        poly([[-1.2, -1], [1.2, -1], [3.4, 8.5], [-3.4, 8.5]], OUT);
+        poly([[-0.6, -0.4], [0.6, -0.4], [2.7, 7.9], [-2.7, 7.9]], '#ffd23a');
+        ctx.fillStyle = '#1b1b22'; ctx.fillRect(-1.4, 2.4, 2.8, 1.2); ctx.fillRect(-2.2, 5.4, 4.4, 1.2);
+      });
+      if (act >= 0) {
+        const a = (s.armF.low * Math.PI) / 180, ox = hx + dir * Math.sin(a) * 8, oy = hy + Math.cos(a) * 8;
+        for (let k = 0; k < 44; k++) {
+          const j = ((k * 53 + 7) % 29) / 29, spread = (((k * 31) % 17) / 16 - 0.5) * 1.3;
+          const d = (6 + act * (22 + j * 26)) * (1 - act * 0.15);
+          const x = ox + dir * Math.cos(spread) * d, y = oy + Math.sin(spread) * d + act * act * 10 * j;
+          ctx.save(); ctx.translate(x, y); ctx.rotate(k + fr * (0.4 + j));
+          ctx.globalAlpha = Math.min(1, (1 - act) * 2.2);
+          ctx.fillStyle = k % 3 === 0 ? '#1b1b22' : k % 3 === 1 ? '#ffd23a' : (k & 4 ? '#fff6c2' : '#2a2a33');
+          if (k % 5 === 0) { ctx.beginPath(); ctx.arc(0, 0, 1.5, 0, Math.PI * 2); ctx.fill(); }   // a few round bits
+          else ctx.fillRect(-1.9, -0.9, 3.8, 1.8);
+          ctx.restore();
+        }
+        ctx.globalAlpha = 1;
+        if (act < 0.25) { ctx.fillStyle = 'rgba(255,240,170,' + (0.8 - act * 3) + ')'; ctx.beginPath(); ctx.arc(ox + dir * 4, oy, 4 + act * 20, 0, Math.PI * 2); ctx.fill(); }
+      }
     } else if (g.kind === 'speakers') {
       const pop = Math.min(1, (fr - g.from) / 4, (g.to - fr) / 4), fy = f.y / FX;
       for (const side of [-1, 1]) {
@@ -808,6 +839,34 @@ export class Renderer {
       ctx.fillStyle = '#ffc07a'; ctx.fillRect(0.5, -1.5, 3.5, 1);
       ctx.fillStyle = '#2a2a33'; ctx.fillRect(4, -1, 1.5, 2);
       ctx.restore();
+      return;
+    }
+    if (d.draw === 'card' || d.draw === 'ace') {
+      // a playing card spinning through the air (or, for the ace, hanging and bobbing)
+      const ace = d.draw === 'ace', w = ace ? 9 : 5, h = ace ? 13 : 7;
+      ctx.save(); ctx.globalAlpha = fade;
+      ctx.translate(x, y + (ace ? Math.sin(p.life * 0.12) * 1.5 : 0));
+      if (ace) ctx.scale(Math.cos(p.life * 0.07) * 0.35 + 0.65, 1);
+      else ctx.rotate(p.life * 0.9 * (p.vx >= 0 ? 1 : -1));
+      if (ace) { ctx.fillStyle = 'rgba(255,210,58,0.35)'; ctx.fillRect(-w / 2 - 2, -h / 2 - 2, w + 4, h + 4); }
+      ctx.fillStyle = '#100d16'; ctx.fillRect(-w / 2 - 0.7, -h / 2 - 0.7, w + 1.4, h + 1.4);
+      ctx.fillStyle = '#f8f6ee'; ctx.fillRect(-w / 2, -h / 2, w, h);
+      ctx.fillStyle = ace ? '#1b1b22' : '#d2343c';
+      const r = ace ? 2.6 : 1.2;
+      ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0); ctx.closePath(); ctx.fill();
+      if (ace) { ctx.fillStyle = '#ffd23a'; ctx.fillRect(-w / 2 + 1, -h / 2 + 1, 1.4, 2.4); ctx.fillRect(w / 2 - 2.4, h / 2 - 3.4, 1.4, 2.4); }
+      ctx.restore();
+      return;
+    }
+    if (d.draw === 'cueball') {
+      const ctx2 = ctx; ctx2.save(); ctx2.globalAlpha = fade;
+      ctx2.fillStyle = '#100d16'; ctx2.beginPath(); ctx2.arc(x, y, d.r + 0.6, 0, Math.PI * 2); ctx2.fill();
+      const g = ctx2.createRadialGradient(x - d.r * 0.4, y - d.r * 0.45, d.r * 0.1, x, y, d.r);
+      g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#d6d2c4');
+      ctx2.fillStyle = g; ctx2.beginPath(); ctx2.arc(x, y, d.r, 0, Math.PI * 2); ctx2.fill();
+      const a = (p.spin / 1024) * Math.PI;
+      ctx2.fillStyle = '#d2343c'; ctx2.beginPath(); ctx2.arc(x + Math.cos(a) * d.r * 0.5, y + Math.sin(a) * d.r * 0.5, d.r * 0.25, 0, Math.PI * 2); ctx2.fill();
+      ctx2.restore();
       return;
     }
     if (d.draw === 'cup') {

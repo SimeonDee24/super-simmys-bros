@@ -649,6 +649,8 @@ const STATES = {
       airMotion(mv.noDrift ? { ...c, dir: 0 } : c, mv.float);
     } else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
     if (mv.spawn && f.stateFrame === mv.spawn.frame) spawnProjectile(c.match, f, mv);
+    // several projectiles from one move (e.g. a fan of cards)
+    if (mv.spawns) for (const sp of mv.spawns) if (f.stateFrame === sp.frame) spawnProjectile(c.match, f, { ...mv, spawn: sp });
     // combo link (jab 1 -> 2 -> 3)
     if (mv.next && (c.pressed & BTN.ATTACK) && f.stateFrame >= mv.next.from) { startMove(f, mv.next.move, false); return; }
     // follow-up: pressing attack or special again during the window turns
