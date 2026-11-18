@@ -564,7 +564,8 @@ const STATES = {
     // frame and build up charge (up to `max`).
     // (specials charge with the special button; smash attacks with smash or attack)
     const holdBtn = mv.charge && mv.charge.smash ? BTN.SMASH | BTN.ATTACK : BTN.SPECIAL;
-    if (mv.charge && f.stateFrame === mv.charge.at + 1 && (c.input & holdBtn) && f.charge < mv.charge.max) {
+    // (a stream with `stopEmpty` also stops once its fuel runs out)
+    if (mv.charge && f.stateFrame === mv.charge.at + 1 && (c.input & holdBtn) && f.charge < mv.charge.max && !(mv.stream && mv.stream.stopEmpty && f.fuel <= 0)) {
       f.charge++;
       f.stateFrame = mv.charge.at;
       // Stream moves: while held, a projectile every few frames. The range

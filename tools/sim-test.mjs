@@ -1140,13 +1140,13 @@ for (const hold of [0, 30]) {
   check('Cannonball (down smash) hits both sides: 15%', d1 === 15 && d2 === 15, `${d1}% / ${d2}%`);
   TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
   { // Money Gun: a held stream of bills; the range shrinks with use and grows back
-    const s = mk(60); const a = s.fighters[0]; const v = s.fighters[1];
+    const s = mk(36); const a = s.fighters[0]; const v = s.fighters[1];
     step(s, [BTN.SPECIAL, 0]); for (let i = 0; i < 90; i++) step(s, [BTN.SPECIAL, 0]);
     const dmg = v.percent / 10, fuelAfter = a.fuel;
     for (let i = 0; i < 60; i++) step(s, [0, 0]);
     const far = (() => { const t = mk(400); const b = t.fighters[0]; b.fuel = 1000; step(t, [BTN.SPECIAL, 0]); let r = 0; for (let i = 0; i < 40; i++) { step(t, [BTN.SPECIAL, 0]); for (const p of t.projectiles) r = Math.max(r, (p.x - b.x) / FX); } return r; })();
     const near = (() => { const t = mk(400); const b = t.fighters[0]; b.fuel = 0; step(t, [BTN.SPECIAL, 0]); let r = 0; for (let i = 0; i < 40; i++) { step(t, [BTN.SPECIAL, 0]); for (const p of t.projectiles) r = Math.max(r, (p.x - b.x) / FX); } return r; })();
-    check('Money Gun sprays cash while held (several small hits), and runs short the longer it is used', dmg >= 6 && dmg <= 30 && fuelAfter < 600 && a.fuel > fuelAfter && far > near * 2, `${dmg}%, range ${far.toFixed(0)}px fresh vs ${near.toFixed(0)}px empty`);
+    check('Money Gun sprays cash while held (several small hits), runs out after about a second, and runs short as it empties', dmg >= 4 && dmg <= 10 && fuelAfter < 600 && a.fuel > fuelAfter && far > near * 2, `${dmg}%, range ${far.toFixed(0)}px fresh vs ${near.toFixed(0)}px empty`);
   }
   { const s = mk(400); const a = s.fighters[0], x0 = a.x; run(s, BTN.SPECIAL | BTN.RIGHT, 70); const far = (a.x - x0) / FX; const hp = run(mk(50), BTN.SPECIAL | BTN.RIGHT, 70);
     check('Hostile Takeover charges forward along the floor (12%)', far > 50 && a.grounded && hp === 12, `${far.toFixed(0)}px, ${hp}%`); }

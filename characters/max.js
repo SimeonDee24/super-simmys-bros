@@ -240,11 +240,11 @@ const hits = (from, to, list, damage, angle, bkb, kbg, extra) =>
 
 const moves = {
   // Neutral special: Money Gun. Hold the button to spray a stream of cash
-  // in front of him (about 1% a bill), for up to two and a half seconds. Like
-  // a fire breath, the range shrinks the longer it is used, and grows back
-  // while he does other things.
+  // in front of him (1% a bill). A full gun lasts about a second, reaches
+  // about 60px and gets shorter as it empties; when it is empty it stops.
+  // It refills slowly (about 8 seconds from empty) while he does other things.
   moneyGun: { faf: 30, float: { gravity: 40, fall: 50 }, charge: { at: 9, max: 150 },
-    stream: { every: 4, from: 'fistF', use: 6, minLife: 8, projectiles: ['billHigh', 'bill', 'billLow'] },
+    stream: { every: 5, from: 'fistF', use: 16, minLife: 5, stopEmpty: true, projectiles: ['billHigh', 'bill', 'billLow'] },
     gear: { kind: 'moneyGun', from: 2, to: 24 }, hitboxes: [] },
 
   // Side special: Hostile Takeover. Charges belly first (12%). Stays on the
@@ -303,8 +303,8 @@ const moves = {
     ] },
 };
 
-const BILL = { type: 'dart', draw: 'bill', silent: true, r: 3, hitPad: 3, chargeSpeed: [0, 0], life: 26, fadeFrames: 3,
-  hit: { damage: 12, angle: 361, bkb: 0, kbg: 100, fkb: 22 } };
+const BILL = { type: 'dart', draw: 'bill', silent: true, r: 3, hitPad: 2, chargeSpeed: [0, 0], life: 16, fadeFrames: 3,
+  hit: { damage: 10, angle: 361, bkb: 0, kbg: 100, fkb: 22 } };
 
 export const MAX = {
   ...SIMEON,
@@ -318,6 +318,7 @@ export const MAX = {
   trailColors: ['#2f9e5b', '#8fe0a8', '#ffe8a3'],   // cash green and gold
   animations: { ...SIMEON.animations, ...animations },
   moves: { ...SIMEON.moves, ...moves },
+  fuelRegen: 2,   // the money gun refills slowly
   specials: { neutral: 'moneyGun', side: 'hostileTakeover', up: 'goldenParachute', down: 'marketCrash' },
   projectiles: {
     // the money gun's spray of bills, fanned a little up and down
