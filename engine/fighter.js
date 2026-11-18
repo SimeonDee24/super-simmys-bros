@@ -845,7 +845,7 @@ const STATES = {
   throwing(c) {
     const { f, st } = c;
     f.vx = approach(f.vx, 0, st.traction);
-    const t = THROWS[f.throwName];
+    const t = (getCharacter(f.charId).throws || {})[f.throwName] || THROWS[f.throwName];
     const vic = f.holding >= 0 ? c.match.fighters[f.holding] : null;
     if (t.spin && t.spin.includes(f.stateFrame)) f.facing = -f.facing;   // turning round (back throw)
     if (vic && vic.heldBy === f.slot) {

@@ -742,7 +742,7 @@ for (const hold of [0, 30]) {
 // Roster: two fighters, two skins each, sharing every normal attack
 {
   const { CHARACTERS } = await import('../characters/index.js');
-  check('six characters with two skins each', CHARACTERS.length === 6 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  check('seven characters with two skins each', CHARACTERS.length === 7 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
   const [sim, kae, luc] = CHARACTERS;
   const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
   check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
@@ -1160,6 +1160,29 @@ for (const hold of [0, 30]) {
     const air = mk(400); const b = air.fighters[0], v = air.fighters[1]; b.y -= 120 * FX; b.grounded = 0; b.ground = -1; b.state = 'air'; v.x = b.x; v.y = b.y + 40 * FX; v.grounded = 0; v.ground = -1; v.state = 'air';
     step(air, [BTN.SPECIAL | BTN.DOWN, 0]); let spiked = false; for (let i = 0; i < 30; i++) { step(air, [0, 0]); if (v.percent > 0 && v.vy > 0) spiked = true; }
     check('Market Crash: hops, drops and lands with a shockwave; spikes in the air', landed === 'yes' && top > 20 && under >= 13 && side >= 6 && spiked, `hop ${top.toFixed(0)}px, ${under}% under him, ${side}% beside`); }
+}
+
+// Osama: MMA
+{
+  const { getCharacter } = await import('../characters/index.js');
+  const os = getCharacter('osama'), sim = getCharacter('simeon');
+  check('Osama has his own smashes and specials, with glasses in the first skin only', ['fsmash', 'usmash', 'dsmash'].every((m) => os.moves[m] !== sim.moves[m]) && ['neutral', 'side', 'up', 'down'].every((k) => os.moves[os.specials[k]])
+    && os.palettes[0].colors.G !== os.palettes[0].colors.k && os.palettes[1].colors.G === os.palettes[1].colors.k);
+  const mk = (dx = 26, dy = 0) => { const s = createMatch({ ...setup, players: [{ charId: 'osama', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [a, v] = s.fighters; v.x = a.x + dx * FX; v.y += dy * FX; if (dy) { v.grounded = 0; v.ground = -1; } return s; };
+  const run = (s, first, n = 80) => { step(s, [first, 0]); for (let i = 0; i < n; i++) step(s, [0, 0]); return s.fighters[1].percent / 10; };
+  TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
+  const f = run(mk(28), BTN.SMASH), u = run(mk(3, -44), BTN.SMASH | BTN.UP), d1 = run(mk(16), BTN.SMASH | BTN.DOWN);
+  const sb = mk(-16); const d2 = run(sb, BTN.SMASH | BTN.DOWN);
+  check('Head Kick 17%, Uppercut 15%, Leg Kicks 13% in front and behind', f === 17 && u === 15 && d1 === 13 && d2 === 13 && sb.fighters[1].x < sb.fighters[0].x, `${f}% / ${u}% / ${d1}% / ${d2}%`);
+  TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
+  check('Superman Punch leaps in with a punch: 11%', run(mk(50), BTN.SPECIAL, 70) === 11);
+  { const s = mk(30); const [a, v] = s.fighters; let threw = false; step(s, [BTN.SPECIAL | BTN.RIGHT, 0]); for (let i = 0; i < 90; i++) { step(s, [0, 0]); if (a.state === 'throwing') threw = true; }
+    const miss = mk(400); run(miss, BTN.SPECIAL | BTN.RIGHT, 70);
+    check('Suplex: catches them, slams them down behind him (12%); whiffs harmlessly at range', threw && v.percent === 120 && (v.x - a.x) * a.facing < 0 && miss.fighters[1].percent === 0 && miss.fighters[0].state !== 'throwing', `${v.percent / 10}%`); }
+  { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); }
+    const k = run(mk(8, -20), BTN.SPECIAL | BTN.UP, 50);
+    check('Flying Knee rises about 120px and hits hard early (12% plus follow-up)', top > 70 && top < 140 && k >= 12, `${top.toFixed(0)}px, ${k}%`); }
+  check('Ground and Pound: three hammer fists and a heavy last blow (15%)', run(mk(18), BTN.SPECIAL | BTN.DOWN, 70) === 15, run(mk(18), BTN.SPECIAL | BTN.DOWN, 70) + '%');
 }
 
 process.exit(fails ? 1 : 0);

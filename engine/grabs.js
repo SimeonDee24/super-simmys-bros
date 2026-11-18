@@ -25,6 +25,7 @@ export function resolveGrabs(state) {
     const ch = getCharacter(att.charId);
     const gb = ch.moves[att.move].grab;
     if (!gb || att.stateFrame < gb.frames[0] || att.stateFrame > gb.frames[1]) continue;
+    if (gb.onlyGround && !att.grounded) continue;
     const solved = fighterSolve(att, ch);
     const circles = gb.boxes.map((b) => {
       const j = jointAt(solved, b.at);
@@ -54,6 +55,13 @@ export function resolveGrabs(state) {
       setState(vic, 'grabbed', 'grabbed');
       placeHeld(att, vic, CONFIG.HOLD_DISTANCE, 0);
       vic.grabTick = state.tick;
+      // Command grabs (a suplex): straight into the character's own throw.
+      if (gb.throw) {
+        att.throwName = gb.throw; att.throwFacing = att.facing;
+        vic.grounded = 0; vic.ground = -1;
+        setState(vic, 'thrown', 'tumble');
+        setState(att, 'throwing', ch.throws[gb.throw].anim);
+      }
       break;
     }
   }

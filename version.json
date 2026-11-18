@@ -1,5 +1,5 @@
 {
-  "version": "0.30.0",
+  "version": "0.31.0",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -19,6 +19,7 @@
     "characters/luca.js",
     "characters/malcolm.js",
     "characters/max.js",
+    "characters/osama.js",
     "characters/sara.js",
     "characters/shared.js",
     "characters/simeon.js",
