@@ -207,7 +207,7 @@ export function resolveHits(state) {
     const boxes = activeHitboxes(att, getCharacter(att.charId), true);
     if (!boxes.length) continue;
     for (const vic of state.fighters) {
-      if (vic === att || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state]) continue;
+      if (vic === att || vic.team === att.team || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state]) continue;   // no friendly fire
       const ctr = inCounter(vic);
       const vch = getCharacter(vic.charId);
       const hurt = hurtboxes(vch.skeleton, fighterSolve(vic, vch), vic.facing);

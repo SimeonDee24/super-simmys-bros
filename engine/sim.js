@@ -12,7 +12,9 @@ import { resolveHits } from './combat.js';
 import { stepProjectiles, resolveProjectileHits } from './projectiles.js';
 import { resolveGrabs } from './grabs.js';
 
-// setup = { stageId, players: [{ charId, alt }, ...] (two to four), stocks, seed }
+// setup = { stageId, players: [{ charId, alt, team }, ...] (two to four), stocks, seed }
+// team: fighters on the same team cannot hurt or grab each other. Leave it
+// out for a free-for-all (everyone is on a team of their own).
 export function createMatch(setup) {
   const stage = getStage(setup.stageId);
   const stocks = setup.stocks || CONFIG.DEFAULT_STOCKS;
@@ -20,9 +22,16 @@ export function createMatch(setup) {
     tick: 0,
     rng: (setup.seed || CONFIG.DEFAULT_SEED) | 0,
     stageId: setup.stageId,
-    fighters: setup.players.map((p, i) => newFighter(i, p.charId, p.alt | 0, stage.spawns[i], stocks)),
+    fighters: setup.players.map((p, i) => ({ ...newFighter(i, p.charId, p.alt | 0, stage.spawns[i], stocks), team: p.team === undefined ? 10 + i : p.team | 0 })),
     projectiles: [],
   };
+}
+
+// How many teams still have someone in the match. The match is over at one.
+export function teamsLeft(state) {
+  const teams = new Set();
+  for (const f of state.fighters) if (f.state !== 'out') teams.add(f.team === undefined ? 10 + f.slot : f.team);
+  return teams.size;
 }
 
 export function step(state, inputs) {

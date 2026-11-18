@@ -32,7 +32,7 @@ export function resolveGrabs(state) {
       return [att.x + att.facing * (j[0] + (b.off ? b.off[0] * FX : 0)), att.y + j[1] + (b.off ? b.off[1] * FX : 0), b.r * FX];
     });
     for (const vic of state.fighters) {
-      if (vic === att || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state] || NOT_GRABBABLE[vic.state]) continue;
+      if (vic === att || vic.team === att.team || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state] || NOT_GRABBABLE[vic.state]) continue;
       const vch = getCharacter(vic.charId);
       let touch = false;
       const hurt = hurtboxes(vch.skeleton, fighterSolve(vic, vch), vic.facing);

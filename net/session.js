@@ -11,7 +11,7 @@
 //    to the last frame where everything was known (`confirmed`) and replays
 //    up to now with the right inputs. That is the rollback.
 //  - If a machine gets too far ahead of what it knows, it waits.
-import { createMatch, step, serialize, deserialize, hashState } from '../engine/sim.js';
+import { createMatch, step, serialize, deserialize, hashState, teamsLeft } from '../engine/sim.js';
 
 export const NET = {
   DELAY: 2,          // frames between pressing a button and it taking effect (both online and for yourself)
@@ -162,5 +162,5 @@ export class RollbackSession {
   }
 
   // The match is over once the final (not guessed) game has one fighter left.
-  get over() { return this.confirmed.fighters.filter((f) => f.state !== 'out').length <= 1; }
+  get over() { return teamsLeft(this.confirmed) <= 1; }
 }

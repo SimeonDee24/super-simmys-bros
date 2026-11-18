@@ -15,6 +15,8 @@ import { drawLabel as drawText } from './font.js';
 
 const W = CONFIG.SCREEN_W, H = CONFIG.SCREEN_H;
 const PLAYER_COLORS = ['#ff5a5a', '#5aa2ff', '#ffd23a', '#4fd06a'];   // red, blue, yellow, green
+export const TEAM_COLORS = ['#ff5a5a', '#5aa2ff', '#4fd06a'];          // red team, blue team, green team
+export const TEAM_NAMES = ['RED', 'BLUE', 'GREEN'];
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 function rgba(hex, a) {
@@ -63,7 +65,7 @@ export class Renderer {
 
   // Who is in the match: players[i] = { port: 0-3, label: 'P1' | 'CPU' }.
   setPlayers(players) { this.players = players; }
-  pcol(slot) { const p = this.players[slot]; return PLAYER_COLORS[p ? p.port : slot & 3]; }
+  pcol(slot) { const p = this.players[slot]; return p && p.color ? p.color : PLAYER_COLORS[p ? p.port : slot & 3]; }
   plabel(slot) { const p = this.players[slot]; return p ? p.label : 'P' + (slot + 1); }
 
   // Fill the window (keeping 16:9) and draw at the screen's real resolution,
@@ -1427,6 +1429,7 @@ export class Renderer {
   // active = the slot the keys are moving, levelText(slot) = its CPU label.
   // opts (all optional, used by online rooms): title, right (top-right text),
   // tag(i) (who plays a human slot), offText(i), hint, banner.
+  // teams: true colours each slot by its team (slots[i].team) instead of by player.
   drawCharSelect(chars, slots, active, levelText, opts = {}) {
     const ctx = this.ctx;
     this.ui();
@@ -1439,10 +1442,16 @@ export class Renderer {
     for (let x = -H + ((t >> 1) % 40); x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.lineTo(x + H + 16, 0); ctx.lineTo(x + 16, H); ctx.closePath(); ctx.fill(); }
     ctx.fillStyle = 'rgba(8,8,24,0.82)'; ctx.fillRect(0, 0, W, 22);
     drawText(ctx, opts.title || 'CHOOSE YOUR FIGHTERS', 8, 6, '#ffe14a', 2, 'left', '#000000');
-    drawText(ctx, opts.right || 'J OR ENTER  CONTINUE     ESC  BACK', W - 8, 9, '#ffffff', 1, 'right');
+    const colOf = (i) => (opts.teams ? TEAM_COLORS[(slots[i].team | 0) % 3] : PLAYER_COLORS[i]);
+    // the match type, in the top bar
+    const modeText = opts.teams ? 'TEAMS' : 'FREE-FOR-ALL', mx = 292, mw = 104;
+    ctx.fillStyle = opts.teams ? '#3a2456' : '#24224a'; ctx.fillRect(mx - mw / 2, 4, mw, 14);
+    ctx.fillStyle = opts.teams ? '#ffe14a' : '#5d5a80'; ctx.fillRect(mx - mw / 2, 17, mw, 1);
+    drawText(ctx, (opts.modeKey === false ? '' : 'T  ') + modeText, mx, 8, opts.teams ? '#ffe14a' : '#d9d6f0', 1, 'center');
+    drawText(ctx, opts.right || 'J  CONTINUE   ESC  BACK', W - 8, 9, '#ffffff', 1, 'right');
 
     // --- the roster ---
-    const acol = PLAYER_COLORS[active];
+    const acol = colOf(active);
     chars.forEach((ch, k) => {
       const r = this.charTileRect(k, chars.length);
       const here = slots.map((sl, i) => (sl.type !== 'off' && sl.char === k ? i : -1)).filter((i) => i >= 0);
@@ -1466,14 +1475,14 @@ export class Renderer {
       here.forEach((i, n) => {
         const tx = r.x + 6 + n * 11, ty = r.y + 6 + (i === active ? Math.sin(t * 0.14) * 1.2 : 0);
         ctx.fillStyle = '#0c0b1c'; ctx.beginPath(); ctx.arc(tx, ty, 5.6, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = PLAYER_COLORS[i]; ctx.beginPath(); ctx.arc(tx, ty, 4.6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = colOf(i); ctx.beginPath(); ctx.arc(tx, ty, 4.6, 0, Math.PI * 2); ctx.fill();
         drawText(ctx, String(i + 1), tx, ty - 2.5, '#101020', 1, 'center');
       });
     });
 
     // --- the four player panels ---
     slots.forEach((sl, i) => {
-      const r = this.slotPanelRect(i), col = PLAYER_COLORS[i], cx = r.x + r.w / 2, on = sl.type !== 'off', act = i === active;
+      const r = this.slotPanelRect(i), col = colOf(i), cx = r.x + r.w / 2, on = sl.type !== 'off', act = i === active;
       if (act) { ctx.fillStyle = col; ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4); }
       ctx.fillStyle = on ? '#14132b' : '#100f22'; ctx.fillRect(r.x, r.y, r.w, r.h);
       if (!on) {
@@ -1502,11 +1511,12 @@ export class Renderer {
       ctx.fillStyle = 'rgba(8,8,24,0.8)'; ctx.fillRect(r.x, r.y + r.h - 32, r.w, 32);
       drawText(ctx, ch.name, cx, r.y + r.h - 30, '#ffffff', 2, 'center', '#000000');
       if (ch.lastName) drawText(ctx, ch.lastName, cx, r.y + r.h - 16, '#d9d6f0', 1, 'center');
-      drawText(ctx, ch.palettes[sl.alt].name, cx, r.y + r.h - 8, col, 1, 'center');
+      // in teams the last line says which team; otherwise the skin
+      drawText(ctx, opts.teams ? TEAM_NAMES[(sl.team | 0) % 3] + ' TEAM' : ch.palettes[sl.alt].name, cx, r.y + r.h - 8, col, 1, 'center');
       if (act) { const by = r.y - 9 + Math.sin(t * 0.14) * 1.5; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 5, by); ctx.lineTo(cx + 5, by); ctx.lineTo(cx, by + 5); ctx.closePath(); ctx.fill(); }
     });
     const a = slots[active];
-    const hint = '1-4  SLOT     W A S D  FIGHTER     K  SKIN' + (active > 0 ? '     L  ' + (a.type === 'off' ? 'ADD' : 'REMOVE') : '') + (a.type === 'cpu' ? '     U / I  CPU LEVEL' : '');
+    const hint = '1-4  SLOT   W A S D  FIGHTER   K  SKIN' + (opts.teams && a.type !== 'off' ? '   Y  TEAM' : '') + (active > 0 ? '   L  ' + (a.type === 'off' ? 'ADD' : 'REMOVE') : '') + (a.type === 'cpu' ? '   U / I  CPU LEVEL' : '');
     drawText(ctx, opts.hint || hint, W / 2, H - 10, '#ffffff', 1, 'center', '#000000');
     if (opts.banner) {
       ctx.fillStyle = 'rgba(8,8,24,0.86)'; ctx.fillRect(0, 70, W, 26);

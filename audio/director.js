@@ -5,6 +5,7 @@
 //   const d = new SoundDirector();
 //   for (const e of d.update(state)) sfx.play(e.name, e.strength, e.pan);
 import { getCharacter } from '../characters/index.js';
+import { teamsLeft } from '../engine/sim.js';
 
 const DODGES = { roll: 1, spotdodge: 1, airdodge: 1, ledgeRoll: 1 };
 
@@ -48,7 +49,7 @@ export class SoundDirector {
           else if (s === 'throwing') add('throw');
           else if (s === 'ledge') add('ledge');
           else if (s === 'dead') add('ko');
-          else if (s === 'out') add(state.fighters.filter((o) => o.state !== 'out').length <= 1 ? 'game' : 'ko');
+          else if (s === 'out') add(teamsLeft(state) <= 1 ? 'game' : 'ko');
           else if (s === 'respawn') add('respawn');
           else if (s === 'knockdown') add('knockdown');
           else if (s === 'dash') add('dash');

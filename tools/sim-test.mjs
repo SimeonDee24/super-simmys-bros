@@ -1244,4 +1244,20 @@ for (const hold of [0, 30]) {
     check('Falcon Kick: slides forward on the ground (14%), dives down at an angle in the air', slide > 50 && a.grounded && g === 14 && b.move === 'falconKickAir' && b.y > by + 20 * FX && b.x > bx + 20 * FX, `${slide.toFixed(0)}px, ${g}%`); }
 }
 
+// Teams: no friendly fire, and the match is over when one team is left
+{
+  const { teamsLeft } = await import('../engine/sim.js');
+  const two = (teams) => createMatch({ ...setup, players: [{ charId: 'simeon', alt: 0, team: teams[0] }, { charId: 'kaelyn', alt: 0, team: teams[1] }, { charId: 'luca', alt: 0, team: teams[2] }] });
+  const s = two([0, 0, 1]); const [a, mate, foe] = s.fighters;
+  mate.x = a.x + 24 * FX; foe.x = a.x + 26 * FX;
+  step(s, [BTN.SMASH, 0, 0]); for (let i = 0; i < 60; i++) step(s, [0, 0, 0]);
+  check('teams: a smash hits the opponent but not the teammate standing right there', foe.percent > 0 && mate.percent === 0, `${mate.percent / 10}% / ${foe.percent / 10}%`);
+  const g = two([0, 0, 1]); const [b, m2] = g.fighters; m2.x = b.x + 30 * FX; g.fighters[2].x = 900 * FX;
+  step(g, [BTN.SPECIAL | BTN.RIGHT, 0, 0]); for (let i = 0; i < 40; i++) step(g, [0, 0, 0]);
+  check('teams: no grabbing or hitting a teammate with a special either', m2.percent === 0 && m2.state !== 'grabbed');
+  const e = two([0, 0, 1]); e.fighters[2].stocks = 0; e.fighters[2].state = 'out';
+  const f = two([0, 1, 1]); f.fighters[1].state = 'out';
+  check('teams: the match is over once only one team is left (2 on one team still counts as 1)', teamsLeft(e) === 1 && teamsLeft(f) === 2 && teamsLeft(createMatch(setup)) === 2);
+}
+
 process.exit(fails ? 1 : 0);

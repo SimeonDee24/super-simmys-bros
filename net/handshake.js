@@ -4,7 +4,7 @@
 // would simulate the match differently and drift apart.
 import { GAME_VERSION, compareVersions } from '../config/version.js';
 
-export const NET_PROTOCOL = 3; // bump when the wire format changes
+export const NET_PROTOCOL = 4; // bump when the wire format changes
 
 export function makeHello() {
   return { type: 'hello', version: GAME_VERSION, protocol: NET_PROTOCOL };

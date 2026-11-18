@@ -383,13 +383,13 @@ export class CpuController {
     const me = state.fighters[slot];
     let best = null, bestD = Infinity;
     for (const f of state.fighters) {
-      if (f.slot === slot || f.state === 'out') continue;
+      if (f.slot === slot || f.state === 'out' || f.team === me.team) continue;   // never a teammate
       let d = Math.abs(f.x - me.x) + Math.abs(f.y - me.y);
       if (f.state === 'dead' || f.state === 'respawn') d += 400 * FX;   // prefer someone who can be fought now
       if (f.slot === this.target) d -= 40 * FX;
       if (d < bestD) { bestD = d; best = f; }
     }
-    if (!best) best = state.fighters.find((f) => f.slot !== slot);   // everyone else is out: the match is over
+    if (!best) best = state.fighters.find((f) => f.slot !== slot && f.team !== me.team) || state.fighters.find((f) => f.slot !== slot);   // everyone else is out: the match is over
     if (best.slot !== this.target) { this.target = best.slot; this.seen = []; this.lastThreat = null; }
     return best;
   }

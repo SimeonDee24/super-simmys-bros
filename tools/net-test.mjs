@@ -187,5 +187,22 @@ for (const [name, friends, lag, cpu] of [
   for (let t = 0; t < 120; t++) { p.net.advance(TICK); host.tick(mash[0]); a.tick(mash[1]); }
   check('when a friend\'s game stops, the host is told who and why, and it carries on when they are back', !!w && w.slot === a.me && w.away && !host.waiting() && sameGame([host, a]), JSON.stringify(w));
 }
+// Teams online: the host switches to teams, friends pick their team, and the match
+// is the same everywhere and ends with one team left.
+{
+  const p = party(3, { delay: 40, jitter: 20 });
+  const [host, a, b, c] = p.rooms;
+  host.setMode('teams');
+  for (let i = 0; i < 20; i++) p.net.advance(TICK);
+  host.setTeam(0, 0); a.setTeam(a.me, 0); b.setTeam(b.me, 1); c.setTeam(c.me, 1);
+  for (let i = 0; i < 20; i++) p.net.advance(TICK);
+  const want = [[0, 0], [a.me, 0], [b.me, 1], [c.me, 1]];
+  const lobbyOk = p.rooms.every((r) => r.mode === 'teams') && want.every(([i, tm]) => host.slots[i].team === tm && p.rooms.every((r) => r.slots[i].team === tm));
+  host.start('nest', 55); for (let i = 0; i < 20; i++) p.net.advance(TICK);
+  const t = play(p, 60 * 60 * 6);
+  const { teamsLeft } = await import('../engine/sim.js');
+  check('teams online: the mode and teams reach everyone, and the match ends the same everywhere with one team left', lobbyOk && sameGame(p.rooms) && p.rooms.every((r) => teamsLeft(r.session.confirmed) === 1) && host.match.teams.slice().sort().join() === '0,0,1,1',
+    `${Math.round(t / 60)}s`);
+}
 check('version in the hello matches the game', typeof GAME_VERSION === 'string');
 process.exit(fails ? 1 : 0);

@@ -18,11 +18,12 @@ const DEFAULTS = {
   // The four fighter slots on the select screen. type: 'human' (slot 1 only),
   // 'cpu' or 'off'; char and alt index the roster and its skins; level is the CPU level.
   slots: [
-    { type: 'human', char: 0, alt: 0, level: 'lv3' },
-    { type: 'cpu', char: 0, alt: 1, level: 'lv3' },
-    { type: 'off', char: 1, alt: 0, level: 'lv3' },
-    { type: 'off', char: 2, alt: 0, level: 'lv3' },
+    { type: 'human', char: 0, alt: 0, level: 'lv3', team: 0 },
+    { type: 'cpu', char: 0, alt: 1, level: 'lv3', team: 1 },
+    { type: 'off', char: 1, alt: 0, level: 'lv3', team: 0 },
+    { type: 'off', char: 2, alt: 0, level: 'lv3', team: 1 },
   ],
+  mode: 'ffa',   // 'ffa' (free-for-all) or 'teams'
 };
 
 export function loadSettings() {

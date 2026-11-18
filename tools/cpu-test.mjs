@@ -185,4 +185,20 @@ for (const n of [3, 4]) {
   check(`${n}-fighter free-for-all replays identically`, JSON.stringify(a.s) === JSON.stringify(b.s));
 }
 
+// Teams: two CPUs against two, they fight the other team only and one team wins.
+{
+  const { teamsLeft } = await import('../engine/sim.js');
+  const s = createMatch({ stageId: 'nest', players: ['simeon', 'max', 'osama', 'sam'].map((charId, i) => ({ charId, alt: 0, team: i < 2 ? 0 : 1 })), stocks: 2, seed: 21 });
+  const cpus = [0, 1, 2, 3].map((i) => new CpuController('lv4', 70 + i));
+  const dealt = [0, 0, 0, 0]; let t = 0;
+  for (; t < 60 * 60 * 6; t++) {
+    const before = s.fighters.map((f) => f.percent);
+    step(s, cpus.map((c, i) => c.sample(s, i)));
+    s.fighters.forEach((f, i) => { if (f.percent > before[i]) dealt[i] += f.percent - before[i]; });
+    if (teamsLeft(s) <= 1) break;
+  }
+  const winners = s.fighters.filter((f) => f.state !== 'out').map((f) => f.team);
+  check('2v2 CPU match: everyone fights, and it ends with one team standing', teamsLeft(s) === 1 && new Set(winners).size === 1 && dealt.every((d) => d > 100), `${Math.round(t / 60)}s, damage taken ${dealt.map((d) => Math.round(d / 10)).join(' / ')}%`);
+}
+
 process.exit(fails ? 1 : 0);

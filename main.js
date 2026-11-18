@@ -5,11 +5,11 @@
 import { CONFIG } from './config/config.js';
 import { GAME_VERSION } from './config/version.js';
 import { Keyboard, KeyboardSource, InputRecorder } from './engine/input.js';
-import { createMatch, step, hashState } from './engine/sim.js';
+import { createMatch, step, hashState, teamsLeft } from './engine/sim.js';
 import { CpuController, CPU_ORDER, cpuLabel } from './engine/cpu.js';
 import { STAGES } from './stages/index.js';
 import { CHARACTERS } from './characters/index.js';
-import { Renderer } from './render/renderer.js';
+import { Renderer, TEAM_COLORS } from './render/renderer.js';
 import { loadSettings, saveSettings } from './ui/settings.js';
 import { checkForUpdate, UPDATE_MESSAGE } from './ui/updatecheck.js';
 import { sfx } from './audio/sfx.js';
@@ -52,6 +52,7 @@ function slots() {
     sl.char = ((sl.char | 0) % n + n) % n;
     sl.alt = ((sl.alt | 0) % CHARACTERS[sl.char].palettes.length + CHARACTERS[sl.char].palettes.length) % CHARACTERS[sl.char].palettes.length;
     if (!CPU_ORDER.includes(sl.level)) sl.level = 'lv3';
+    if (!(sl.team >= 0 && sl.team <= 2)) sl.team = [0, 1, 0, 1][i];
     sl.type = i === 0 ? 'human' : sl.type === 'off' ? 'off' : 'cpu';
   });
   if (!ss.some((sl, i) => i > 0 && sl.type !== 'off')) ss[1].type = 'cpu';
@@ -62,11 +63,15 @@ const lobbySlots = () => (online ? online.room.slots : slots());
 // The slot this player's keys change: friends in a room only have their own.
 const curSlot = () => (online && !online.room.isHost ? Math.max(0, online.room.me) : selSlot);
 
+// Teams: how many different teams the fighters in these slots are on.
+const teamCount = (ss) => new Set(ss.filter((sl) => sl.type !== 'off').map((sl) => sl.team | 0)).size;
+const teamsOn = () => (online ? online.room.mode === 'teams' : settings.mode === 'teams');
+
 function startMatch(stage = STAGES[0]) {
   const active = slots().map((sl, port) => ({ ...sl, port })).filter((sl) => sl.type !== 'off');
   const state = createMatch({
     stageId: stage.id,
-    players: active.map((sl) => ({ charId: CHARACTERS[sl.char].id, alt: sl.alt })),
+    players: active.map((sl) => ({ charId: CHARACTERS[sl.char].id, alt: sl.alt, team: settings.mode === 'teams' ? sl.team : undefined })),
     stocks: CONFIG.DEFAULT_STOCKS,
     seed: CONFIG.DEFAULT_SEED,
   });
@@ -78,7 +83,7 @@ function startMatch(stage = STAGES[0]) {
     recorder: new InputRecorder(active.length),
     endTimer: 0,
   };
-  renderer.setPlayers(active.map((sl) => ({ port: sl.port, label: sl.type === 'human' ? 'P' + (sl.port + 1) : 'CPU' })));
+  renderer.setPlayers(active.map((sl) => ({ port: sl.port, label: sl.type === 'human' ? 'P' + (sl.port + 1) : 'CPU', color: settings.mode === 'teams' ? TEAM_COLORS[sl.team] : null })));
   renderer.resetEffects();
   director.reset();
   sfx.play('start');
@@ -90,7 +95,7 @@ function startMatch(stage = STAGES[0]) {
 function startOnlineMatch() {
   const room = online.room, info = room.match;
   match = { online: true, state: room.session.state, endTimer: 0 };
-  renderer.setPlayers(info.ports.map((port, k) => ({ port, label: info.levels[k] !== null ? 'CPU' : 'P' + (port + 1) })));
+  renderer.setPlayers(info.ports.map((port, k) => ({ port, label: info.levels[k] !== null ? 'CPU' : 'P' + (port + 1), color: info.teams ? TEAM_COLORS[info.teams[k]] : null })));
   renderer.resetEffects();
   director.reset();
   sfx.play('start');
@@ -166,7 +171,7 @@ function tick() {
     for (const e of director.update(match.state)) sfx.play(e.name, e.strength, e.pan);
     // One fighter (or nobody) left standing: show GAME!, then leave. (The
     // victory screen replaces this in milestone 5.)
-    if (match.state.fighters.filter((f) => f.state !== 'out').length <= 1 && ++match.endTimer >= CONFIG.GAME_END_FRAMES) {
+    if (teamsLeft(match.state) <= 1 && ++match.endTimer >= CONFIG.GAME_END_FRAMES) {
       screen = 'stageSelect'; match = null;
     }
   }
@@ -201,15 +206,16 @@ function drawScreen() {
     const room = online.room, host = room.isHost;
     renderer.drawCharSelect(CHARACTERS, room.slots, curSlot(), (i) => cpuLabel(room.slots[i].level), {
       title: 'ROOM CODE  ' + online.code,
-      right: host ? 'J  PICK A STAGE     ESC  CLOSE THE ROOM' : 'THE HOST STARTS THE MATCH     ESC  LEAVE',
+      right: host ? 'J  STAGE   ESC  CLOSE ROOM' : 'ESC  LEAVE',
       tag: (i) => (i === room.me ? 'YOU' : room.slots[i].owner === 0 ? 'HOST' : 'FRIEND'),
       offText: (i) => (host ? 'OPEN.  ' + (i + 1) + '  ADDS A CPU' : 'OPEN'),
-      hint: host ? null : 'W A S D  FIGHTER     K  SKIN',
+      hint: host ? null : 'W A S D  FIGHTER     K  SKIN' + (room.mode === 'teams' ? '     Y  TEAM' : ''),
+      teams: room.mode === 'teams', modeKey: host,
       banner: !host && room.phase === 'stage' ? 'THE HOST IS CHOOSING A STAGE' : null,
     });
     return;
   }
-  if (screen === 'charSelect') { renderer.drawCharSelect(CHARACTERS, slots(), selSlot, (i) => cpuLabel(slots()[i].level)); return; }
+  if (screen === 'charSelect') { renderer.drawCharSelect(CHARACTERS, slots(), selSlot, (i) => cpuLabel(slots()[i].level), { teams: settings.mode === 'teams' }); return; }
   if (screen === 'stageSelect') { renderer.drawStageSelect(stageTiles, stageIndex); return; }
   const opts = { showBoxes: settings.showBoxes };
   if (settings.showDebug) {
@@ -340,8 +346,11 @@ window.addEventListener('keydown', (e) => {
     else if (c === 'KeyK') nextSkin(at);
     else if (c === 'KeyL') toggleSlot(at);
     else if (c === 'KeyU' || c === 'KeyI') changeLevel(at, c === 'KeyU' ? -1 : 1);
+    else if (c === 'KeyT') toggleMode();
+    else if (c === 'KeyY') nextTeam(at);
     else if (c === 'KeyJ' || c === 'Enter' || c === 'Space') {
-      if (!online) screen = 'stageSelect';
+      if (teamsOn() && teamCount(lobbySlots()) < 2) say('PUT FIGHTERS ON AT LEAST TWO TEAMS (Y CHANGES TEAM)', 2600);
+      else if (!online) screen = 'stageSelect';
       else if (!online.room.isHost) say('THE HOST STARTS THE MATCH', 1600);
       else if (online.room.activeCount() < 2) say('WAIT FOR A FRIEND TO JOIN, OR PRESS 2 TO ADD A CPU', 2600);
       else { online.room.setPhase('stage'); screen = 'stageSelect'; }
@@ -409,6 +418,21 @@ function toggleSlot(i) {
   if (sl.type === 'off') { sl.type = 'cpu'; freeSkin(ss, i); }
   else if (ss.filter((o) => o.type !== 'off').length > 2) sl.type = 'off';
   else say('A MATCH NEEDS AT LEAST TWO FIGHTERS', 1600);
+  saveSettings(settings);
+}
+// Free-for-all or teams. Online, only the host decides.
+function toggleMode() {
+  if (online) { if (online.room.isHost) online.room.setMode(online.room.mode === 'teams' ? 'ffa' : 'teams'); else say('THE HOST CHOOSES TEAMS OR FREE-FOR-ALL', 1600); return; }
+  settings.mode = settings.mode === 'teams' ? 'ffa' : 'teams';
+  saveSettings(settings);
+}
+// Red, then blue, then green.
+function nextTeam(i) {
+  if (!teamsOn()) { say('PRESS T TO PLAY IN TEAMS', 1400); return; }
+  if (online) { online.room.setTeam(i, (online.room.slots[i].team + 1) % 3); return; }
+  const sl = slots()[i];
+  if (sl.type === 'off') return;
+  sl.team = (sl.team + 1) % 3;
   saveSettings(settings);
 }
 function changeLevel(i, d) {

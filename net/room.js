@@ -26,7 +26,8 @@ export class Room {
     this.id = isHost ? 0 : -1;        // who we are: 0 is the host, friends get 1, 2, 3...
     this.me = isHost ? 0 : -1;        // our slot
     // slot: { type: 'human' | 'cpu' | 'off', owner: id of the machine playing it (-1 for none), char, alt, level }
-    this.slots = Array.from({ length: MAX_SLOTS }, (_, i) => ({ type: i === 0 ? 'human' : 'off', owner: i === 0 ? 0 : -1, char: i === 0 ? first.char : i % CHARACTERS.length, alt: i === 0 ? first.alt : 0, level: 'lv3' }));
+    this.slots = Array.from({ length: MAX_SLOTS }, (_, i) => ({ type: i === 0 ? 'human' : 'off', owner: i === 0 ? 0 : -1, char: i === 0 ? first.char : i % CHARACTERS.length, alt: i === 0 ? first.alt : 0, level: 'lv3', team: [0, 1, 0, 1][i] }));
+    this.mode = 'ffa';                // 'ffa' or 'teams' (the host decides)
     this.phase = 'lobby';             // 'lobby' | 'stage' (host is choosing a stage) | 'match'
     this.hostPhase = 'lobby';
     this.links = new Map();           // host: id -> link to that friend
@@ -84,6 +85,11 @@ export class Room {
       sl.char = m.char; sl.alt = ((m.alt | 0) % n + n) % n;
       freeSkin(this.slots, i);
       this.sendLobby();
+    } else if (m.t === 'team') {
+      const i = this.slotOf(id);
+      if (i < 0 || this.phase === 'match') return;
+      this.slots[i].team = ((m.team | 0) % 3 + 3) % 3;
+      this.sendLobby();
     } else if (m.t === 'i') {
       // only the owner of a fighter may send its inputs
       if (!this.session || !this.match || m.m !== this.match.id || this.match.owners[m.s] !== id || !Array.isArray(m.v)) return;
@@ -120,7 +126,7 @@ export class Room {
   broadcast(m) { for (const l of this.links.values()) if (l.joined) l.send(m); }
   sendLobby() {
     if (!this.isHost) return;
-    for (const [id, l] of this.links) if (l.joined) l.send({ t: 'lobby', slots: this.slots, you: id, phase: this.phase === 'match' ? 'lobby' : this.phase });
+    for (const [id, l] of this.links) if (l.joined) l.send({ t: 'lobby', slots: this.slots, you: id, mode: this.mode, phase: this.phase === 'match' ? 'lobby' : this.phase });
   }
   // Who may change slot i from this machine.
   canEdit(i) {
@@ -153,6 +159,20 @@ export class Room {
     sl.level = CPU_ORDER[(CPU_ORDER.indexOf(sl.level) + d + CPU_ORDER.length) % CPU_ORDER.length];
     this.sendLobby();
   }
+  // Host: free-for-all or teams.
+  setMode(mode) {
+    if (!this.isHost || this.phase === 'match') return;
+    this.mode = mode === 'teams' ? 'teams' : 'ffa';
+    this.sendLobby();
+  }
+  // Change slot i's team (friends: only their own slot).
+  setTeam(i, team) {
+    if (!this.canEdit(i) || this.slots[i].type === 'off') return;
+    team = ((team | 0) % 3 + 3) % 3;
+    if (!this.isHost) { this.hostLink.send({ t: 'team', team }); return; }
+    this.slots[i].team = team;
+    this.sendLobby();
+  }
   setPhase(phase) {
     if (!this.isHost || this.phase === 'match') return;
     this.phase = phase;
@@ -163,9 +183,12 @@ export class Room {
     if (!this.isHost || this.phase === 'match') return false;
     const ports = this.slots.map((s, i) => (s.type !== 'off' ? i : -1)).filter((i) => i >= 0);
     if (ports.length < 2) return false;
+    const teams = this.mode === 'teams' ? ports.map((i) => this.slots[i].team) : null;
+    if (teams && new Set(teams).size < 2) return false;
     const info = {
       id: ++this.matchNo,
-      setup: { stageId, players: ports.map((i) => ({ charId: CHARACTERS[this.slots[i].char].id, alt: this.slots[i].alt })), stocks: CONFIG.DEFAULT_STOCKS, seed },
+      setup: { stageId, players: ports.map((i, k) => ({ charId: CHARACTERS[this.slots[i].char].id, alt: this.slots[i].alt, team: teams ? teams[k] : undefined })), stocks: CONFIG.DEFAULT_STOCKS, seed },
+      teams,                                                                                  // fighter number -> team, or null in a free-for-all
       ports,                                                                                  // fighter number -> slot
       owners: ports.map((i) => (this.slots[i].type === 'human' ? this.slots[i].owner : 0)),   // fighter number -> machine that plays it
       levels: ports.map((i) => (this.slots[i].type === 'cpu' ? this.slots[i].level : null)),  // CPU level, for CPU fighters
@@ -189,7 +212,7 @@ export class Room {
     else if (m.t === 'refuse') this.fail(String(m.reason));
     else if (m.t === 'lobby') {
       const first = this.me < 0;
-      this.slots = m.slots; this.id = m.you; this.me = this.slotOf(m.you);
+      this.slots = m.slots; this.id = m.you; this.me = this.slotOf(m.you); this.mode = m.mode === 'teams' ? 'teams' : 'ffa';
       this.hostPhase = m.phase;
       if (!this.session) this.phase = m.phase;
       if (first) this.emit('entered');

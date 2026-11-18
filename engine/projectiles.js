@@ -135,7 +135,7 @@ export function resolveProjectileHits(state) {
     const ball = { cx: p.x, cy: p.y, r: (d.r + d.hitPad) * FX };
     const src = { x: p.x, dir: p.vx >= 0 ? 1 : -1 };
     for (const vic of state.fighters) {
-      if (vic.slot === p.owner || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state]) continue;
+      if (vic.slot === p.owner || vic.team === state.fighters[p.owner].team || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state]) continue;
       const owner = state.fighters[p.owner];
       const shielding = SHIELDING[vic.state];
       const parrying = vic.state === 'shieldDrop' && vic.stateFrame <= CONFIG.PARRY_WINDOW;
