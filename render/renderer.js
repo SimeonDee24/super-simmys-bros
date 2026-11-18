@@ -410,7 +410,24 @@ export class Renderer {
         ctx.globalAlpha = 1;
         if (act < 0.25) { ctx.fillStyle = 'rgba(255,240,170,' + (0.8 - act * 3) + ')'; ctx.beginPath(); ctx.arc(ox + dir * 4, oy, 4 + act * 20, 0, Math.PI * 2); ctx.fill(); }
       }
-    } else if (g.kind === 'champagne') {
+    } else if (g.kind === 'whiskey') held(() => {
+      // a square-shouldered bottle of whisky: amber glass, black cap, cream label
+      poly([[-1.2, -1], [1.2, -1], [1.4, 5], [3.6, 7], [3.6, 17], [-3.6, 17], [-3.6, 7], [-1.4, 5]], OUT);
+      poly([[-2.9, 7.6], [2.9, 7.6], [2.9, 16.3], [-2.9, 16.3]], '#b8641e');
+      poly([[-2.9, 7.6], [-1.5, 7.6], [-1.5, 16.3], [-2.9, 16.3]], '#e09a48');
+      poly([[-0.7, -0.4], [0.7, -0.4], [0.8, 5.4], [-0.8, 5.4]], '#b8641e');
+      ctx.fillStyle = '#1b1b22'; ctx.fillRect(-1, -1.6, 2, 2);
+      ctx.fillStyle = '#f1e6c8'; ctx.fillRect(-2.9, 10.4, 5.8, 3.6);
+      ctx.fillStyle = '#1b1b22'; ctx.fillRect(-1.6, 11.6, 3.2, 1);
+    });
+    else if (g.kind === 'moneyGun') held(() => {
+      // a toy money gun: green body, grip down along the hand, a slot of bills at the top
+      ctx.fillStyle = OUT; ctx.fillRect(-2.6, -1, 5.2, 11); ctx.fillRect(-2.6, 8, 8, 4);
+      ctx.fillStyle = '#2f9e5b'; ctx.fillRect(-1.9, -0.3, 3.8, 9.6); ctx.fillRect(-1.9, 8.7, 6.6, 2.6);
+      ctx.fillStyle = '#8fe0a8'; ctx.fillRect(-1.9, -0.3, 1.2, 9.6);
+      ctx.fillStyle = '#7fc98f'; ctx.fillRect(2.4, 7, 1.6, 4.4);
+    });
+    else if (g.kind === 'champagne') {
       // champagne bottle: dark green glass, gold foil neck; spraying foam once the cork is out
       held(() => {
         poly([[-1.3, -1], [1.3, -1], [1.6, 4], [3.4, 6.5], [3.4, 15], [-3.4, 15], [-3.4, 6.5], [-1.6, 4]], OUT);
@@ -937,6 +954,16 @@ export class Renderer {
       ctx.restore();
       return;
     }
+    if (d.draw === 'bill') {
+      // one bill from the money gun, fluttering
+      ctx.save(); ctx.globalAlpha = fade * Math.min(1, p.life / 4);
+      ctx.translate(x, y); ctx.rotate(p.life * 0.7 * (p.vx >= 0 ? 1 : -1)); ctx.scale(1, 0.55 + 0.45 * Math.abs(Math.sin(p.life * 0.5)));
+      ctx.fillStyle = '#100d16'; ctx.fillRect(-4, -2.2, 8, 4.4);
+      ctx.fillStyle = '#7fc98f'; ctx.fillRect(-3.4, -1.6, 6.8, 3.2);
+      ctx.fillStyle = '#2f7a46'; ctx.fillRect(-1, -1, 2, 2);
+      ctx.restore();
+      return;
+    }
     if (d.draw === 'cork') {
       // a champagne cork tumbling, with a streak of foam behind it
       ctx.save(); ctx.globalAlpha = fade;
@@ -1022,7 +1049,7 @@ export class Renderer {
   drawChargeMeter(state, f, ch, camX, camY) {
     if (f.state !== 'attack' || !f.move || !f.charge) return;
     const mv = ch.moves[f.move];
-    if (!mv.charge || f.stateFrame > (mv.spawn ? mv.spawn.frame : mv.charge.at + 1)) return;
+    if (!mv.charge || mv.stream || f.stateFrame > (mv.spawn ? mv.spawn.frame : mv.charge.at + 1)) return;   // (streams are held, not charged)
     const ctx = this.ctx, w = 16, x = toPx(f.x) - camX - (w >> 1), y = toPx(f.y) - camY - 52;
     const full = f.charge >= mv.charge.max;
     ctx.fillStyle = '#100d16'; ctx.fillRect(x - 1, y - 1, w + 2, 5);

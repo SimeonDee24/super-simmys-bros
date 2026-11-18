@@ -79,38 +79,38 @@ const parts = {
   head_hurt: face([4, 9, 'bbkk'], [5, 9, 'kkkk'], [6, 10, 'eek'], [10, 10, 'rr']),
   hair: { pivot: [13, 28], px: HAIR },
   // a shirt (t), collar and cuffs (O), buttons or zip (Z) down the front:
-  // a flat chest and a round belly hanging over the belt
+  // broad and thick all the way down, not just at the belly
   torso: {
     pivot: [7, 26],
     px: [
-      '......kkkk............',
-      '.....OKkkkO...........',
-      '....TOOkkOOu..........',
-      '...TTtOttOtuu.........',
-      '..TTttttZtttu.........',
-      '.TTtttttttttu.........',
-      'TTtttttttZttu.........',
-      'TTtttttttttuu.........',
-      'TTxtttttttZtuu........',
-      'TTTxtttttttttu........',
-      'TTtTxttttttZttu.......',
-      'TTttxtttttttttuu......',
-      'TTttttttttttZtttu.....',
-      'TTttttttttttttttuu....',
-      'TTtttttttttttZttttu...',
-      'TTtttttttttttttttttu..',
-      'TTttttttttttttZttttu..',
-      'TTtttttttttttttttttu..',
-      '.TTttttttttttttZtttu..',
-      '.TTxtttttttttttttuu...',
-      '.TTtxttttttttttuuu....',
-      '.xTTttttttttxxxx......',
-      '.BBBBBBBBBccB.........',
-      '.JJjjjjjjjjjii........',
-      '.JJjjjjjjjjjji........',
-      '.JJjjjjjjjjjii........',
-      '.JJjjjjjjjjjii........',
-      '..JJjjjjjjjii.........',
+      '......kkkk........',
+      '.....OKkkkO.......',
+      '...TTOOkkOOuu.....',
+      '..TTttOttOtttu....',
+      '.TTttttttZttttu...',
+      'TTTttttttttttttu..',
+      'TTtttttttttZtttu..',
+      'TTttttttttttttttu.',
+      'TTxttttttttZttttu.',
+      'TTTxttttttttttttu.',
+      'TTtTxttttttttZttu.',
+      'TTttxtttttttttttu.',
+      'TTtttttttttttZttu.',
+      'TTttttttttttttttu.',
+      'TTtttttttttttZttu.',
+      'TTtttttttttttttuu.',
+      'TTttttttttttttZtu.',
+      '.TTttttttttttttuu.',
+      '.TTxtttttttttttu..',
+      '.TTtxttttttttttu..',
+      '.TTtttttttttttu...',
+      '.xTTtttttttttxx...',
+      '.BBBBBBBBBBccB....',
+      '.JJjjjjjjjjjjii...',
+      '.JJjjjjjjjjjjji...',
+      '.JJjjjjjjjjjjii...',
+      '.JJjjjjjjjjjjii...',
+      '..JJjjjjjjjjii....',
     ],
   },
   // long sleeves on thicker arms, with a cuff at the wrist
@@ -149,25 +149,18 @@ const STAND = { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6
 const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: [-14, -18], footF: 25, footB: 35 };
 // belly first, chest out, arms swung back
 const BELLY_RUSH = { hip: [0, 2], torso: -10, head: -14, armF: [-50, 40], armB: [-70, 30], legF: [50, -40], legB: [-40, -20], ...FISTS, face: 'yell' };
-const FLOPPED = { rot: 82, hip: [16, 18], torso: 0, head: -40, armF: [160, 10], armB: [150, 20], legF: [-4, -6], legB: [-10, -10], handF: 'open', handB: 'open', face: 'hurt' };
 const TUCK = { hip: [0, -6], torso: 20, head: 6, armF: [70, 100], armB: [60, 100], legF: [90, -130], legB: [76, -124], ...FISTS };
 const HOLD_CHUTE = { torso: -2, head: -10, armF: [168, 6], armB: [-168, -6], legF: [12, -10], legB: [-12, -14], footF: 20, footB: 30, ...FISTS, face: 'smile' };
 
 const animations = {
-  // Pop the Bottle: shakes the champagne bottle (holding here while charging)
-  // and points it forward as the cork flies.
-  popTheBottle: anim(false, [
-    [4, { torso: 4, armF: [60, 60], armB: [-20, 40], legF: [10, -8], legB: [-8, -4], handF: 'fist' }],
-    [3, { torso: 6, armF: [40, 90], armB: [-20, 40], legF: [10, -8], legB: [-8, -4], handF: 'fist', face: 'smile' }],
-    [3, { torso: 6, armF: [70, 70], armB: [-20, 40], legF: [10, -8], legB: [-8, -4], handF: 'fist', face: 'smile' }],
-    [4, { torso: 6, armF: [40, 90], armB: [-20, 40], legF: [10, -8], legB: [-8, -4], handF: 'fist', face: 'smile' }],
-    [3, { torso: -6, head: -6, armF: [108, 6], armB: [-30, 40], legF: [18, -12], legB: [-14, -4], handF: 'fist', face: 'yell' }],
-    [12, { torso: -8, head: -8, armF: [112, 4], armB: [-30, 40], legF: [18, -12], legB: [-14, -4], handF: 'fist', face: 'smile' }],
-    [10, { torso: 2, armF: [60, 40], armB: [-20, 30], legF: [10, -8], legB: [-8, -4], handF: 'fist' }],
-    [1, STAND],
+  // Money Gun: levels a money gun and sprays bills (held here while the button is).
+  moneyGun: anim(false, [
+    [4, { torso: 4, armF: [50, 60], armB: [-20, 40], legF: [12, -10], legB: [-10, -6], handF: 'fist' }],
+    [4, { torso: 8, head: -4, armF: [92, 6], armB: [70, 30], legF: [18, -14], legB: [-14, -6], ...FISTS, face: 'yell' }],
+    [2, { torso: 8, head: -4, armF: [94, 4], armB: [72, 28], legF: [18, -14], legB: [-14, -6], ...FISTS, face: 'yell' }],
+    [12, { torso: 6, armF: [70, 30], armB: [30, 40], legF: [14, -10], legB: [-12, -6], ...FISTS }],
+    [8, STAND],
   ]),
-  // ...held a moment longer: the same, aimed and fired harder
-  get popTheBottleBig() { return this.popTheBottle; },
   // Hostile Takeover: lowers his shoulder and charges belly first.
   hostileTakeover: anim(false, [
     [6, { hip: [-1, 3], torso: -4, armF: [-30, 50], armB: [-40, 50], legF: [30, -40], legB: [-10, -30], ...FISTS }],
@@ -185,15 +178,19 @@ const animations = {
     [24, { ...HOLD_CHUTE, legF: [20, -24], legB: [-6, -20] }],
     [25, HOLD_CHUTE],
   ]),
-  // Make It Rain: flicks a stack of bills into the air, again and again.
-  makeItRain: anim(false, [
-    [5, { torso: 4, armF: [30, 80], armB: [-20, 40], legF: [10, -8], legB: [-8, -4], handF: 'fist' }],
-    ...Array.from({ length: 5 }, (_, i) => [4, i & 1
-      ? { torso: 2, head: -8, armF: [40, 90], armB: [-20, 40], legF: [10, -8], legB: [-8, -4], handF: 'fist', face: 'smile' }
-      : { torso: -2, head: -14, armF: [160, 10], armB: [-20, 40], legF: [10, -8], legB: [-8, -4], handF: 'open', face: 'smile' }]),
-    [10, { torso: -2, head: -14, armF: [160, 10], armB: [-160, -10], legF: [12, -8], legB: [-12, -4], handF: 'open', handB: 'open', face: 'smile' }],
-    [10, { torso: 2, armF: [60, 30], armB: [-30, 30], legF: [10, -8], legB: [-8, -4] }],
-    [1, STAND],
+  // Market Crash: hops up headfirst, then drops like a stone, backside first.
+  marketCrash: anim(false, [
+    [6, { hip: [0, 6], torso: 14, armF: [40, 60], armB: [-30, 60], legF: [50, -95], legB: [30, -80], ...FISTS }],
+    [8, { hip: [0, -2], torso: -8, head: -24, armF: [160, 20], armB: [140, 20], legF: [20, -30], legB: [-10, -30], ...FISTS, face: 'yell' }],
+    [8, { ...TUCK, rot: -30 }],
+    [8, { hip: [0, 0], torso: -6, head: -8, armF: [150, 20], armB: [-150, -20], legF: [86, -10], legB: [70, -16], handF: 'open', handB: 'open', face: 'yell' }],
+    [60, { hip: [0, 0], torso: -6, head: -8, armF: [160, 20], armB: [-160, -20], legF: [86, -10], legB: [70, -16], handF: 'open', handB: 'open', face: 'yell' }],
+  ]),
+  marketCrashLand: anim(false, [
+    [3, { hip: [0, 12], torso: -10, head: -6, armF: [110, 20], armB: [-110, -20], legF: [86, -10], legB: [70, -16], handF: 'open', handB: 'open', face: 'yell' }],
+    [16, { hip: [0, 11], torso: -4, head: -4, armF: [80, 20], armB: [-80, -20], legF: [86, -12], legB: [70, -16], handF: 'open', handB: 'open' }],
+    [10, { hip: [0, 6], torso: 10, armF: [40, 40], armB: [-30, 40], legF: [40, -60], legB: [-10, -40] }],
+    [3, STAND],
   ]),
   // --- Smash attacks ---
   // Money Bag: heaves a sack of cash back over his shoulder and slams it down in front.
@@ -206,16 +203,18 @@ const animations = {
     [16, { hip: [0, 2], torso: 16, armF: [60, 20], armB: [20, 40], legF: [24, -22], legB: [-16, -4], ...FISTS }],
     [8, STAND],
   ]),
-  // Executive Flop: a headbutt straight up, then he flops forward onto his belly.
+  // Last Call: swings a bottle in a big arc from in front of him, up over
+  // his head and down behind.
   usmash: anim(false, [
-    [4, { hip: [0, 4], torso: 18, head: 10, armF: [-20, 40], armB: [-40, 40], legF: [24, -30], legB: [-12, -20], ...FISTS }],
-    [3, { hip: [0, 4], torso: 18, head: 12, armF: [-24, 40], armB: [-44, 40], legF: [24, -30], legB: [-12, -20], ...FISTS }],
-    [3, { hip: [0, -3], torso: -6, head: -30, armF: [-60, 20], armB: [-70, 20], legF: [6, -4], legB: [-6, -4], footF: 30, footB: 30, ...FISTS, face: 'yell' }],
-    [6, { hip: [0, -3], torso: -4, head: -30, armF: [-60, 20], armB: [-70, 20], legF: [6, -4], legB: [-6, -4], footF: 30, footB: 30, ...FISTS, face: 'yell' }],
-    [4, { rot: 50, hip: [9, 8], torso: 0, head: -30, armF: [140, 20], armB: [130, 20], legF: [0, -6], legB: [-8, -10], handF: 'open', handB: 'open', face: 'yell' }],
-    [12, FLOPPED],
-    [8, { rot: 40, hip: [8, 10], torso: 10, armF: [100, 40], armB: [90, 40], legF: [40, -60], legB: [10, -40], handF: 'open', handB: 'open' }],
-    [8, STAND],
+    [4, { torso: 8, armF: [40, 50], armB: [-20, 40], legF: [12, -10], legB: [-10, -6], handF: 'fist' }],
+    [4, { hip: [0, 3], torso: 16, head: 6, armF: [20, 30], armB: [-30, 40], legF: [20, -24], legB: [-12, -14], handF: 'fist' }],
+    [2, { hip: [0, 3], torso: 16, head: 6, armF: [16, 30], armB: [-30, 40], legF: [20, -24], legB: [-12, -14], handF: 'fist', face: 'yell' }],
+    [3, { hip: [0, -1], torso: -4, head: -16, armF: [110, 10], armB: [-40, 30], legF: [8, -4], legB: [-8, -4], handF: 'fist', face: 'yell' }],
+    [3, { hip: [0, -1], torso: -10, head: -20, armF: [180, 4], armB: [-50, 30], legF: [8, -4], legB: [-8, -4], handF: 'fist', face: 'yell' }],
+    [3, { hip: [0, -1], torso: -16, head: -14, armF: [240, 10], armB: [-50, 30], legF: [8, -4], legB: [-8, -4], handF: 'fist', face: 'yell' }],
+    [12, { hip: [0, 1], torso: -10, armF: [268, 20], armB: [-40, 30], legF: [8, -6], legB: [-8, -4], handF: 'fist' }],
+    [10, { torso: 2, armF: [60, 30], armB: [-20, 30], legF: [8, -6], legB: [-8, -4], handF: 'fist' }],
+    [6, STAND],
   ]),
   // Cannonball: hops up with his knees tucked and slams down on his backside.
   dsmash: anim(false, [
@@ -240,13 +239,13 @@ const hits = (from, to, list, damage, angle, bkb, kbg, extra) =>
   list.map(([at, r]) => hit(from, to, at, r, damage, angle, bkb, kbg, extra));
 
 const moves = {
-  // Neutral special: Pop the Bottle. Shakes a champagne bottle and pops the
-  // cork straight ahead (6%). Hold a moment longer and it shoots out much
-  // harder (12%).
-  popTheBottle: { faf: 40, charge: { at: 13, max: 14 }, variant: { minCharge: 9, move: 'popTheBottleBig' }, gear: { kind: 'champagne', from: 0, to: 34, active: [17, 30] },
-    spawn: { frame: 17, from: 'fistF', projectile: 'cork' }, hitboxes: [] },
-  popTheBottleBig: { faf: 46, charge: { at: 13, max: 14 }, gear: { kind: 'champagne', from: 0, to: 40, active: [17, 34] },
-    spawn: { frame: 17, from: 'fistF', projectile: 'bigCork' }, hitboxes: [] },
+  // Neutral special: Money Gun. Hold the button to spray a stream of cash
+  // in front of him (about 1% a bill), for up to two and a half seconds. Like
+  // a fire breath, the range shrinks the longer it is used, and grows back
+  // while he does other things.
+  moneyGun: { faf: 30, float: { gravity: 40, fall: 50 }, charge: { at: 9, max: 150 },
+    stream: { every: 4, from: 'fistF', use: 6, minLife: 8, projectiles: ['billHigh', 'bill', 'billLow'] },
+    gear: { kind: 'moneyGun', from: 2, to: 24 }, hitboxes: [] },
 
   // Side special: Hostile Takeover. Charges belly first (12%). Stays on the
   // floor when used there. Once per jump in the air.
@@ -264,11 +263,22 @@ const moves = {
     ledgeGrab: { from: 5, rising: true },
     hitboxes: hits(5, 12, [['chest', 10], ['neck', 8]], 9, 80, 50, 70) },
 
-  // Down special: Make It Rain. Flings handful after handful of cash into the
-  // air around him: four small hits (2% each), then a last burst (5%).
-  makeItRain: { faf: 50, float: { gravity: 30, fall: 40 }, gear: { kind: 'cashRain', from: 6, to: 42, active: [8, 34] }, hitboxes: [
-      ...[0, 1, 2, 3].map((i) => hit(9 + i * 5, 10 + i * 5, 'chest', 20, 2, 80, 0, 100, { fkb: 26, group: i, radial: true, off: [0, -6] })),
-      hit(29, 31, 'chest', 24, 5, 70, 55, 70, { group: 4, radial: true, off: [0, -6] }),
+  // Down special: Market Crash. A hop up headfirst (4%), then he drops
+  // straight down backside first (13%: spikes in the air, pops grounded
+  // fighters up), and the landing shakes the floor on both sides (6%).
+  // In the air he drops straight away. If there is no floor below, he falls
+  // helpless.
+  marketCrash: { faf: 90, landLag: 20, helpless: true,
+    plunge: { frame: 6, fallAt: 22, rise: px(3.8), hopX: px(0.4), drift: px(0.6), steer: px(0.08), fall: px(6.2), airSkip: true, landMove: 'marketCrashLand' },
+    ledgeGrab: { from: 6, rising: true },
+    hitboxes: [
+      ...hits(6, 14, [['neck', 9], ['chest', 9]], 4, 80, 40, 50, { group: 0 }),
+      hit(22, 90, 'hip', 12, 13, 270, 30, 70, { group: 1, onlyAir: true, off: [0, 6] }),
+      hit(22, 90, 'hip', 12, 13, 75, 50, 70, { group: 1, onlyGround: true, off: [0, 6] }),
+    ] },
+  marketCrashLand: { faf: 32, gear: { kind: 'slam', from: 0, to: 14, active: [0, 14] }, hitboxes: [
+      hit(1, 3, 'hip', 10, 6, 60, 50, 60, { off: [16, 8], radial: true }),
+      hit(1, 3, 'hip', 10, 6, 60, 50, 60, { off: [-16, 8], radial: true }),
     ] },
 
   // --- Smash attacks (see simeon.js for how they are performed) ---
@@ -278,11 +288,11 @@ const moves = {
     trail: { part: 'weaponF', from: 18, to: 23, width: 12, arc: true }, hitboxes: [
       ...hits(19, 22, [['weaponF', 11], ['weaponMidF', 8], ['fistF', 6]], 18, 361, 34, 98, { chargeScale: [180, 252], lagMult: 150 }),
     ] },
-  // Up: Executive Flop. A headbutt straight up (15%), then a belly flop in
-  // front of him (13%).
-  usmash: { faf: 54, charge: { at: 7, max: 60, smash: true }, hitboxes: [
-      hit(10, 14, 'neck', 10, 15, 90, 34, 96, { off: [2, -12], group: 0, chargeScale: [150, 210], lagMult: 150 }),
-      ...hits(20, 23, [['chest', 11], ['neck', 10], ['hip', 9]], 13, 45, 34, 92, { group: 1, chargeScale: [130, 182], lagMult: 150 }),
+  // Up: Last Call. Swings a bottle in a big arc over his head, front to
+  // back: 15% anywhere along the swing.
+  usmash: { faf: 50, charge: { at: 9, max: 60, smash: true }, gear: { kind: 'whiskey', from: 0, to: 40 },
+    trail: { part: 'weaponF', from: 11, to: 19, width: 9, arc: true }, hitboxes: [
+      ...hits(11, 19, [['weaponF', 10], ['weaponMidF', 8]], 15, 88, 34, 96, { group: 0, chargeScale: [150, 210], lagMult: 150 }),
     ] },
   // Down: Cannonball. Hops and slams down on his backside: the floor shakes
   // on both sides of him. 15%.
@@ -292,6 +302,9 @@ const moves = {
       hit(17, 19, 'hip', 9, 15, 50, 30, 94, { off: [0, 6], radial: true, chargeScale: [150, 210], lagMult: 150 }),
     ] },
 };
+
+const BILL = { type: 'dart', draw: 'bill', silent: true, r: 3, hitPad: 3, chargeSpeed: [0, 0], life: 26, fadeFrames: 3,
+  hit: { damage: 12, angle: 361, bkb: 0, kbg: 100, fkb: 22 } };
 
 export const MAX = {
   ...SIMEON,
@@ -304,11 +317,11 @@ export const MAX = {
   trailColors: ['#2f9e5b', '#8fe0a8', '#ffe8a3'],   // cash green and gold
   animations: { ...SIMEON.animations, ...animations },
   moves: { ...SIMEON.moves, ...moves },
-  specials: { neutral: 'popTheBottle', side: 'hostileTakeover', up: 'goldenParachute', down: 'makeItRain' },
+  specials: { neutral: 'moneyGun', side: 'hostileTakeover', up: 'goldenParachute', down: 'marketCrash' },
   projectiles: {
-    cork: { type: 'dart', draw: 'cork', r: 3, hitPad: 2, speed: [px(5.0), px(0.7)], chargeSpeed: [0, 0], gravity: px(0.07), maxFall: px(4),
-      life: 44, fadeFrames: 4, hit: { damage: 60, angle: 361, bkb: 25, kbg: 50 } },
-    bigCork: { type: 'dart', draw: 'cork', r: 4, hitPad: 2, speed: [px(6.4), px(0.4)], chargeSpeed: [0, 0], gravity: px(0.04), maxFall: px(4),
-      life: 50, fadeFrames: 4, hit: { damage: 120, angle: 361, bkb: 40, kbg: 82 } },
+    // the money gun's spray of bills, fanned a little up and down
+    billHigh: { ...BILL, speed: [px(3.7), px(0.35)] },
+    bill: { ...BILL, speed: [px(3.8), 0] },
+    billLow: { ...BILL, speed: [px(3.7), -px(0.35)] },
   },
 };

@@ -35,6 +35,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     parryTick: -1, shieldHitTick: -1, breakTick: -1,
     counterDmg: 0, counterTick: -1,   // counter specials
     charge: 0,                        // chargeable moves (Jump Shot)
+    fuel: 1000,                       // stream moves (Max's money gun): runs down while held, refills when not
     airUsed: 0,
     dropThru: 0,                      // frames left falling through a platform
     flick: 0, flickTimer: 0,          // the direction just tapped, for flick + attack smashes
@@ -564,6 +565,18 @@ const STATES = {
     if (mv.charge && f.stateFrame === mv.charge.at + 1 && (c.input & holdBtn) && f.charge < mv.charge.max) {
       f.charge++;
       f.stateFrame = mv.charge.at;
+      // Stream moves: while held, a projectile every few frames. The range
+      // shrinks as the fuel runs down (it refills while not in use).
+      if (mv.stream) {
+        const sm = mv.stream;
+        f.fuel = Math.max(0, f.fuel - sm.use);
+        if (f.charge % sm.every === 1) {
+          const kinds = sm.projectiles, kind = kinds[Math.trunc(f.charge / sm.every) % kinds.length];
+          spawnProjectile(c.match, f, { ...mv, charge: null, spawn: { from: sm.from, projectile: kind } });
+          const p = c.match.projectiles[c.match.projectiles.length - 1];
+          p.life = sm.minLife + Math.trunc(((p.life - sm.minLife) * f.fuel) / 1000);
+        }
+      }
       f.animFrame--;
     }
     // Tap or hold: once the charge is let go, a move with `variant` becomes
@@ -912,6 +925,8 @@ const DROPPABLE = { idle: 1, walk: 1, dash: 1, run: 1, brake: 1, crouch: 1, craw
 export function updateFighter(match, f, input) {
   const ch = getCharacter(f.charId);
   const st = ch.stats;
+  // stream fuel refills whenever it is not being used
+  if (f.fuel < 1000 && !(f.state === 'attack' && f.move && ch.moves[f.move].stream && f.charge > 0 && f.stateFrame === ch.moves[f.move].charge.at)) f.fuel = Math.min(1000, f.fuel + (ch.fuelRegen || 3));
   const pressed = input & ~f.prevIn;
   let dir = 0;
   if (input & BTN.LEFT) dir -= 1;
