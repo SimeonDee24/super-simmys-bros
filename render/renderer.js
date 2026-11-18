@@ -7,7 +7,7 @@ import { GAME_VERSION } from '../config/version.js';
 import { FX, toPx } from '../engine/fixed.js';
 import { samplePose, solve, hurtboxes } from '../engine/skeleton.js';
 import { activeHitboxes, jointAt, shieldRadius, shieldCentre } from '../engine/combat.js';
-import { getCharacter } from '../characters/index.js';
+import { getCharacter, CHARACTERS } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { DollRenderer } from './doll.js';
 import { Background } from './background.js';
@@ -1586,8 +1586,13 @@ export class Renderer {
     this.setStage(stage);
     this.time++;
     this.bg.draw(ctx, this.time, { x: W / 2, y: H / 2, z: 1, S: this.S });
-    const ch = getCharacter(info.charId);
-    this.doll.drawAnim(ctx, ch, 0, 'idle', this.time, 240, stage.solids[0].y, 1);
+    // the whole roster lined up along the walkway, facing the middle (new
+    // fighters join automatically: this reads the character list)
+    const m = stage.solids[0], n = CHARACTERS.length, gap = Math.min(52, (m.w - 40) / Math.max(1, n - 1));
+    CHARACTERS.forEach((ch, i) => {
+      const x = W / 2 + (i - (n - 1) / 2) * gap;
+      this.doll.drawAnim(ctx, ch, 0, 'idle', this.time + i * 23, x, m.y, x < W / 2 ? 1 : -1);
+    });
 
     const title = CONFIG.GAME_TITLE;
     drawText(ctx, title, W / 2 + 2, 52, '#1a1440', 4, 'center');
