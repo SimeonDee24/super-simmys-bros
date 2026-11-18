@@ -5,8 +5,9 @@ import { KAELYN } from './kaelyn.js';
 import { LUCA } from './luca.js';
 import { SARA } from './sara.js';
 import { MALCOLM } from './malcolm.js';
+import { MAX } from './max.js';
 
-export const CHARACTERS = [SIMEON, KAELYN, LUCA, SARA, MALCOLM];
+export const CHARACTERS = [SIMEON, KAELYN, LUCA, SARA, MALCOLM, MAX];
 
 const byId = Object.fromEntries(CHARACTERS.map((c) => [c.id, c]));
 export const getCharacter = (id) => byId[id];

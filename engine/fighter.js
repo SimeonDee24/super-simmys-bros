@@ -640,6 +640,8 @@ const STATES = {
       if (f.stateFrame === fl.frame) { f.grounded = 0; f.ground = -1; f.moveAir = 1; f.fastFall = 0; f.vy = Math.min(f.vy, 0); }
       f.vx = approach(f.vx, c.dir * fl.drift, fl.steer);
       if (f.stateFrame <= fl.frame + fl.frames) f.vy = approach(f.vy, -fl.rise, fl.accel);
+      // drifting down slowly (a parachute): normal gravity until the rise is spent, then a gentle fall
+      else if (fl.glide) f.vy = Math.min(f.vy + (f.vy < 0 ? st.gravity * 2 : Math.trunc((st.gravity * fl.glide.gravity) / 100)), Math.trunc((st.fallSpeed * fl.glide.fall) / 100));
       else f.vy = Math.min(f.vy + st.gravity, st.fallSpeed);
     } else if (f.moveAir) {
       // floating moves (counters) stop the fall when they start

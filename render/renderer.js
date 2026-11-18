@@ -410,6 +410,68 @@ export class Renderer {
         ctx.globalAlpha = 1;
         if (act < 0.25) { ctx.fillStyle = 'rgba(255,240,170,' + (0.8 - act * 3) + ')'; ctx.beginPath(); ctx.arc(ox + dir * 4, oy, 4 + act * 20, 0, Math.PI * 2); ctx.fill(); }
       }
+    } else if (g.kind === 'champagne') {
+      // champagne bottle: dark green glass, gold foil neck; spraying foam once the cork is out
+      held(() => {
+        poly([[-1.3, -1], [1.3, -1], [1.6, 4], [3.4, 6.5], [3.4, 15], [-3.4, 15], [-3.4, 6.5], [-1.6, 4]], OUT);
+        poly([[-2.7, 6.9], [2.7, 6.9], [2.7, 14.3], [-2.7, 14.3]], '#1f5a35');
+        poly([[-2.7, 6.9], [-1.4, 6.9], [-1.4, 14.3], [-2.7, 14.3]], '#3f8a5a');
+        poly([[-0.9, -0.4], [0.9, -0.4], [1, 4.4], [-1, 4.4]], '#e0b84a');
+        ctx.fillStyle = '#f6f1dc'; ctx.fillRect(-2.7, 9, 5.4, 3);
+        if (act < 0 && fr < (g.active ? g.active[0] : 99)) { ctx.fillStyle = '#c99b5a'; ctx.fillRect(-0.9, -2.6, 1.8, 2); }
+      });
+      if (act >= 0) {
+        const a = (s.armF.low * Math.PI) / 180, ox = hx + dir * Math.sin(a) * -1, oy = hy + Math.cos(a) * -1;
+        for (let k = 0; k < 18; k++) {
+          const j = ((k * 37 + 5) % 19) / 19, d = 3 + act * (8 + j * 22), spread = (j - 0.5) * 0.7;
+          const ang = a + Math.PI + spread;
+          ctx.globalAlpha = Math.max(0, 1 - act) * 0.9;
+          ctx.fillStyle = k % 3 ? '#fffdf2' : '#ffe8a3';
+          ctx.beginPath(); ctx.arc(ox + dir * Math.sin(ang) * -d, oy - Math.cos(ang) * -d + act * act * 8 * j, 1 + j * 1.6, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      }
+    } else if (g.kind === 'moneybag') {
+      held(() => {
+        // a fat sack tied at the neck, with a dollar sign
+        ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(0, 12, 7.2, 7.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(-2.2, 1, 4.4, 5);
+        ctx.fillStyle = '#c9a66b'; ctx.beginPath(); ctx.ellipse(0, 12, 6.4, 7, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#e2c48c'; ctx.beginPath(); ctx.ellipse(-2, 10, 2.6, 3.6, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#c9a66b'; ctx.fillRect(-1.6, 1.6, 3.2, 4.4);
+        ctx.fillStyle = '#8a5a36'; ctx.fillRect(-2.4, 4.6, 4.8, 1.2);
+      });
+      const a = (s.armF.low * Math.PI) / 180, bx = hx + dir * Math.sin(a) * 12, by = hy + Math.cos(a) * 12;
+      ctx.save(); ctx.translate(bx, by); ctx.scale(dir, 1);
+      ctx.fillStyle = '#2f7a46'; ctx.font = 'bold 8px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('$', 0, 0.5);
+      ctx.restore();
+      if (act >= 0) this.drawBills(bx, by, act, 12, 26, fr, cols);
+    } else if (g.kind === 'cashRain') {
+      // bills fluttering down all round him
+      if (act >= 0 || fr > g.active[1]) {
+        const t = act >= 0 ? act : 1;
+        this.drawBills(f.x / FX, f.y / FX - 30, t, 22, 30, fr, cols, true);
+      }
+    } else if (g.kind === 'parachute') {
+      // a gold parachute above him, cords down to his hands
+      const open = Math.min(1, (fr - g.from) / 6), cx = f.x / FX, cy = f.y / FX - 70, w = 26 * open, sway = Math.sin(fr * 0.15) * 1.5;
+      ctx.strokeStyle = 'rgba(16,13,22,0.8)'; ctx.lineWidth = 0.6;
+      for (const sx of [-1, -0.35, 0.35, 1]) { ctx.beginPath(); ctx.moveTo(cx + sway + sx * w, cy); ctx.lineTo(cx + (sx < 0 ? -3 : 3), f.y / FX - 50); ctx.stroke(); }
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(cx + sway, cy, w + 1, 11 * open + 1, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#e0b84a'; ctx.beginPath(); ctx.ellipse(cx + sway, cy, w, 11 * open, 0, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f6dc8a';
+      for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.ellipse(cx + sway + (k - 1) * w * 0.66, cy, w * 0.16, 11 * open, 0, Math.PI, 0); ctx.closePath(); ctx.fill(); }
+      ctx.fillStyle = '#2f7a46'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; if (open >= 1) ctx.fillText('$', cx + sway, cy - 5);
+    } else if (g.kind === 'slam') {
+      // dust and a ripple along the floor on both sides from a body slam
+      const fy = f.y / FX;
+      for (const side of [-1, 1]) for (let k = 0; k < 5; k++) {
+        const j = ((k * 37 + 11) % 10) / 10, d = 6 + act * (14 + j * 18);
+        ctx.globalAlpha = Math.max(0, (1 - act) * 0.85); ctx.fillStyle = k & 1 ? '#e8e1d2' : '#cfc6b3';
+        ctx.beginPath(); ctx.arc(f.x / FX + side * d, fy - 2 - j * 5 * (1 - act), 2.5 + act * 3 + j * 1.5, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.globalAlpha = Math.max(0, 1 - act); ctx.strokeStyle = cols[2]; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.ellipse(f.x / FX, fy - 1, 8 + act * 30, 2 + act * 3, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
     } else if (g.kind === 'speakers') {
       const pop = Math.min(1, (fr - g.from) / 4, (g.to - fr) / 4), fy = f.y / FX;
       for (const side of [-1, 1]) {
@@ -426,6 +488,23 @@ export class Renderer {
         ctx.globalAlpha = 1;
       }
     }
+  }
+
+  // Paper money flying out from (x, y): t goes 0..1, n bills, spread px. fall = drifting down all round.
+  drawBills(x, y, t, n, spread, fr, cols, fall = false) {
+    const ctx = this.ctx;
+    for (let k = 0; k < n; k++) {
+      const j = ((k * 41 + 3) % 23) / 23, side = k & 1 ? 1 : -1;
+      const bx = fall ? x + side * (4 + j * spread) + Math.sin(fr * 0.2 + k) * 3 : x + Math.cos(k * 2.4) * t * spread * (0.4 + j);
+      const by = fall ? y - 18 + ((t * 60 + j * 50) % 58) : y + Math.sin(k * 2.4) * t * spread * (0.4 + j) + t * t * 14;
+      ctx.save(); ctx.translate(bx, by); ctx.rotate(k * 0.9 + fr * 0.18 * (j + 0.3));
+      ctx.globalAlpha = fall ? 1 : Math.min(1, (1 - t) * 2.4);
+      ctx.fillStyle = '#100d16'; ctx.fillRect(-3.4, -1.9, 6.8, 3.8);
+      ctx.fillStyle = '#7fc98f'; ctx.fillRect(-2.9, -1.4, 5.8, 2.8);
+      ctx.fillStyle = '#2f7a46'; ctx.fillRect(-0.8, -0.8, 1.6, 1.6);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
   }
 
   // True while a fighter is between the vanish and reappear frames of a teleport.
@@ -855,6 +934,19 @@ export class Renderer {
       const r = ace ? 2.6 : 1.2;
       ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0); ctx.closePath(); ctx.fill();
       if (ace) { ctx.fillStyle = '#ffd23a'; ctx.fillRect(-w / 2 + 1, -h / 2 + 1, 1.4, 2.4); ctx.fillRect(w / 2 - 2.4, h / 2 - 3.4, 1.4, 2.4); }
+      ctx.restore();
+      return;
+    }
+    if (d.draw === 'cork') {
+      // a champagne cork tumbling, with a streak of foam behind it
+      ctx.save(); ctx.globalAlpha = fade;
+      ctx.fillStyle = 'rgba(255,253,242,0.8)';
+      for (let n = 1; n <= 4; n++) { ctx.beginPath(); ctx.arc(x - (p.vx / FX) * n * 1.4, y - (p.vy / FX) * n * 1.4, (d.r * 0.9) - n * 0.15, 0, Math.PI * 2); ctx.fill(); }
+      ctx.translate(x, y); ctx.rotate(p.life * 0.6);
+      const k = d.r / 3;
+      ctx.fillStyle = '#100d16'; ctx.fillRect(-2.6 * k, -2.2 * k, 5.2 * k, 4.4 * k);
+      ctx.fillStyle = '#c99b5a'; ctx.fillRect(-2 * k, -1.6 * k, 4 * k, 3.2 * k);
+      ctx.fillStyle = '#e0b84a'; ctx.fillRect(-2 * k, -1.6 * k, 1.4 * k, 3.2 * k);
       ctx.restore();
       return;
     }

@@ -12,7 +12,7 @@ let games = 0, crashes = 0;
 for (const stage of STAGES) {
   for (let g = 0; g < 15; g++) {
     games++;
-    const s = createMatch({ stageId: stage.id, players: [{ charId: ['simeon', 'kaelyn', 'luca', 'sara', 'malcolm'][g % 5], alt: 0 }, { charId: ['luca', 'sara', 'simeon', 'kaelyn', 'luca'][g % 5], alt: 1 }], stocks: 3, seed: g + 1 });
+    const s = createMatch({ stageId: stage.id, players: [{ charId: ['simeon', 'kaelyn', 'luca', 'sara', 'malcolm', 'max'][g % 6], alt: 0 }, { charId: ['luca', 'sara', 'simeon', 'kaelyn', 'luca'][g % 5], alt: 1 }], stocks: 3, seed: g + 1 });
     const cpu = g % 3 === 0 ? new CpuController('fighter', g + 7) : null;
     const held = [0, 0];
     try {
@@ -30,8 +30,8 @@ for (const stage of STAGES) {
 for (const stage of STAGES) {
   for (let g = 0; g < 8; g++) {
     games++;
-    const n = 3 + (g & 1), ids = ['simeon', 'kaelyn', 'luca', 'sara', 'malcolm'];
-    const s = createMatch({ stageId: stage.id, players: Array.from({ length: n }, (_, i) => ({ charId: ids[(g + i) % 5], alt: i & 1 })), stocks: 3, seed: g + 50 });
+    const n = 3 + (g & 1), ids = ['simeon', 'kaelyn', 'luca', 'sara', 'malcolm', 'max'];
+    const s = createMatch({ stageId: stage.id, players: Array.from({ length: n }, (_, i) => ({ charId: ids[(g + i) % 6], alt: i & 1 })), stocks: 3, seed: g + 50 });
     const cpus = Array.from({ length: n }, (_, i) => ((i + g) % 2 ? new CpuController(['lv1', 'lv3', 'lv5'][(i + g) % 3], g * 13 + i) : null));
     const held = new Array(n).fill(0);
     try {

@@ -742,7 +742,7 @@ for (const hold of [0, 30]) {
 // Roster: two fighters, two skins each, sharing every normal attack
 {
   const { CHARACTERS } = await import('../characters/index.js');
-  check('five characters with two skins each', CHARACTERS.length === 5 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  check('six characters with two skins each', CHARACTERS.length === 6 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
   const [sim, kae, luc] = CHARACTERS;
   const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
   check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
@@ -1109,6 +1109,31 @@ for (const hold of [0, 30]) {
     const v = s.fighters[1]; v.x = ace.x; v.y = ace.y + 10 * FX; v.grounded = 0; v.ground = -1; v.state = 'air';
     for (let i = 0; i < 10; i++) step(s, [0, 0]);
     check('Ace Up the Sleeve leaves a card hanging that pops up whoever touches it (9%)', !!ace && v.percent === 90 && v.vy < 0, `${v.percent / 10}%`); }
+}
+
+// Max: body slams, a champagne bottle and cash
+{
+  const { getCharacter } = await import('../characters/index.js');
+  const mx = getCharacter('max'), sim = getCharacter('simeon');
+  check('Max is a heavyweight about Simeon\'s height, with his own smashes and specials', mx.stats.weight > sim.stats.weight + 15 && Math.abs(mx.heightInches - sim.heightInches) <= 1
+    && ['fsmash', 'usmash', 'dsmash'].every((m) => mx.moves[m] !== sim.moves[m]) && ['neutral', 'side', 'up', 'down'].every((k) => mx.moves[mx.specials[k]]));
+  const mk = (dx = 26, dy = 0) => { const s = createMatch({ ...setup, players: [{ charId: 'max', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [a, v] = s.fighters; v.x = a.x + dx * FX; v.y += dy * FX; if (dy) { v.grounded = 0; v.ground = -1; } return s; };
+  const run = (s, first, n = 80, hold = 0) => { step(s, [first, 0]); for (let i = 0; i < n; i++) step(s, [i < hold ? first : 0, 0]); return s.fighters[1].percent / 10; };
+  TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
+  const f = run(mk(30), BTN.SMASH), u1 = run(mk(3, -44), BTN.SMASH | BTN.UP), u2 = run(mk(30), BTN.SMASH | BTN.UP), d1 = run(mk(16), BTN.SMASH | BTN.DOWN), d2 = run(mk(-16), BTN.SMASH | BTN.DOWN);
+  check('Money Bag (forward smash): 18%', f === 18, f + '%');
+  check('Executive Flop (up smash): headbutt above (15%), belly flop in front (13%)', u1 === 15 && u2 === 13, `${u1}% / ${u2}%`);
+  check('Cannonball (down smash) hits both sides: 15%', d1 === 15 && d2 === 15, `${d1}% / ${d2}%`);
+  TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
+  const tap = run(mk(90), BTN.SPECIAL, 70), held = run(mk(90), BTN.SPECIAL, 70, 30);
+  check('Pop the Bottle: the cork does 6%, a held one 12%', tap === 6 && held === 12, `${tap}% / ${held}%`);
+  { const s = mk(400); const a = s.fighters[0], x0 = a.x; run(s, BTN.SPECIAL | BTN.RIGHT, 70); const far = (a.x - x0) / FX; const hp = run(mk(50), BTN.SPECIAL | BTN.RIGHT, 70);
+    check('Hostile Takeover charges forward along the floor (12%)', far > 50 && a.grounded && hp === 12, `${far.toFixed(0)}px, ${hp}%`); }
+  { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0, airFrames = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]);
+    for (let i = 0; i < 160; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); if (!a.grounded) airFrames++; }
+    check('Golden Parachute rises, then floats down slowly (stays up well over a second)', top > 50 && top < 110 && airFrames > 90, `${top.toFixed(0)}px up, ${airFrames} frames in the air`); }
+  { const r = run(mk(14), BTN.SPECIAL | BTN.DOWN, 70), b = run(mk(-14), BTN.SPECIAL | BTN.DOWN, 70);
+    check('Make It Rain hits all round him: four small hits and a burst (13%)', r === 13 && b === 13, `${r}% / ${b}%`); }
 }
 
 process.exit(fails ? 1 : 0);
