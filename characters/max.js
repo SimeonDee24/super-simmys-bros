@@ -310,6 +310,7 @@ export const MAX = {
   ...SIMEON,
   id: 'max',
   name: 'MAX',
+  lastName: 'CAULDWELL',
   heightInches: 70,
   stats,
   parts,

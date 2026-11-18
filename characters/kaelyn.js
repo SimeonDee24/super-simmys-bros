@@ -328,6 +328,7 @@ export const KAELYN = {
   ...SIMEON,
   id: 'kaelyn',
   name: 'KAELYN',
+  lastName: 'KHONROO',
   heightInches: 70,
   stats,
   parts,

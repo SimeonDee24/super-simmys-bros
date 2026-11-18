@@ -875,6 +875,7 @@ const moves = {
 export const SIMEON = {
   id: 'simeon',
   name: 'SIMEON',
+  lastName: 'DEE',
   heightInches: 70,
   stats,
   skeleton,

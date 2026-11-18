@@ -1378,8 +1378,10 @@ export class Renderer {
       ctx.fillStyle = col; ctx.fillRect(r.x, r.y, r.w, 13);
       drawText(ctx, 'P' + (i + 1), r.x + 5, r.y + 4, '#101020', 1, 'left');
       drawText(ctx, sl.type === 'human' ? (opts.tag ? opts.tag(i) : 'PLAYER') : 'CPU ' + levelText(i), r.x + r.w - 5, r.y + 4, '#101020', 1, 'right');
-      ctx.fillStyle = 'rgba(8,8,24,0.8)'; ctx.fillRect(r.x, r.y + r.h - 24, r.w, 24);
-      drawText(ctx, ch.name, cx, r.y + r.h - 22, '#ffffff', 2, 'center', '#000000');
+      // first name large, last name under it, then the skin
+      ctx.fillStyle = 'rgba(8,8,24,0.8)'; ctx.fillRect(r.x, r.y + r.h - 32, r.w, 32);
+      drawText(ctx, ch.name, cx, r.y + r.h - 30, '#ffffff', 2, 'center', '#000000');
+      if (ch.lastName) drawText(ctx, ch.lastName, cx, r.y + r.h - 16, '#d9d6f0', 1, 'center');
       drawText(ctx, ch.palettes[sl.alt].name, cx, r.y + r.h - 8, col, 1, 'center');
       if (act) { const by = r.y - 9 + Math.sin(t * 0.14) * 1.5; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 5, by); ctx.lineTo(cx + 5, by); ctx.lineTo(cx, by + 5); ctx.closePath(); ctx.fill(); }
     });

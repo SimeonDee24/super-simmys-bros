@@ -283,6 +283,7 @@ export const OSAMA = {
   ...SIMEON,
   id: 'osama',
   name: 'OSAMA',
+  lastName: 'AL SABBAGH',
   heightInches: 70,
   stats,
   parts,

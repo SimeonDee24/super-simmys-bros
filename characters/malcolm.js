@@ -286,6 +286,7 @@ export const MALCOLM = {
   ...SIMEON,
   id: 'malcolm',
   name: 'MALCOLM',
+  lastName: 'MCKINNON',
   heightInches: 71,
   stats,
   parts,

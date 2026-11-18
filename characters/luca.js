@@ -298,6 +298,7 @@ export const LUCA = {
   ...SIMEON,
   id: 'luca',
   name: 'LUCA',
+  lastName: 'CHITTARANJAN',
   heightInches: 70,
   stats,
   parts,

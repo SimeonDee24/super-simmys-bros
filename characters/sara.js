@@ -309,6 +309,7 @@ export const SARA = {
   ...SIMEON,
   id: 'sara',
   name: 'SARA',
+  lastName: 'DEE',
   heightInches: 70,
   stats,
   parts,
