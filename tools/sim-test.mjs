@@ -360,7 +360,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   step(s, [0, BTN.SHIELD | BTN.LEFT]);   // v faces left: this is a forward roll
   const intang = [];
   for (let i = 0; i < 40; i++) { step(s, [0, BTN.SHIELD]); if (v.state === 'roll') intang.push(v.intangible ? 1 : 0); }
-  check('forward roll travels, is intangible mid-roll, ends facing the other way', (rx - v.x) / FX > 25 && intang[6] === 1 && intang[0] === 0 && v.facing === -face, `${((rx - v.x) / FX).toFixed(1)}px`);
+  check('forward roll travels, is intangible mid-roll, ends facing the other way', (rx - v.x) / FX > 42 && intang[6] === 1 && intang[0] === 0 && v.facing === -face, `${((rx - v.x) / FX).toFixed(1)}px`);
   // spot dodge: an attack passes straight through
   s = near(); [a, v] = s.fighters;
   for (let i = 0; i < 3; i++) step(s, [0, BTN.SHIELD]);

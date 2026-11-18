@@ -54,7 +54,7 @@ const stats = {
 
   // Shield and dodges. intangible = [first, last] frame he cannot be hit.
   shieldY: 22,             // shield bubble centre, px above the feet
-  roll: { intangible: [4, 15], faf: 31, move: [3, 18], speed: px(2.2), turnAt: 11 },
+  roll: { intangible: [4, 15], faf: 31, move: [3, 18], speed: px(3.0), turnAt: 11 },   // about 45px
   spotDodge: { intangible: [3, 17], faf: 27 },
   airDodge: { intangible: [3, 29], faf: 42 },                       // neutral
   airDodgeDir: { intangible: [3, 19], faf: 48, speed: px(2.2), sideSpeed: px(3.1), glide: 20, lenience: 3 }, // with a direction
