@@ -1452,25 +1452,28 @@ export class Renderer {
 
     // --- the roster ---
     const acol = colOf(active);
-    chars.forEach((ch, k) => {
-      const r = this.charTileRect(k, chars.length);
-      const here = slots.map((sl, i) => (sl.type !== 'off' && sl.char === k ? i : -1)).filter((i) => i >= 0);
-      const sel = slots[active].char === k;
+    // every fighter, then a Random tile (char -1)
+    const tiles = chars.length + 1;
+    [...chars, null].forEach((ch, k) => {
+      const r = this.charTileRect(k, tiles), id = ch ? k : -1;
+      const here = slots.map((sl, i) => (sl.type !== 'off' && sl.char === id ? i : -1)).filter((i) => i >= 0);
+      const sel = slots[active].char === id;
       // frame: the active slot's colour when its cursor is here
       ctx.fillStyle = sel ? acol : here.length ? '#8a86b0' : '#2b2a4a';
       ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
       if (sel) { ctx.fillStyle = rgba('#ffffff', 0.25 + 0.25 * Math.sin(t * 0.14)); ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4); }
       const bg = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
-      const tint = (ch.trailColors && ch.trailColors[1]) || '#6a64c8';
+      const tint = (ch && ch.trailColors && ch.trailColors[1]) || '#6a64c8';
       bg.addColorStop(0, shade(tint, 0.5)); bg.addColorStop(1, '#16142e');
       ctx.fillStyle = bg; ctx.fillRect(r.x, r.y, r.w, r.h);
       ctx.save();
       ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
-      this.doll.drawHead(ctx, ch, 0, r.x + r.w / 2, r.y + r.h * 0.5, r.w * 0.72);
+      if (ch) this.doll.drawHead(ctx, ch, 0, r.x + r.w / 2, r.y + r.h * 0.5, r.w * 0.72);
+      else drawText(ctx, '?', r.x + r.w / 2, r.y + r.h * 0.12, '#ffe14a', Math.max(3, Math.round(r.h / 9)), 'center', '#000000');
       ctx.restore();
       const band = Math.max(8, Math.round(r.h * 0.2));
       ctx.fillStyle = 'rgba(8,8,24,0.85)'; ctx.fillRect(r.x, r.y + r.h - band, r.w, band);
-      drawText(ctx, ch.name, r.x + r.w / 2, r.y + r.h - band + (band - 5) / 2, '#ffffff', 1, 'center');
+      drawText(ctx, ch ? ch.name : 'RANDOM', r.x + r.w / 2, r.y + r.h - band + (band - 5) / 2, '#ffffff', 1, 'center');
       // a numbered token for every slot that has picked this fighter
       here.forEach((i, n) => {
         const tx = r.x + 6 + n * 11, ty = r.y + 6 + (i === active ? Math.sin(t * 0.14) * 1.2 : 0);
@@ -1492,7 +1495,7 @@ export class Renderer {
         drawText(ctx, opts.offText ? opts.offText(i) : act ? 'L  ADD A CPU' : 'PRESS ' + (i + 1), cx, r.y + 70, '#8a86b0', 1, 'center');
         return;
       }
-      const ch = chars[sl.char];
+      const ch = sl.char >= 0 ? chars[sl.char] : null;   // null: Random
       // backdrop in the player's colour, with their fighter standing in a spotlight
       const sp = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
       sp.addColorStop(0, rgba(col, 0.38)); sp.addColorStop(1, rgba(col, 0.06));
@@ -1501,18 +1504,20 @@ export class Renderer {
       ctx.save();
       ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
       ctx.translate(cx, r.y + 86); ctx.scale(1.6, 1.6);
-      this.doll.drawAnim(ctx, ch, sl.alt, 'idle', t + i * 17, 0, 0, i & 1 ? -1 : 1);
+      if (ch) this.doll.drawAnim(ctx, ch, sl.alt, 'idle', t + i * 17, 0, 0, i & 1 ? -1 : 1);
       ctx.restore();
+      if (!ch) drawText(ctx, '?', cx, r.y + 28, '#ffe14a', 6, 'center', '#000000');
       // header: who plays this slot
       ctx.fillStyle = col; ctx.fillRect(r.x, r.y, r.w, 13);
       drawText(ctx, 'P' + (i + 1), r.x + 5, r.y + 4, '#101020', 1, 'left');
       drawText(ctx, sl.type === 'human' ? (opts.tag ? opts.tag(i) : 'PLAYER') : 'CPU ' + levelText(i), r.x + r.w - 5, r.y + 4, '#101020', 1, 'right');
       // first name large, last name under it, then the skin
       ctx.fillStyle = 'rgba(8,8,24,0.8)'; ctx.fillRect(r.x, r.y + r.h - 32, r.w, 32);
-      drawText(ctx, ch.name, cx, r.y + r.h - 30, '#ffffff', 2, 'center', '#000000');
-      if (ch.lastName) drawText(ctx, ch.lastName, cx, r.y + r.h - 16, '#d9d6f0', 1, 'center');
+      drawText(ctx, ch ? ch.name : 'RANDOM', cx, r.y + r.h - 30, '#ffffff', 2, 'center', '#000000');
+      if (!ch) drawText(ctx, 'PICKED AT THE START', cx, r.y + r.h - 16, '#d9d6f0', 1, 'center');
+      else if (ch.lastName) drawText(ctx, ch.lastName, cx, r.y + r.h - 16, '#d9d6f0', 1, 'center');
       // in teams the last line says which team; otherwise the skin
-      drawText(ctx, opts.teams ? TEAM_NAMES[(sl.team | 0) % 3] + ' TEAM' : ch.palettes[sl.alt].name, cx, r.y + r.h - 8, col, 1, 'center');
+      drawText(ctx, opts.teams ? TEAM_NAMES[(sl.team | 0) % 3] + ' TEAM' : ch ? ch.palettes[sl.alt].name : '', cx, r.y + r.h - 8, col, 1, 'center');
       if (act) { const by = r.y - 9 + Math.sin(t * 0.14) * 1.5; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 5, by); ctx.lineTo(cx + 5, by); ctx.lineTo(cx, by + 5); ctx.closePath(); ctx.fill(); }
     });
     const a = slots[active];

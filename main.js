@@ -14,7 +14,7 @@ import { loadSettings, saveSettings } from './ui/settings.js';
 import { checkForUpdate, UPDATE_MESSAGE } from './ui/updatecheck.js';
 import { sfx } from './audio/sfx.js';
 import { SoundDirector } from './audio/director.js';
-import { Room, freeSkin } from './net/room.js';
+import { Room, freeSkin, RANDOM, resolveRandom } from './net/room.js';
 import { hostOnline, joinOnline, CODE_LENGTH, CODE_LETTERS } from './net/peer.js';
 
 const settings = loadSettings();
@@ -49,8 +49,10 @@ let selSlot = 0;        // fighter select: the slot the keys are moving
 function slots() {
   const ss = settings.slots, n = CHARACTERS.length;
   ss.forEach((sl, i) => {
-    sl.char = ((sl.char | 0) % n + n) % n;
-    sl.alt = ((sl.alt | 0) % CHARACTERS[sl.char].palettes.length + CHARACTERS[sl.char].palettes.length) % CHARACTERS[sl.char].palettes.length;
+    if (sl.char !== RANDOM) {
+      sl.char = ((sl.char | 0) % n + n) % n;
+      sl.alt = ((sl.alt | 0) % CHARACTERS[sl.char].palettes.length + CHARACTERS[sl.char].palettes.length) % CHARACTERS[sl.char].palettes.length;
+    } else sl.alt = 0;
     if (!CPU_ORDER.includes(sl.level)) sl.level = 'lv3';
     if (!(sl.team >= 0 && sl.team <= 2)) sl.team = [0, 1, 0, 1][i];
     sl.type = i === 0 ? 'human' : sl.type === 'off' ? 'off' : 'cpu';
@@ -68,7 +70,7 @@ const teamCount = (ss) => new Set(ss.filter((sl) => sl.type !== 'off').map((sl) 
 const teamsOn = () => (online ? online.room.mode === 'teams' : settings.mode === 'teams');
 
 function startMatch(stage = STAGES[0]) {
-  const active = slots().map((sl, port) => ({ ...sl, port })).filter((sl) => sl.type !== 'off');
+  const active = resolveRandom(slots()).map((sl, port) => ({ ...sl, port })).filter((sl) => sl.type !== 'off');   // Random picks are drawn here
   const state = createMatch({
     stageId: stage.id,
     players: active.map((sl) => ({ charId: CHARACTERS[sl.char].id, alt: sl.alt, team: settings.mode === 'teams' ? sl.team : undefined })),
@@ -336,12 +338,13 @@ window.addEventListener('keydown', (e) => {
     const digit = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(c) >= 0 ? ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(c) : ['Numpad1', 'Numpad2', 'Numpad3', 'Numpad4'].indexOf(c);
     if (digit >= 0) selectSlot(digit);
     else if (c === 'Tab') selectSlot((selSlot + (e.shiftKey ? 3 : 1)) % 4, false);
-    else if (c === 'KeyA' || c === 'ArrowLeft') pickChar(at, (sl.char + n - 1) % n);
-    else if (c === 'KeyD' || c === 'ArrowRight') pickChar(at, (sl.char + 1) % n);
+    // the roster grid has one more tile at the end: Random
+    else if (c === 'KeyA' || c === 'ArrowLeft') pickChar(at, tileChar((charTile(sl.char) + n) % (n + 1)));
+    else if (c === 'KeyD' || c === 'ArrowRight') pickChar(at, tileChar((charTile(sl.char) + 1) % (n + 1)));
     else if (c === 'KeyW' || c === 'ArrowUp' || c === 'KeyS' || c === 'ArrowDown') {
       // up and down move a row in the roster grid
-      const cols = renderer.charGrid(n).cols, to = sl.char + (c === 'KeyW' || c === 'ArrowUp' ? -cols : cols);
-      if (to >= 0 && to < n) pickChar(at, to);
+      const cols = renderer.charGrid(n + 1).cols, to = charTile(sl.char) + (c === 'KeyW' || c === 'ArrowUp' ? -cols : cols);
+      if (to >= 0 && to <= n) pickChar(at, tileChar(to));
     }
     else if (c === 'KeyK') nextSkin(at);
     else if (c === 'KeyL') toggleSlot(at);
@@ -389,6 +392,9 @@ function selectSlot(i, turnOn = true) {
   if (turnOn && sl.type === 'off') { sl.type = 'cpu'; freeSkin(slots(), i); }
   saveSettings(settings);
 }
+// Roster position k: a fighter, or the Random tile after the last one.
+const tileChar = (k) => (k >= CHARACTERS.length ? RANDOM : k);
+const charTile = (char) => (char === RANDOM ? CHARACTERS.length : char);
 function pickChar(i, char) {
   if (online) { online.room.pick(i, char, 0); return; }
   const sl = slots()[i];
@@ -399,7 +405,7 @@ function pickChar(i, char) {
 }
 function nextSkin(i) {
   const sl = lobbySlots()[i];
-  if (sl.type === 'off') return;
+  if (sl.type === 'off' || sl.char === RANDOM) return;
   if (online) { online.room.pick(i, sl.char, sl.alt + 1); return; }
   sl.alt = (sl.alt + 1) % CHARACTERS[sl.char].palettes.length;
   freeSkin(slots(), i);
@@ -478,7 +484,7 @@ renderer.canvas.addEventListener('click', (e) => {
   const inside = (r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
   if (screen === 'charSelect') {
     sfx.unlock();
-    CHARACTERS.forEach((_, k) => { if (inside(renderer.charTileRect(k, CHARACTERS.length))) { pickChar(curSlot(), k); sfx.play('menuMove'); } });
+    for (let k = 0; k <= CHARACTERS.length; k++) if (inside(renderer.charTileRect(k, CHARACTERS.length + 1))) { pickChar(curSlot(), tileChar(k)); sfx.play('menuMove'); }
     for (let i = 0; i < 4; i++) {
       const r = renderer.slotPanelRect(i);
       if (!inside(r)) continue;

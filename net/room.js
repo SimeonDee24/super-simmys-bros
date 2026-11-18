@@ -12,12 +12,26 @@ export const MAX_SLOTS = 4;
 
 // Same fighter in the same skin as someone else: move slot i to a skin nobody
 // is using, if the fighter has one left (with more players than skins, some share).
+// char -1 means Random: the fighter is drawn when the match starts.
+export const RANDOM = -1;
+// Pick a fighter and skin for every Random slot (outside the simulation, so
+// Math.random is fine), giving each a skin nobody else is wearing if it can.
+export function resolveRandom(slots, rand = Math.random) {
+  const out = slots.map((sl) => ({ ...sl }));
+  out.forEach((sl, i) => {
+    if (sl.type === 'off' || sl.char !== RANDOM) return;
+    sl.char = Math.floor(rand() * CHARACTERS.length); sl.alt = 0;
+    freeSkin(out, i);
+  });
+  return out;
+}
 export function freeSkin(slots, i, dir = 1) {
+  if (slots[i].char === RANDOM) return;
   const sl = slots[i], m = CHARACTERS[sl.char].palettes.length;
   const taken = (alt) => slots.some((o, k) => k !== i && o.type !== 'off' && o.char === sl.char && o.alt === alt);
   for (let k = 0; k < m && taken(sl.alt); k++) sl.alt = (sl.alt + dir + m) % m;
 }
-const validChar = (c) => Number.isInteger(c) && c >= 0 && c < CHARACTERS.length;
+const validChar = (c) => Number.isInteger(c) && c >= RANDOM && c < CHARACTERS.length;
 
 export class Room {
   // first = the host's own fighter pick { char, alt }
@@ -81,7 +95,7 @@ export class Room {
     if (m.t === 'pick') {
       const i = this.slotOf(id);
       if (i < 0 || this.phase === 'match' || !validChar(m.char)) return;
-      const sl = this.slots[i], n = CHARACTERS[m.char].palettes.length;
+      const sl = this.slots[i], n = m.char === RANDOM ? 1 : CHARACTERS[m.char].palettes.length;
       sl.char = m.char; sl.alt = ((m.alt | 0) % n + n) % n;
       freeSkin(this.slots, i);
       this.sendLobby();
@@ -138,7 +152,7 @@ export class Room {
   pick(i, char, alt = 0) {
     if (!this.canEdit(i) || !validChar(char)) return;
     if (!this.isHost) { this.hostLink.send({ t: 'pick', char, alt }); return; }
-    const sl = this.slots[i], n = CHARACTERS[char].palettes.length;
+    const sl = this.slots[i], n = char === RANDOM ? 1 : CHARACTERS[char].palettes.length;
     if (sl.type === 'off') sl.type = 'cpu';
     sl.char = char; sl.alt = ((alt | 0) % n + n) % n;
     freeSkin(this.slots, i);
@@ -181,13 +195,14 @@ export class Room {
   // Host: start the match on this stage. Returns false if there are not two fighters.
   start(stageId, seed = (Math.random() * 0x7fffffff) | 0) {
     if (!this.isHost || this.phase === 'match') return false;
+    const slots = resolveRandom(this.slots);   // Random picks are drawn now, by the host
     const ports = this.slots.map((s, i) => (s.type !== 'off' ? i : -1)).filter((i) => i >= 0);
     if (ports.length < 2) return false;
     const teams = this.mode === 'teams' ? ports.map((i) => this.slots[i].team) : null;
     if (teams && new Set(teams).size < 2) return false;
     const info = {
       id: ++this.matchNo,
-      setup: { stageId, players: ports.map((i, k) => ({ charId: CHARACTERS[this.slots[i].char].id, alt: this.slots[i].alt, team: teams ? teams[k] : undefined })), stocks: CONFIG.DEFAULT_STOCKS, seed },
+      setup: { stageId, players: ports.map((i, k) => ({ charId: CHARACTERS[slots[i].char].id, alt: slots[i].alt, team: teams ? teams[k] : undefined })), stocks: CONFIG.DEFAULT_STOCKS, seed },
       teams,                                                                                  // fighter number -> team, or null in a free-for-all
       ports,                                                                                  // fighter number -> slot
       owners: ports.map((i) => (this.slots[i].type === 'human' ? this.slots[i].owner : 0)),   // fighter number -> machine that plays it

@@ -1260,4 +1260,18 @@ for (const hold of [0, 30]) {
   check('teams: the match is over once only one team is left (2 on one team still counts as 1)', teamsLeft(e) === 1 && teamsLeft(f) === 2 && teamsLeft(createMatch(setup)) === 2);
 }
 
+// Random on the fighter select: drawn at the start, a different fighter over many draws.
+{
+  const { resolveRandom, RANDOM } = await import('../net/room.js');
+  const { CHARACTERS } = await import('../characters/index.js');
+  const seen = new Set(); let ok = true;
+  for (let k = 0; k < 200; k++) {
+    const out = resolveRandom([{ type: 'human', char: RANDOM, alt: 0 }, { type: 'cpu', char: 2, alt: 0 }, { type: 'off', char: RANDOM, alt: 0 }]);
+    if (!(out[0].char >= 0 && out[0].char < CHARACTERS.length) || out[1].char !== 2 || out[2].char !== RANDOM) ok = false;
+    if (out[0].char === 2 && out[0].alt === 0) ok = false;   // never the same fighter in the same skin as someone else
+    seen.add(out[0].char);
+  }
+  check('Random picks a real fighter (and a free skin) when the match starts, and covers the whole roster', ok && seen.size === CHARACTERS.length, `${seen.size} of ${CHARACTERS.length} seen`);
+}
+
 process.exit(fails ? 1 : 0);

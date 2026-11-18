@@ -204,5 +204,18 @@ for (const [name, friends, lag, cpu] of [
   check('teams online: the mode and teams reach everyone, and the match ends the same everywhere with one team left', lobbyOk && sameGame(p.rooms) && p.rooms.every((r) => teamsLeft(r.session.confirmed) === 1) && host.match.teams.slice().sort().join() === '0,0,1,1',
     `${Math.round(t / 60)}s`);
 }
+// Random: a friend picks Random; the host draws a real fighter when the match starts,
+// and everyone plays the same one.
+{
+  const p = party(1, { delay: 30 });
+  const [host, a] = p.rooms;
+  a.pick(a.me, -1); host.pick(0, -1);
+  for (let i = 0; i < 20; i++) p.net.advance(TICK);
+  const shown = host.slots[a.me].char === -1 && a.slots[a.me].char === -1;
+  host.start('nest', 9); for (let i = 0; i < 20; i++) p.net.advance(TICK);
+  const ids = host.match.setup.players.map((pl) => pl.charId);
+  const { CHARACTERS } = await import('../characters/index.js');
+  check('Random online: shows as Random in the lobby, and becomes a real fighter for everyone at the start', shown && ids.every((id) => CHARACTERS.some((c) => c.id === id)) && JSON.stringify(a.match.setup) === JSON.stringify(host.match.setup) && host.slots[a.me].char === -1, ids.join(' vs '));
+}
 check('version in the hello matches the game', typeof GAME_VERSION === 'string');
 process.exit(fails ? 1 : 0);
