@@ -9,6 +9,18 @@ const PREFIX = 'super-simmys-bros-room-';
 export const CODE_LENGTH = 4;
 export const CODE_LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ';   // no I or O: they look like 1 and 0
 
+// How browsers find a way to reach each other: public STUN servers first;
+// if the network blocks a direct connection (some campus and phone
+// networks do), the data goes through PeerJS's free relay (TURN) instead.
+const OPTIONS = {
+  config: {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+      { urls: ['turn:0.peerjs.com:3478', 'turn:0.peerjs.com:3478?transport=tcp'], username: 'peerjs', credential: 'peerjsp' },
+    ],
+  },
+};
+
 let lib = null;
 function loadLib() {
   if (!lib) {
@@ -55,7 +67,7 @@ export async function hostOnline(onLink) {
   for (let attempt = 0; attempt < 6; attempt++) {
     const code = randomCode();
     const peer = await new Promise((resolve, reject) => {
-      const p = new window.Peer(PREFIX + code);
+      const p = new window.Peer(PREFIX + code, OPTIONS);
       const timer = setTimeout(() => { p.destroy(); reject(new Error('COULD NOT REACH THE MATCHMAKING SERVER')); }, 15000);
       p.on('open', () => { clearTimeout(timer); resolve(p); });
       p.on('error', (e) => {
@@ -66,22 +78,41 @@ export async function hostOnline(onLink) {
     });
     if (!peer) continue;
     peer.on('connection', (conn) => conn.on('open', () => onLink(wrap(conn))));
-    // losing the matchmaking server does not end the match, but new friends could not join: reconnect
-    peer.on('disconnected', () => { if (!peer.destroyed) setTimeout(() => { if (!peer.destroyed) peer.reconnect(); }, 2000); });
-    return { code, close() { peer.destroy(); } };
+    // Losing the matchmaking server does not end a match, but new friends
+    // could not find the room: keep reconnecting, and check every few seconds
+    // (a sleeping laptop or a tab in the background can drop it quietly).
+    const keepAlive = () => { if (!peer.destroyed && peer.disconnected) { try { peer.reconnect(); } catch (e) { /* tries again next time */ } } };
+    peer.on('disconnected', () => setTimeout(keepAlive, 1000));
+    peer.on('error', () => setTimeout(keepAlive, 1000));
+    const timer = setInterval(keepAlive, 5000);
+    const onVisible = () => { if (document.visibilityState === 'visible') keepAlive(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return { code, close() { clearInterval(timer); document.removeEventListener('visibilitychange', onVisible); peer.destroy(); } };
   }
   throw new Error('COULD NOT OPEN A ROOM. TRY AGAIN');
 }
 
-// Join the room with this code. Resolves to a link to the host.
-export async function joinOnline(code) {
+// Join the room with this code. Resolves to a link to the host. Tries a few
+// times: a first attempt can fail on a flaky network, or while the host's
+// browser is reconnecting to the matchmaking server. onStatus(text) reports
+// progress.
+export async function joinOnline(code, onStatus = () => {}) {
   await loadLib();
+  let last = null;
+  for (let tries = 1; tries <= 3; tries++) {
+    if (tries > 1) { onStatus('TRYING AGAIN (' + tries + ' OF 3)...'); await new Promise((r) => setTimeout(r, 1500)); }
+    try { return await joinOnce(code); } catch (e) { last = e; }
+  }
+  throw last;
+}
+function joinOnce(code) {
   return new Promise((resolve, reject) => {
-    const peer = new window.Peer();
+    const peer = new window.Peer(OPTIONS);
     let done = false;
     const fail = (text) => { if (done) return; done = true; clearTimeout(timer); peer.destroy(); reject(new Error(text)); };
-    const timer = setTimeout(() => fail('COULD NOT CONNECT TO THAT ROOM'), 20000);
-    peer.on('error', (e) => fail(e && e.type === 'peer-unavailable' ? 'NO ROOM WITH THAT CODE' : 'COULD NOT CONNECT. CHECK YOUR INTERNET'));
+    const timer = setTimeout(() => fail('FOUND THE ROOM BUT COULD NOT CONNECT. YOUR NETWORK MAY BE BLOCKING IT: TRY ANOTHER WI-FI OR A HOTSPOT'), 25000);
+    peer.on('error', (e) => fail(e && e.type === 'peer-unavailable' ? 'NO ROOM WITH THAT CODE. CHECK THE CODE, AND THAT THE HOST STILL HAS THE ROOM OPEN'
+      : e && (e.type === 'network' || e.type === 'server-error' || e.type === 'socket-error') ? 'COULD NOT REACH THE MATCHMAKING SERVER. CHECK YOUR INTERNET' : 'COULD NOT CONNECT TO THAT ROOM'));
     peer.on('open', () => {
       const conn = peer.connect(PREFIX + code.toUpperCase(), { reliable: true, serialization: 'json' });
       conn.on('open', () => { if (done) return; done = true; clearTimeout(timer); resolve(wrap(conn, () => peer.destroy())); });

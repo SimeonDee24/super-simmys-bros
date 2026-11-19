@@ -78,8 +78,11 @@ export class Room {
     if (m.type === 'hello') {
       if (link.joined) return;
       const ok = checkHello(m);
-      if (!ok.ok) { this.refuse(id, link, 'YOUR GAME VERSION DOES NOT MATCH THE HOST. BOTH REFRESH THE PAGE AND TRY AGAIN'); return; }
-      if (this.phase === 'match') { this.refuse(id, link, 'A MATCH IS BEING PLAYED IN THAT ROOM. TRY AGAIN WHEN IT ENDS'); return; }
+      // different versions: the friend's own check of our hello tells them
+      // whether they or the host should refresh, so just say which
+      if (!ok.ok) { this.refuse(id, link, ok.outdated === 'local' ? 'HOST_OUTDATED' : 'FRIEND_OUTDATED'); return; }
+      // a match is on: they wait, and come in when it ends
+      if (this.phase === 'match') { link.waiting = true; link.send({ t: 'wait' }); return; }
       // an empty slot first, else take over a CPU's
       let i = this.slots.findIndex((s, k) => k > 0 && s.type === 'off');
       if (i < 0) i = this.slots.findIndex((s, k) => k > 0 && s.type === 'cpu');
@@ -223,8 +226,18 @@ export class Room {
   }
   fromHost(m) {
     if (!m || typeof m !== 'object') return;
-    if (m.type === 'hello') { const ok = checkHello(m); if (!ok.ok) this.fail(ok.message.toUpperCase()); }
-    else if (m.t === 'refuse') this.fail(String(m.reason));
+    if (m.type === 'hello') {
+      const ok = checkHello(m);
+      // our game is older than the host's: reload to update, then rejoin
+      if (!ok.ok && ok.outdated === 'local') { this.emit('outdated'); this.fail('UPDATING YOUR GAME...'); }
+      else if (!ok.ok) this.fail('THE HOST HAS AN OLDER VERSION OF THE GAME. ASK THEM TO REFRESH THE PAGE, THEN TRY AGAIN');
+    }
+    else if (m.t === 'refuse') {
+      if (m.reason === 'HOST_OUTDATED') this.fail('THE HOST HAS AN OLDER VERSION OF THE GAME. ASK THEM TO REFRESH THE PAGE, THEN TRY AGAIN');
+      else if (m.reason === 'FRIEND_OUTDATED') { this.emit('outdated'); this.fail('UPDATING YOUR GAME...'); }
+      else this.fail(String(m.reason));
+    }
+    else if (m.t === 'wait') this.emit('waiting');
     else if (m.t === 'lobby') {
       const first = this.me < 0;
       this.slots = m.slots; this.id = m.you; this.me = this.slotOf(m.you); this.mode = m.mode === 'teams' ? 'teams' : 'ffa';
@@ -285,6 +298,8 @@ export class Room {
   endMatch() {
     this.session = null; this.match = null; this.cpus = []; this.toldDesync = false;
     this.phase = this.isHost ? 'lobby' : this.hostPhase;
+    // friends who arrived during the match come in now
+    if (this.isHost) for (const [id, l] of [...this.links]) if (l.waiting) { l.waiting = false; this.fromFriend(id, l, makeHello()); }
     this.sendLobby();
   }
   leave() {

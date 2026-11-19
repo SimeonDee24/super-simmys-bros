@@ -129,7 +129,7 @@ function enterRoom(room, code, close) {
 function joinRoom(code) {
   const my = ++attempt;
   joinStatus = 'CONNECTING...';
-  joinOnline(code).then((link) => {
+  joinOnline(code, (text) => { if (my === attempt) joinStatus = text; }).then((link) => {
     if (my !== attempt) { link.close(); return; }
     const room = new Room(false);
     online = { room, code, close: () => link.close() };
@@ -141,7 +141,19 @@ function roomEvents() {
   if (!online) return;
   const room = online.room, events = room.events.splice(0);
   for (const e of events) {
-    if (e.type === 'entered') { screen = 'charSelect'; joinStatus = ''; sfx.play('menuOk'); }
+    if (e.type === 'entered') { screen = 'charSelect'; joinStatus = ''; sfx.play('menuOk'); try { sessionStorage.removeItem('updatedFor'); } catch (err) { /* fine */ } }
+    else if (e.type === 'waiting') joinStatus = 'CONNECTED. THE HOST IS IN A MATCH: YOU WILL JOIN WHEN IT ENDS';
+    else if (e.type === 'outdated') {
+      // our game is out of date: reload to get the new version, then rejoin this room by itself
+      // (only once: if it is still out of date after that, say what to do instead of reloading forever)
+      let again = false;
+      try { again = sessionStorage.getItem('updatedFor') === online.code; if (!again) { sessionStorage.setItem('rejoin', online.code); sessionStorage.setItem('updatedFor', online.code); } } catch (err) { /* private mode: they type it again */ }
+      const code = online.code;
+      leaveOnline();
+      if (again) { joinCode = ''; joinStatus = ''; screen = 'menu'; say('YOUR GAME IS STILL OUT OF DATE. CLOSE THIS TAB, OPEN THE GAME AGAIN AND REJOIN', 6000); sfx.play('menuBack'); }
+      else { joinCode = code; joinStatus = 'UPDATING YOUR GAME...'; setTimeout(() => location.reload(), 600); }
+      return;
+    }
     else if (e.type === 'joined') { say(e.text, 1800); sfx.play('menuOk'); }
     else if (e.type === 'left') { say(e.text, 1800); sfx.play('menuBack'); }
     else if (e.type === 'start') startOnlineMatch();
@@ -500,6 +512,12 @@ renderer.canvas.addEventListener('click', (e) => {
   if (screen !== 'stageSelect' || (online && !online.room.isHost)) return;
   stageTiles.forEach((_, i) => { if (inside(renderer.stageTileRect(i, stageTiles.length))) chooseStage(i); });
 });
+
+// Back from an automatic update: rejoin the room we were trying to join.
+try {
+  const code = sessionStorage.getItem('rejoin');
+  if (code) { sessionStorage.removeItem('rejoin'); joinCode = code; screen = 'join'; joinRoom(code); }
+} catch (e) { /* no session storage */ }
 
 // --- Update check (title screen only) ---
 async function lookForUpdate() {

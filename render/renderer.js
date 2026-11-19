@@ -11,9 +11,19 @@ import { getCharacter, CHARACTERS } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { DollRenderer } from './doll.js';
 import { Background } from './background.js';
-import { drawLabel as drawText } from './font.js';
+import { drawLabel as drawText, textWidth } from './font.js';
 
 const W = CONFIG.SCREEN_W, H = CONFIG.SCREEN_H;
+// Split text into lines no wider than max pixels.
+function wrapLines(text, max) {
+  const lines = []; let line = '';
+  for (const word of String(text).split(' ')) {
+    const next = line ? line + ' ' + word : word;
+    if (line && textWidth(next) > max) { lines.push(line); line = word; } else line = next;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
 const PLAYER_COLORS = ['#ff5a5a', '#5aa2ff', '#ffd23a', '#4fd06a'];   // red, blue, yellow, green
 export const TEAM_COLORS = ['#ff5a5a', '#5aa2ff', '#4fd06a'];          // red team, blue team, green team
 export const TEAM_NAMES = ['RED', 'BLUE', 'GREEN'];
@@ -1448,9 +1458,11 @@ export class Renderer {
     const ctx = this.ctx;
     this.ui();
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = 'rgba(8,8,24,0.85)'; ctx.fillRect(W / 2 - 120, 26, 240, 16);
-    ctx.fillStyle = '#ffe14a'; ctx.fillRect(W / 2 - 120, 26, 240, 1);
-    drawText(ctx, text, W / 2, 30, '#ffffff', 1, 'center', '#000000');
+    const lines = wrapLines(text, 300);
+    const w = Math.max(240, ...lines.map((l) => textWidth(l) + 16));
+    ctx.fillStyle = 'rgba(8,8,24,0.85)'; ctx.fillRect(W / 2 - w / 2, 26, w, 6 + lines.length * 10);
+    ctx.fillStyle = '#ffe14a'; ctx.fillRect(W / 2 - w / 2, 26, w, 1);
+    lines.forEach((l, i) => drawText(ctx, l, W / 2, 30 + i * 10, '#ffffff', 1, 'center', '#000000'));
     ctx.globalAlpha = 1;
   }
 
@@ -1596,7 +1608,7 @@ export class Renderer {
       ctx.fillStyle = '#16142e'; ctx.fillRect(x - 17, 94, 34, 42);
       if (code[i]) drawText(ctx, code[i], x, 102, '#ffe14a', 4, 'center', '#000000');
     }
-    if (status) drawText(ctx, status, W / 2, 156, '#ffffff', 1, 'center', '#000000');
+    if (status) wrapLines(status, 320).forEach((l, i) => drawText(ctx, l, W / 2, 156 + i * 10, '#ffffff', 1, 'center', '#000000'));
   }
   menuBackdrop(title, right) {
     const ctx = this.ctx;

@@ -144,6 +144,32 @@ for (const [name, friends, lag, cpu] of [
   for (let i = 0; i < 20; i++) p.net.advance(TICK);
   check('after the match everyone is back in the lobby, and the host can start another', host.phase === 'lobby' && a.phase === 'lobby' && host.slots[k].type === 'off' && host.start('balcony', 9) === true);
 }
+// A friend joins while a match is on: they wait, and come in when it ends.
+{
+  const p = party(1, { delay: 20 });
+  p.host.start('nest', 7); for (let i = 0; i < 20; i++) p.net.advance(TICK);
+  const [host, a] = p.rooms;
+  const [x, y] = p.net.pair(); const late = new Room(false);
+  host.accept(x); late.join(y);
+  for (let i = 0; i < 30; i++) p.net.advance(TICK);
+  const waited = !late.error && late.events.some((e) => e.type === 'waiting') && !late.events.some((e) => e.type === 'entered') && host.slots.filter((s) => s.type === 'human').length === 2;
+  play({ ...p, rooms: [host, a] }, 60 * 60 * 6);
+  host.endMatch(); a.endMatch();
+  for (let i = 0; i < 30; i++) p.net.advance(TICK);
+  check('a friend who joins during a match waits, then comes in when it ends', waited && late.events.some((e) => e.type === 'entered') && late.me === 2 && host.slots[2].type === 'human' && host.start('balcony', 4) === true);
+}
+// Game versions that differ: the side that is behind is told.
+{
+  const net = makeNet({ delay: 10 }); const host = new Room(true); const [x, y] = net.pair();
+  host.accept(x); const told = [];
+  y.onmessage = (m) => { if (m.t === 'refuse') told.push(m.reason); };
+  y.send({ type: 'hello', version: '999.0.0', protocol: 999 });
+  for (let i = 0; i < 20; i++) net.advance(TICK);
+  const net2 = makeNet({ delay: 10 }); const [h2, f2] = net2.pair(); const friend = new Room(false); friend.join(f2);
+  h2.onmessage = () => {}; h2.send({ type: 'hello', version: '999.0.0', protocol: 999 });
+  for (let i = 0; i < 20; i++) net2.advance(TICK);
+  check('when versions differ, an older host is told to refresh and an older friend updates itself', told[0] === 'HOST_OUTDATED' && friend.events.some((e) => e.type === 'outdated'), told.join());
+}
 // The host disappears.
 {
   const p = party(1, { delay: 20 });
