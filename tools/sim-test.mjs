@@ -772,7 +772,7 @@ for (const hold of [0, 30]) {
 // Roster: two fighters, two skins each, sharing every normal attack
 {
   const { CHARACTERS } = await import('../characters/index.js');
-  check('ten characters with two skins each', CHARACTERS.length === 10 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  check('eleven characters with two skins each', CHARACTERS.length === 11 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
   const [sim, kae, luc] = CHARACTERS;
   const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
   check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
@@ -1431,6 +1431,29 @@ for (const hold of [0, 30]) {
   step(k2, [BTN.SPECIAL | BTN.UP, 0]); step(k2, [0, 0]); step(k2, [BTN.LEFT, 0]); const late = kb.facing === -1;
   for (let i = 0; i < 6; i++) step(k2, [0, 0]); step(k2, [BTN.RIGHT, 0]);
   check('up special can be turned to face either way (held at the start, or tapped during it)', turned && late && kb.facing === 1, `held ${turned}, tapped ${late}, tapped back ${kb.facing}`);
+}
+
+// Ginger: ice cream, surfing, taekwondo, Muay Thai, guitar, snowboarding
+{
+  const { getCharacter } = await import('../characters/index.js');
+  const g = getCharacter('ginger'), sim = getCharacter('simeon');
+  check('Ginger has her own smashes and specials', ['fsmash', 'usmash', 'dsmash'].every((m) => g.moves[m] !== sim.moves[m]) && ['neutral', 'side', 'up', 'down'].every((k) => g.moves[g.specials[k]] && g.animations[g.specials[k]]));
+  const mk = (dx = 26, dy = 0) => { const s = createMatch({ ...setup, players: [{ charId: 'ginger', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [a, v] = s.fighters; v.x = a.x + dx * FX; v.y += dy * FX; if (dy) { v.grounded = 0; v.ground = -1; } return s; };
+  const run = (s, first, n = 80) => { step(s, [first, 0]); for (let i = 0; i < n; i++) step(s, [0, 0]); return s.fighters[1].percent / 10; };
+  TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
+  const f = run(mk(28), BTN.SMASH), u = run(mk(3, -44), BTN.SMASH | BTN.UP), d1 = run(mk(16), BTN.SMASH | BTN.DOWN), d2 = run(mk(-16), BTN.SMASH | BTN.DOWN);
+  check('Power Chord 17%, Board Flip 15%, Muay Thai Sweep 13% in front and behind', f === 17 && u === 15 && d1 === 13 && d2 === 13, `${f}% / ${u}% / ${d1}% / ${d2}%`);
+  TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
+  const truck = run(mk(90), BTN.SPECIAL, 120), surf = run(mk(60), BTN.SPECIAL | BTN.RIGHT, 80);
+  const t = mk(400); const ta = t.fighters[0], y0 = ta.y; step(t, [BTN.SPECIAL | BTN.UP, 0]); let top = 0; for (let i = 0; i < 50; i++) { step(t, [0, 0]); top = Math.max(top, (y0 - ta.y) / FX); }
+  const tk = run(mk(10), BTN.SPECIAL | BTN.UP, 60);
+  check('Ice Cream Truck rolls into them (8%), Surf\'s Up rides into them (10%), Tornado Kick rises about 120px hitting (13%)', truck === 8 && surf === 10 && top > 80 && top < 160 && tk === 13, `${truck}% / ${surf}% / ${Math.round(top)}px, ${tk}%`);
+  // Snack Break heals 4%, but only once every ten seconds
+  const h = mk(400); const ha = h.fighters[0]; ha.percent = 300;
+  step(h, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 60; i++) step(h, [0, 0]); const once = ha.percent;
+  step(h, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 60; i++) step(h, [0, 0]); const twice = ha.percent;
+  for (let i = 0; i < 600; i++) step(h, [0, 0]); step(h, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 60; i++) step(h, [0, 0]);
+  check('Snack Break heals 4%, at most once every ten seconds', once === 260 && twice === 260 && ha.percent === 220, `${once / 10}% / ${twice / 10}% / ${ha.percent / 10}%`);
 }
 
 process.exit(fails ? 1 : 0);

@@ -300,6 +300,41 @@ export class Renderer {
       poly([[-0.6, -3.4], [0.6, -3.4], [0.6, 15.6], [6.8, 16.1], [6.8, 17.8], [-0.6, 17.8]], '#e9dcc0');
       ctx.fillStyle = cols[0]; ctx.fillRect(-0.6, 2, 1.2, 3); ctx.fillStyle = '#2a2a33'; ctx.fillRect(1.5, 16.4, 5.3, 1.4);
     });
+    else if (g.kind === 'surfboard') {
+      // a surfboard under her feet, riding a curling wave
+      const x = f.x / FX, y = f.y / FX, t = fr;
+      ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
+      // the wave: a curl of blue and white behind and under her
+      ctx.fillStyle = '#2f7bd6'; ctx.beginPath(); ctx.moveTo(-26, 2); ctx.quadraticCurveTo(-22, -16 - (t % 6), -6, -12); ctx.quadraticCurveTo(-12, -6, -6, 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#7fc4ff'; ctx.beginPath(); ctx.moveTo(-24, 2); ctx.quadraticCurveTo(-20, -11, -9, -10); ctx.quadraticCurveTo(-13, -5, -9, 2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffffff'; for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(-8 - i * 4, -11 + (i & 1) * 2 - (t + i) % 3, 1.4, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = 'rgba(127,196,255,0.7)'; ctx.fillRect(-28, 0, 40, 2.5);
+      // the board
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(1, -1, 13, 2.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff8fc6'; ctx.beginPath(); ctx.ellipse(1, -1.2, 12.2, 1.7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-8, -1.6, 18, 0.6);
+      ctx.restore();
+    }
+    else if (g.kind === 'snowboard') held(() => {
+      // a snowboard gripped by its edge
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(0, 10, 3.2, 12.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#5a3fd1'; ctx.beginPath(); ctx.ellipse(0, 10, 2.4, 11.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffd23a'; ctx.fillRect(-2, 6, 4, 1.4); ctx.fillRect(-2, 13, 4, 1.4);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(-0.4, 0, 0.8, 20);
+    });
+    else if (g.kind === 'icecream') {
+      // an ice cream cone in her hand: strawberry scoop, waffle cone; bitten after the bite
+      const bitten = fr > 24;
+      ctx.save(); ctx.translate(hx, hy); ctx.scale(dir, 1);
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(-3, -1); ctx.lineTo(3, -1); ctx.lineTo(0, 8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d99a4e'; ctx.beginPath(); ctx.moveTo(-2.3, -0.6); ctx.lineTo(2.3, -0.6); ctx.lineTo(0, 6.8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#b7782f'; ctx.fillRect(-1.5, 1, 3, 0.6); ctx.fillRect(-1, 3, 2, 0.6);
+      const sr = bitten ? 2.4 : 3.1, sy = bitten ? -2.6 : -3.4;   // after the bite, a smaller scoop
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(0, sy, sr + 0.7, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff9ccb'; ctx.beginPath(); ctx.arc(0, sy, sr, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffd1e6'; ctx.fillRect(-1.6, sy - 2, 1.2, 1);
+      ctx.restore();
+    }
     else if (g.kind === 'guitar') held(() => {
       ctx.fillStyle = OUT; ctx.fillRect(-1.4, -6.5, 2.8, 16);
       ctx.beginPath(); ctx.ellipse(0, 13.5, 5, 5.6, 0, 0, Math.PI * 2); ctx.fill();
@@ -1151,6 +1186,25 @@ export class Renderer {
     const fade = p.spent ? Math.max(0.2, p.life / d.fadeFrames) : 1;
     const x = p.x / FX, y = p.y / FX, ctx = this.ctx;
     if (d.draw === 'vball') { this.drawVolleyball(x, y, d.r, p.spin, fade); return; }
+    if (d.draw === 'truck') {
+      // a little ice cream truck: white with a pink stripe, a cone on the roof, rolling wheels
+      const dir2 = p.dir || 1, roll = (p.spin >> 7) & 3;
+      ctx.save(); ctx.globalAlpha = fade; ctx.translate(x, y + d.r); ctx.scale(dir2, 1);
+      ctx.fillStyle = '#100d16'; ctx.fillRect(-9.6, -11.6, 19.2, 9.6); ctx.fillRect(3, -9.2, 7.6, 7.2);
+      ctx.fillStyle = '#f7f5ee'; ctx.fillRect(-8.9, -10.9, 13, 8.2); ctx.fillStyle = '#e9e6dc'; ctx.fillRect(3.7, -8.5, 6.2, 5.8);
+      ctx.fillStyle = '#9fd8ff'; ctx.fillRect(5, -7.6, 3.6, 2.6);                       // windscreen
+      ctx.fillStyle = '#ff8fc6'; ctx.fillRect(-8.9, -6.4, 18.6, 1.6);                  // stripe
+      ctx.fillStyle = '#5a3a2a'; ctx.fillRect(-6.5, -9.6, 5, 2.4);                     // serving window
+      ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(-1, -12); ctx.lineTo(-2.5, -15.5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#d99a4e'; ctx.beginPath(); ctx.moveTo(-3.5, -12.2); ctx.lineTo(-1.5, -12.2); ctx.lineTo(-2.5, -15); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ff9ccb'; ctx.beginPath(); ctx.arc(-2.5, -15.4, 1.8, 0, Math.PI * 2); ctx.fill();
+      for (const wx of [-5.5, 6]) {
+        ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.arc(wx, -2, 2.3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#c9ced8'; ctx.fillRect(wx - 0.5 + (roll & 1 ? 0.6 : -0.6), -2.5 + (roll & 2 ? 0.6 : -0.6), 1, 1);
+      }
+      ctx.restore();
+      return;
+    }
     if (d.draw === 'frisbee') {
       // a spinning disc seen almost edge-on, with a white ring
       ctx.save(); ctx.globalAlpha = fade; ctx.translate(x, y); ctx.rotate(p.vy / FX * 0.08);

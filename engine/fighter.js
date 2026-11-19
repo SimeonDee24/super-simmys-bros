@@ -39,6 +39,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     stored: 0,                        // charge kept for later (Osama's Oil Beam, like a charge shot)
     item: '', itemFuse: 0, tossDir: 0, // an item in his hand (Zeid's bomb) and its fuse; how it is being thrown
     diPending: 0, jabLocks: 0, jabBounce: -1,   // DI to apply after hitlag; weak hits taken while lying down
+    lastHeal: -100000,                // tick of the last heal (Ginger's Snack Break)
     fuel: 1000,                       // stream moves (Max's money gun): runs down while held, refills when not
     airUsed: 0,
     dropThru: 0,                      // frames left falling through a platform
@@ -711,6 +712,10 @@ const STATES = {
       airMotion(mv.noDrift ? { ...c, dir: 0 } : c, mv.float);
     } else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
     if (mv.spawn && f.stateFrame === mv.spawn.frame) spawnProjectile(c.match, f, mv);
+    // healing moves (a snack): take `amount` off their damage, at most once every `every` frames
+    if (mv.heal && f.stateFrame === mv.heal.frame && c.match.tick - f.lastHeal >= mv.heal.every) {
+      f.percent = Math.max(0, f.percent - mv.heal.amount); f.lastHeal = c.match.tick;
+    }
     // Header (Wii Fit Trainer style): tosses a ball up, hops, and heads it on
     // frame `at`. Pressing special again in `early` heads it sooner, at a
     // flatter, faster angle; shield in `cancel` lets the ball drop and ends the
