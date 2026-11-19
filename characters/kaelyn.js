@@ -162,8 +162,8 @@ const CUT_DIVE = { torso: -22, head: 14, legF: [34, -3], legB: [-20, -100], armF
 const animations = {
   // Puff Pass: winds her arm back and flings the vape forward, spinning.
   puffPass: anim(false, [
-    [5, { torso: -8, armF: [-70, 70], armB: [30, 40], legF: [14, -10], legB: [-10, -6], handF: 'fist' }],
-    [5, { torso: -14, head: -4, armF: [-125, 60], armB: [50, 30], legF: [20, -14], legB: [-14, -6], handF: 'fist' }],
+    [5, { torso: -8, armF: [-20, 110], armB: [30, 40], legF: [14, -10], legB: [-10, -6], handF: 'fist' }],
+    [5, { torso: -14, head: -4, armF: [-45, 120], armB: [20, 40], legF: [20, -14], legB: [-14, -6], handF: 'fist' }],
     [3, { torso: 10, armF: [60, 10], armB: [-30, 40], legF: [26, -20], legB: [-18, -4], handF: 'fist', face: 'yell' }],
     [10, { torso: 18, armF: [100, 5], armB: [-40, 40], legF: [28, -22], legB: [-20, -4], handF: 'open', face: 'yell' }],
     [14, { torso: 8, armF: [60, 20], armB: [-20, 30], legF: [12, -8], legB: [-8, -4] }],

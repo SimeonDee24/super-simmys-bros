@@ -274,7 +274,7 @@ const AO_FINAL = { torso: -26, head: 4, armF: [-70, 30], armB: [-120, 20], legF:
 const BLUFF_HOLD = { torso: -4, head: -6, armF: [70, 95], armB: [-30, 70], legF: [8, -6], legB: [-8, -4], face: 'smile' };
 // jump shot: ball gathered at the chest, set overhead, then released up and forward
 const JS_GATHER = { hip: [0, 3], torso: 8, armF: [40, 100], armB: [30, 105], legF: [30, -55], legB: [10, -45], ...FISTS };
-const JS_SET = { hip: [0, 4], torso: 4, head: -10, armF: [150, 70], armB: [140, 80], legF: [30, -60], legB: [12, -50], ...FISTS };
+const JS_SET = { hip: [0, 4], torso: 4, head: -6, armF: [115, 75], armB: [105, 85], legF: [30, -60], legB: [12, -50], ...FISTS };
 const JS_RELEASE = { hip: [0, -2], torso: -4, head: -12, armF: [150, 5], armB: [120, 40], legF: [6, -4], legB: [-6, -4], footF: 20, footB: 20, handF: 'open', handB: 'open', face: 'smile' };
 // back air: knees pulled up in front of the chest (body upright), then both
 // legs shot straight out behind with the body laid flat (feet back, head forward)
