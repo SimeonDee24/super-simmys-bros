@@ -529,8 +529,11 @@ for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BT
     let spun = false, top = v.y;
     for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.min(top, v.y); if (a.state === 'throwing' && a.facing !== 1) spun = true; if (i === 40) break; }
     if (name === 'down throw') v.y = top;
-    check(`${name}: ${dmg / 10}%, sends the right way${name === 'back throw' ? ', spins round' : ''}`,
-      v.percent === dmg && test(v, a) && (name !== 'back throw' || spun), `${v.percent / 10}% dx ${((v.x - a.x) / FX).toFixed(0)} dy ${((v.y - a.y) / FX).toFixed(0)}`);
+    const went = test(v, a);
+    for (let i = 0; i < 30; i++) step(s, [0, 0]);
+    const endFacing = name === 'back throw' ? -1 : 1;   // a back throw leaves him facing the way he threw
+    check(`${name}: ${dmg / 10}%, sends the right way${name === 'back throw' ? ', spins round and ends facing back' : ''}`,
+      v.percent === dmg && went && (name !== 'back throw' || spun) && a.state !== 'throwing' && a.facing === endFacing, `${v.percent / 10}% dx ${((v.x - a.x) / FX).toFixed(0)} dy ${((v.y - a.y) / FX).toFixed(0)}`);
   }
   // back throw kills at high percent near the edge
   const { CpuController } = await import('../engine/cpu.js');

@@ -873,7 +873,8 @@ const STATES = {
       placeHeld(f, vic, x, y, f.throwFacing);
       if (f.stateFrame >= t.release) launchThrow(c.match, f, vic, t);
     }
-    if (f.stateFrame >= t.faf) { f.facing = f.throwFacing; f.holding = -1; setState(f, 'idle', 'idle'); }
+    // a back throw that turns him round leaves him facing the way he threw
+    if (f.stateFrame >= t.faf) { f.facing = t.spin && t.dir === -1 ? -f.throwFacing : f.throwFacing; f.holding = -1; setState(f, 'idle', 'idle'); }
   },
   // Being held: mash any button or direction to break free sooner.
   grabbed(c) {
