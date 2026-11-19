@@ -1575,9 +1575,16 @@ export class Renderer {
       if (ch) this.doll.drawHead(ctx, ch, 0, r.x + r.w / 2, r.y + r.h * 0.5, r.w * 0.72);
       else drawText(ctx, '?', r.x + r.w / 2, r.y + r.h * 0.12, '#ffe14a', Math.max(3, Math.round(r.h / 9)), 'center', '#000000');
       ctx.restore();
-      const band = Math.max(8, Math.round(r.h * 0.2));
+      // first name, and the last name small under it
+      const band = ch && ch.lastName ? Math.max(13, Math.round(r.h * 0.3)) : Math.max(8, Math.round(r.h * 0.2));
       ctx.fillStyle = 'rgba(8,8,24,0.85)'; ctx.fillRect(r.x, r.y + r.h - band, r.w, band);
-      drawText(ctx, ch ? ch.name : 'RANDOM', r.x + r.w / 2, r.y + r.h - band + (band - 5) / 2, '#ffffff', 1, 'center');
+      if (ch && ch.lastName) {
+        drawText(ctx, ch.name, r.x + r.w / 2, r.y + r.h - band + 1, '#ffffff', 1, 'center');
+        const fs = Math.min(4.6, (r.w - 3) / (ch.lastName.length * 0.62));
+        ctx.font = '700 ' + fs + 'px "SF Mono", Consolas, Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#b9b6d8';
+        ctx.fillText(ch.lastName, r.x + r.w / 2, r.y + r.h - 2);
+      } else drawText(ctx, ch ? ch.name : 'RANDOM', r.x + r.w / 2, r.y + r.h - band + (band - 5) / 2, '#ffffff', 1, 'center');
     });
     // a numbered token on the fighter each slot has picked (not the one in the hand)
     const spots = this.tokenSpots(chars, slots, opts.cursor ? opts.cursor.held : -1);
