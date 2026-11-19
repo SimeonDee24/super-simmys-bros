@@ -118,6 +118,9 @@ export function stepProjectiles(state) {
           // landed on top: bounce, or start rolling once the bounces get small
           p.y = T - r;
           p.bounces++;
+          // `bounceTo`: always bounces back up the same height (a fireball
+          // skipping along the floor) until it runs out of life
+          if (d.bounceTo) { p.vy = -d.bounceTo; continue; }
           const up = Math.trunc((p.vy * d.bounce) / 256);
           if (up < d.minBounce || p.bounces > d.maxBounces) { p.vy = 0; p.rolling = k + 1; }
           else { p.vy = -up; p.vx = Math.trunc((p.vx * d.bounceKeepX) / 256); }
@@ -125,6 +128,7 @@ export function stepProjectiles(state) {
           p.y = B + r; p.vy = -Math.trunc(p.vy / 2);                     // bonk the underside
         } else if (p.y + r > T && p.y - r < B) {
           p.x = p.vx > 0 ? L - r : R + r; p.vx = -Math.trunc((p.vx * 3) / 4); // bounce off a wall
+          if (d.bounceTo) p.life = Math.min(p.life, d.fadeFrames);            // (a fireball fizzles out on a wall)
         }
       }
     }
