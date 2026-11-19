@@ -300,6 +300,44 @@ export class Renderer {
       poly([[-0.6, -3.4], [0.6, -3.4], [0.6, 15.6], [6.8, 16.1], [6.8, 17.8], [-0.6, 17.8]], '#e9dcc0');
       ctx.fillStyle = cols[0]; ctx.fillRect(-0.6, 2, 1.2, 3); ctx.fillStyle = '#2a2a33'; ctx.fillRect(1.5, 16.4, 5.3, 1.4);
     });
+    else if (g.kind === 'gust') {
+      // Tac Dash: streaks of wind trailing behind her
+      const x = f.x / FX, y = f.y / FX;
+      ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
+      for (let i = 0; i < 5; i++) {
+        const yy = -6 - i * 7, len = 14 + ((i * 7 + fr * 3) % 12), off = -8 - ((fr * 4 + i * 5) % 10);
+        ctx.fillStyle = i & 1 ? 'rgba(217,204,255,0.75)' : 'rgba(255,255,255,0.85)';
+        ctx.fillRect(off - len, yy, len, 1.4);
+      }
+      ctx.restore();
+    }
+    else if (g.kind === 'skateboard') {
+      // a skateboard under her feet, tipped up as she pops it
+      const s2 = solve(ch.skeleton, samplePose(ch.animations[f.anim] || ch.animations.idle, f.animFrame));
+      const fx = f.x / FX + dir * ((s2.legF.c[0] + s2.legB.c[0]) / 2 / FX), fy = f.y / FX + Math.max(s2.legF.c[1], s2.legB.c[1]) / FX + 2;
+      ctx.save(); ctx.translate(fx, fy); ctx.scale(dir, 1); ctx.rotate(fr < 10 ? -0.35 : -0.1);
+      ctx.fillStyle = OUT; ctx.fillRect(-11, -2.2, 22, 3.2);
+      ctx.fillStyle = '#6b4fa8'; ctx.fillRect(-10.4, -1.7, 20.8, 2.2);
+      ctx.fillStyle = '#d9ccff'; ctx.fillRect(-6, -1.7, 12, 0.8);
+      for (const wx of [-6.5, 6.5]) { ctx.fillStyle = OUT; ctx.beginPath(); ctx.arc(wx, 2, 1.8, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = '#ffd23a'; ctx.beginPath(); ctx.arc(wx, 2, 1.1, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+    }
+    else if (g.kind === 'camflash') {
+      // Serve!: a camera flash going off around her
+      const x = f.x / FX, y = f.y / FX - 22, k = act >= 0 ? act : fr > g.active[1] ? 1 : 0;
+      ctx.save(); ctx.globalAlpha = Math.max(0, 1 - k);
+      ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, 6 + k * 22, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#d9ccff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 10 + k * 26, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+      this.star(x + dir * 10, y - 12, 6 + (1 - k) * 4, '#ffffff', '#d9ccff', fr * 0.3);
+    }
+    else if (g.kind === 'handbag') held(() => {
+      // a handbag swung by its strap
+      ctx.strokeStyle = OUT; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-1.5, 0); ctx.quadraticCurveTo(0, 6, 1.5, 0); ctx.moveTo(0, 2); ctx.lineTo(0, 8); ctx.stroke();
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(-5.4, 8); ctx.lineTo(5.4, 8); ctx.lineTo(6.6, 17); ctx.lineTo(-6.6, 17); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#c9a46a'; ctx.beginPath(); ctx.moveTo(-4.6, 8.8); ctx.lineTo(4.6, 8.8); ctx.lineTo(5.6, 16.2); ctx.lineTo(-5.6, 16.2); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#8a6a3c'; ctx.fillRect(-4.6, 11, 9.2, 1); ctx.fillStyle = '#ffd23a'; ctx.fillRect(-0.8, 11.2, 1.6, 1.6);
+    });
     else if (g.kind === 'surfboard') {
       // a surfboard under her feet, riding a curling wave
       const x = f.x / FX, y = f.y / FX, t = fr;
@@ -1186,6 +1224,16 @@ export class Renderer {
     const fade = p.spent ? Math.max(0.2, p.life / d.fadeFrames) : 1;
     const x = p.x / FX, y = p.y / FX, ctx = this.ctx;
     if (d.draw === 'vball') { this.drawVolleyball(x, y, d.r, p.spin, fade); return; }
+    if (d.draw === 'cookie') {
+      // a sandwich cookie spinning edge-on: dark biscuits, white cream
+      const w = 3.4 * Math.abs(Math.cos(p.life * 0.5)) + 1;
+      ctx.save(); ctx.globalAlpha = fade; ctx.translate(x, y);
+      ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.ellipse(0, 0, w + 0.7, 4.1, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#2a1d1a'; ctx.beginPath(); ctx.ellipse(0, 0, w, 3.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f6f2ea'; ctx.fillRect(-w, -0.6, w * 2, 1.2);
+      ctx.restore();
+      return;
+    }
     if (d.draw === 'truck') {
       // a little ice cream truck: white with a pink stripe, a cone on the roof, rolling wheels
       const dir2 = p.dir || 1, roll = (p.spin >> 7) & 3;

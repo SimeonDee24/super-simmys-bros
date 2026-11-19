@@ -772,7 +772,7 @@ for (const hold of [0, 30]) {
 // Roster: two fighters, two skins each, sharing every normal attack
 {
   const { CHARACTERS } = await import('../characters/index.js');
-  check('eleven characters with two skins each', CHARACTERS.length === 11 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  check('twelve characters with two skins each', CHARACTERS.length === 12 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
   const [sim, kae, luc] = CHARACTERS;
   const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
   check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
@@ -1454,6 +1454,28 @@ for (const hold of [0, 30]) {
   step(h, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 60; i++) step(h, [0, 0]); const twice = ha.percent;
   for (let i = 0; i < 600; i++) step(h, [0, 0]); step(h, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 60; i++) step(h, [0, 0]);
   check('Snack Break heals 4%, at most once every ten seconds', once === 260 && twice === 260 && ha.percent === 220, `${once / 10}% / ${twice / 10}% / ${ha.percent / 10}%`);
+}
+
+// Faybua: cookies, a tactical dash, skateboarding, fashion, dancing, horses
+{
+  const { getCharacter } = await import('../characters/index.js');
+  const fb = getCharacter('faybua'), sim = getCharacter('simeon');
+  check('Faybua has her own smashes and specials', ['fsmash', 'usmash', 'dsmash'].every((m) => fb.moves[m] !== sim.moves[m]) && ['neutral', 'side', 'up', 'down'].every((k) => fb.moves[fb.specials[k]] && fb.animations[fb.specials[k]]));
+  const mk = (dx = 26, dy = 0) => { const s = createMatch({ ...setup, players: [{ charId: 'faybua', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [a, v] = s.fighters; v.x = a.x + dx * FX; v.y += dy * FX; if (dy) { v.grounded = 0; v.ground = -1; } return s; };
+  const run = (s, first, n = 80) => { step(s, [first, 0]); for (let i = 0; i < n; i++) step(s, [0, 0]); return s.fighters[1].percent / 10; };
+  TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
+  const f = run(mk(28), BTN.SMASH), u = run(mk(3, -40), BTN.SMASH | BTN.UP), d1 = run(mk(-16), BTN.SMASH | BTN.DOWN), d2 = run(mk(16), BTN.SMASH | BTN.DOWN);
+  check('Designer Bag 17%, Spin Move 15%, Buck Kick 13% behind and in front', f === 17 && u === 15 && d1 === 13 && d2 === 13, `${f}% / ${u}% / ${d1}% / ${d2}%`);
+  TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
+  const ck = run(mk(80), BTN.SPECIAL, 60), dash = run(mk(50), BTN.SPECIAL | BTN.RIGHT, 50);
+  const d = mk(400); const da = d.fighters[0], x0 = da.x; step(d, [BTN.SPECIAL | BTN.RIGHT, 0]); let untouchable = false; for (let i = 0; i < 40; i++) { step(d, [0, 0]); if (i === 6 && da.intangible > 0) untouchable = true; }
+  const o = mk(400); const oa = o.fighters[0], y0 = oa.y; step(o, [BTN.SPECIAL | BTN.UP, 0]); let top = 0; for (let i = 0; i < 50; i++) { step(o, [0, 0]); top = Math.max(top, (y0 - oa.y) / FX); }
+  check('Cookie Toss 5%; Tac Dash bursts forward (6%), untouchable at first; Ollie rides up about 110px', ck === 5 && dash === 6 && untouchable && (da.x - x0) / FX > 50 && top > 80 && top < 150,
+    `${ck}% / ${dash}% dashed ${Math.round((da.x - x0) / FX)}px untouchable ${untouchable} / up ${Math.round(top)}px`);
+  // Serve!: a counter. Simeon jabs her while she poses: she takes nothing, he takes at least 8%
+  const c = createMatch({ ...setup, players: [{ charId: 'faybua', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [ca, cv] = c.fighters; cv.x = ca.x + 14 * FX; cv.facing = -1;
+  step(c, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 5; i++) step(c, [0, 0]); step(c, [0, BTN.ATTACK]); for (let i = 0; i < 50; i++) step(c, [0, 0]);
+  check('Serve! counters a hit with a camera flash (no damage to her, at least 8% back)', ca.percent === 0 && cv.percent >= 80, `her ${ca.percent / 10}%, his ${cv.percent / 10}%`);
 }
 
 process.exit(fails ? 1 : 0);
