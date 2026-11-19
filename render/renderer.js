@@ -15,8 +15,9 @@ import { drawLabel as drawText, labelWidth, labelFont } from './font.js';
 
 const W = CONFIG.SCREEN_W, H = CONFIG.SCREEN_H;
 // Split text into lines no wider than max pixels.
-// Menu theme: black, white and red, with slanted shapes.
-const INK = '#0b0b10', RED = '#d7263d', PANEL = '#1b1b24', MUTED = '#9a9aae';
+// Menu theme: dark blue, white and gold, with slanted shapes.
+// UBC colours: dark blue and gold.
+const INK = '#002145', GOLD = '#f2b51a', PANEL = '#0c2c57', MUTED = '#9fb3cf';
 function wrapLines(ctx, text, max) {
   const lines = []; let line = '';
   for (const word of String(text).split(' ')) {
@@ -28,7 +29,7 @@ function wrapLines(ctx, text, max) {
 }
 const PLAYER_COLORS = ['#ff5a5a', '#5aa2ff', '#ffd23a', '#4fd06a'];   // red, blue, yellow, green
 export const TEAM_COLORS = ['#ff5a5a', '#5aa2ff', '#4fd06a'];          // red team, blue team, green team
-export const TEAM_NAMES = ['RED', 'BLUE', 'GREEN'];
+export const TEAM_NAMES = ['GOLD', 'BLUE', 'GREEN'];
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 function rgba(hex, a) {
@@ -1479,11 +1480,11 @@ export class Renderer {
   drawPause(lines) {
     const ctx = this.ctx;
     this.ui();
-    ctx.fillStyle = 'rgba(11,11,16,0.78)';
+    ctx.fillStyle = 'rgba(0,22,48,0.8)';
     ctx.fillRect(0, 0, W, H);
     let y = 44;
     lines.forEach((l, i) => {
-      if (i === 0) { this.slant(W / 2 - 70, 36, 140, 26, RED, 0.3); drawText(ctx, l, W / 2 + 3, 40, '#ffffff', 3, 'center', '#000000'); }
+      if (i === 0) { this.slant(W / 2 - 70, 36, 140, 26, GOLD, 0.3); drawText(ctx, l, W / 2 + 3, 40, INK, 3, 'center'); }
       else drawText(ctx, l, W / 2, y, '#ffffff', 1, 'center', '#000000');
       y += i === 0 ? 28 : 9;
     });
@@ -1545,8 +1546,8 @@ export class Renderer {
     const colOf = (i) => (opts.teams ? TEAM_COLORS[(slots[i].team | 0) % 3] : PLAYER_COLORS[i]);
     // the match type, in the top bar: a slanted black tag (red for teams)
     const modeText = opts.teams ? 'TEAMS' : 'FREE-FOR-ALL', mx = 262, mw = 86;
-    this.slant(mx - mw / 2, 4, mw, 11, opts.teams ? RED : INK, 0.3);
-    drawText(ctx, (opts.modeKey === false ? '' : 'T  ') + modeText, mx + 2, 6.5, '#ffffff', 1, 'center');
+    this.slant(mx - mw / 2, 4, mw, 11, opts.teams ? GOLD : INK, 0.3);
+    drawText(ctx, (opts.modeKey === false ? '' : 'T  ') + modeText, mx + 2, 6.5, opts.teams ? INK : '#ffffff', 1, 'center');
 
     // --- the roster ---
     const acol = colOf(active);
@@ -1558,13 +1559,13 @@ export class Renderer {
       const sel = slots[active].char === id;
       const cur = opts.cursor, hover = cur && cur.x >= r.x - 2 && cur.x < r.x + r.w + 2 && cur.y >= r.y - 2 && cur.y < r.y + r.h + 2;
       // frame: the active slot's colour when its cursor is here
-      ctx.fillStyle = sel ? acol : here.length ? '#8a86b0' : '#2b2a4a';
+      ctx.fillStyle = sel ? acol : here.length ? '#7f98bd' : '#1a3a66';
       ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
       if (sel) { ctx.fillStyle = rgba('#ffffff', 0.25 + 0.25 * Math.sin(t * 0.14)); ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4); }
       if (hover && !sel) { ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4); }
       const bg = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
       const tint = (ch && ch.trailColors && ch.trailColors[1]) || '#6a64c8';
-      bg.addColorStop(0, shade(tint, 0.5)); bg.addColorStop(1, '#16142e');
+      bg.addColorStop(0, shade(tint, 0.5)); bg.addColorStop(1, '#061a38');
       ctx.fillStyle = bg; ctx.fillRect(r.x, r.y, r.w, r.h);
       ctx.save();
       ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
@@ -1578,7 +1579,7 @@ export class Renderer {
         drawText(ctx, ch.name, r.x + r.w / 2, r.y + r.h - band + 1, '#ffffff', 1, 'center');
         const fs = Math.min(4.6, (r.w - 3) / (ch.lastName.length * 0.62));
         ctx.font = '700 ' + fs + 'px "SF Mono", Consolas, Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#b9b6d8';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#b4c4dc';
         ctx.fillText(ch.lastName, r.x + r.w / 2, r.y + r.h - 2);
       } else drawText(ctx, ch ? ch.name : 'RANDOM', r.x + r.w / 2, r.y + r.h - band + (band - 5) / 2, '#ffffff', 1, 'center');
     });
@@ -1590,12 +1591,12 @@ export class Renderer {
     slots.forEach((sl, i) => {
       const r = this.slotPanelRect(i), col = colOf(i), cx = r.x + r.w / 2, on = sl.type !== 'off', act = i === active;
       if (act) { ctx.fillStyle = col; ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4); }
-      ctx.fillStyle = on ? '#14132b' : '#100f22'; ctx.fillRect(r.x, r.y, r.w, r.h);
+      ctx.fillStyle = on ? '#0a2347' : '#071a36'; ctx.fillRect(r.x, r.y, r.w, r.h);
       if (!on) {
         ctx.fillStyle = shade(col, 0.35); ctx.fillRect(r.x, r.y, r.w, 13);
         drawText(ctx, 'P' + (i + 1), r.x + 5, r.y + 4, shade(col, 0.8), 1, 'left');
-        drawText(ctx, 'OFF', cx, r.y + 44, '#5d5a80', 3, 'center');
-        drawText(ctx, opts.offText ? opts.offText(i) : act ? 'L  ADD A CPU' : 'PRESS ' + (i + 1), cx, r.y + 70, '#8a86b0', 1, 'center');
+        drawText(ctx, 'OFF', cx, r.y + 44, '#4f6b93', 3, 'center');
+        drawText(ctx, opts.offText ? opts.offText(i) : act ? 'L  ADD A CPU' : 'PRESS ' + (i + 1), cx, r.y + 70, '#7f98bd', 1, 'center');
         return;
       }
       const ch = sl.char >= 0 ? chars[sl.char] : null;   // null: Random
@@ -1617,8 +1618,8 @@ export class Renderer {
       // first name large, last name under it, then the skin
       ctx.fillStyle = 'rgba(8,8,24,0.8)'; ctx.fillRect(r.x, r.y + r.h - 32, r.w, 32);
       drawText(ctx, ch ? ch.name : 'RANDOM', cx, r.y + r.h - 30, '#ffffff', 2, 'center', '#000000');
-      if (!ch) drawText(ctx, 'PICKED AT THE START', cx, r.y + r.h - 16, '#d9d6f0', 1, 'center');
-      else if (ch.lastName) drawText(ctx, ch.lastName, cx, r.y + r.h - 16, '#d9d6f0', 1, 'center');
+      if (!ch) drawText(ctx, 'PICKED AT THE START', cx, r.y + r.h - 16, '#d3deef', 1, 'center');
+      else if (ch.lastName) drawText(ctx, ch.lastName, cx, r.y + r.h - 16, '#d3deef', 1, 'center');
       // in teams the last line says which team; otherwise the skin
       drawText(ctx, opts.teams ? TEAM_NAMES[(sl.team | 0) % 3] + ' TEAM' : ch ? ch.palettes[sl.alt].name : '', cx, r.y + r.h - 8, col, 1, 'center');
       if (act) { const by = r.y - 9 + Math.sin(t * 0.14) * 1.5; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 5, by); ctx.lineTo(cx + 5, by); ctx.lineTo(cx, by + 5); ctx.closePath(); ctx.fill(); }
@@ -1652,9 +1653,9 @@ export class Renderer {
     this.menuBackdrop(title, 'W / S  CHOOSE   J  OK   ESC  BACK');
     items.forEach((text, i) => {
       const on = i === index, y = 66 + i * 42, x = 40 + (on ? 14 : 0), w = 232, h = 32;
-      this.slant(x + (on ? 4 : 2), y + (on ? 4 : 2), w, h, on ? RED : '#000000');
+      this.slant(x + (on ? 4 : 2), y + (on ? 4 : 2), w, h, on ? GOLD : '#000c1c');
       this.slant(x, y, w, h, on ? '#ffffff' : PANEL);
-      drawText(ctx, '0' + (i + 1), x + 16, y + 12, on ? INK : RED, 1, 'left');
+      drawText(ctx, '0' + (i + 1), x + 16, y + 12, on ? INK : GOLD, 1, 'left');
       drawText(ctx, text, x + 32, y + 9, on ? INK : MUTED, 2.2, 'left');
     });
     if (note) { ctx.font = labelFont(1); drawText(ctx, note, 56, 66 + items.length * 42 + 10, '#cfcfe0', 1, 'left'); }
@@ -1668,7 +1669,7 @@ export class Renderer {
     drawText(ctx, 'ASK THE HOST FOR THEIR ROOM CODE', W / 2, 62, '#cfcfe0', 1.4, 'center');
     for (let i = 0; i < length; i++) {
       const w = 46, h = 62, x = W / 2 + (i - (length - 1) / 2) * 60 - w / 2, y = 82, cur = i === code.length, full = !!code[i];
-      this.slant(x + 3, y + 3, w, h, full ? RED : '#000000', 0.18);
+      this.slant(x + 3, y + 3, w, h, full ? GOLD : '#000c1c', 0.18);
       this.slant(x, y, w, h, full ? '#ffffff' : PANEL, 0.18);
       if (cur && (this.time >> 4) & 1) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; this.slantPath(x - 3, y - 3, w + 6, h + 6, 0.18); ctx.stroke(); }
       if (full) drawText(ctx, code[i], x + w / 2 + 2, y + 13, INK, 5.5, 'center');
@@ -1685,10 +1686,10 @@ export class Renderer {
   themeBack() {
     const ctx = this.ctx;
     const g = ctx.createRadialGradient(W * 0.2, H * 0.3, 10, W * 0.2, H * 0.3, W * 0.8);
-    g.addColorStop(0, '#24242e'); g.addColorStop(1, INK);
+    g.addColorStop(0, '#0d3a75'); g.addColorStop(1, '#00152e');
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
     const drift = Math.sin(this.time * 0.01) * 3;
-    ctx.fillStyle = RED;
+    ctx.fillStyle = GOLD;
     const band = (x0, w) => { ctx.beginPath(); ctx.moveTo(x0 + drift, H); ctx.lineTo(x0 + 120 + drift, 0); ctx.lineTo(x0 + 120 + w + drift, 0); ctx.lineTo(x0 + w + drift, H); ctx.closePath(); ctx.fill(); };
     band(W * 0.47, 7); band(W * 0.53, 54);
   }
@@ -1775,9 +1776,9 @@ export class Renderer {
       const shown = tiles[(this.time >> 3) % (tiles.length - 1)].stage; // flick through the stages
       ctx.globalAlpha = 0.35; ctx.drawImage(this.thumb(shown), 0, 0, W, H); ctx.globalAlpha = 1;
     }
-    ctx.fillStyle = 'rgba(11,11,16,0.86)';
+    ctx.fillStyle = 'rgba(0,22,48,0.88)';
     ctx.fillRect(0, H - 86, W, 86);
-    ctx.fillStyle = RED; ctx.fillRect(0, H - 86, W, 2);
+    ctx.fillStyle = GOLD; ctx.fillRect(0, H - 86, W, 2);
     this.themeTop('STAGE SELECT', 'A / D  CHOOSE   J  START   ESC  BACK');
     drawText(ctx, sel.stage ? sel.stage.name : 'RANDOM', W / 2, H - 80, '#ffffff', 2.2, 'center', '#000000');
     tiles.forEach((t, i) => {
@@ -1813,7 +1814,7 @@ export class Renderer {
     });
 
     const title = CONFIG.GAME_TITLE;
-    drawText(ctx, title, W / 2 + 3, 53, RED, 4.4, 'center');
+    drawText(ctx, title, W / 2 + 3, 53, GOLD, 4.4, 'center');
     drawText(ctx, title, W / 2, 50, '#ffffff', 4.4, 'center', INK);
     if ((this.time >> 5) & 1) drawText(ctx, 'PRESS ANY KEY', W / 2, 96, '#ffffff', 2, 'center', '#1a1440');
     drawText(ctx, 'V' + GAME_VERSION, W - 4, H - 9, '#ffffff', 1, 'right', '#1a1440');
