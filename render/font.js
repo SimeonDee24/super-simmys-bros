@@ -41,12 +41,20 @@ export function drawText(ctx, text, x, y, color = '#fff', scale = 1, align = 'le
 // roughly the same size per `scale`) but drawn with real fonts so it stays
 // sharp at any resolution. Small text is monospaced so columns line up;
 // headings use a heavy italic.
+// Fonts: Inter Display (bundled in assets/fonts, loaded by main.js), with
+// system fallbacks until it has loaded.
+export const HEAD_FONT = '"Brawl Heading", "Arial Black", "Helvetica Neue", Arial, sans-serif';
+export const UI_FONT = '"Brawl UI", "Helvetica Neue", "Segoe UI", Arial, sans-serif';
+export function labelFont(scale) {
+  const big = scale >= 2, size = big ? scale * 6.4 : 6.5;
+  return big ? 'italic 900 ' + size + 'px ' + HEAD_FONT : '800 ' + size + 'px ' + UI_FONT;
+}
+// How wide drawLabel's text will be.
+export function labelWidth(ctx, text, scale = 1) { ctx.font = labelFont(scale); return ctx.measureText(String(text).toUpperCase()).width; }
 export function drawLabel(ctx, text, x, y, color = '#fff', scale = 1, align = 'left', shadow = null) {
   text = String(text).toUpperCase();
   const big = scale >= 2, size = big ? scale * 6.4 : 6.5;
-  ctx.font = big
-    ? 'italic 900 ' + size + 'px "Arial Black", "Helvetica Neue", "Segoe UI", Arial, sans-serif'
-    : '700 ' + size + 'px "SF Mono", Consolas, Menlo, "DejaVu Sans Mono", "Liberation Mono", monospace';
+  ctx.font = labelFont(scale);
   ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.lineJoin = 'round';
   const by = y + scale * 5 + (big ? scale * 0.3 : 0.3);
   if (shadow) {

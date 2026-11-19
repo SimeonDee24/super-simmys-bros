@@ -11,15 +11,17 @@ import { getCharacter, CHARACTERS } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { DollRenderer } from './doll.js';
 import { Background } from './background.js';
-import { drawLabel as drawText, textWidth } from './font.js';
+import { drawLabel as drawText, labelWidth, labelFont } from './font.js';
 
 const W = CONFIG.SCREEN_W, H = CONFIG.SCREEN_H;
 // Split text into lines no wider than max pixels.
-function wrapLines(text, max) {
+// Menu theme: black, white and red, with slanted shapes.
+const INK = '#0b0b10', RED = '#d7263d', PANEL = '#1b1b24', MUTED = '#9a9aae';
+function wrapLines(ctx, text, max) {
   const lines = []; let line = '';
   for (const word of String(text).split(' ')) {
     const next = line ? line + ' ' + word : word;
-    if (line && textWidth(next) > max) { lines.push(line); line = word; } else line = next;
+    if (line && labelWidth(ctx, next) > max) { lines.push(line); line = word; } else line = next;
   }
   if (line) lines.push(line);
   return lines;
@@ -1477,11 +1479,12 @@ export class Renderer {
   drawPause(lines) {
     const ctx = this.ctx;
     this.ui();
-    ctx.fillStyle = 'rgba(6,6,20,0.72)';
+    ctx.fillStyle = 'rgba(11,11,16,0.78)';
     ctx.fillRect(0, 0, W, H);
     let y = 44;
     lines.forEach((l, i) => {
-      drawText(ctx, l, W / 2, y, i === 0 ? '#ffe14a' : '#ffffff', i === 0 ? 3 : 1, 'center', '#000000');
+      if (i === 0) { this.slant(W / 2 - 70, 36, 140, 26, RED, 0.3); drawText(ctx, l, W / 2 + 3, 40, '#ffffff', 3, 'center', '#000000'); }
+      else drawText(ctx, l, W / 2, y, '#ffffff', 1, 'center', '#000000');
       y += i === 0 ? 28 : 9;
     });
   }
@@ -1508,8 +1511,8 @@ export class Renderer {
     const ctx = this.ctx;
     this.ui();
     ctx.globalAlpha = alpha;
-    const lines = wrapLines(text, 300);
-    const w = Math.max(240, ...lines.map((l) => textWidth(l) + 16));
+    const lines = wrapLines(ctx, text, 300);
+    const w = Math.max(240, ...lines.map((l) => labelWidth(ctx, l) + 16));
     ctx.fillStyle = 'rgba(8,8,24,0.85)'; ctx.fillRect(W / 2 - w / 2, 26, w, 6 + lines.length * 10);
     ctx.fillStyle = '#ffe14a'; ctx.fillRect(W / 2 - w / 2, 26, w, 1);
     lines.forEach((l, i) => drawText(ctx, l, W / 2, 30 + i * 10, '#ffffff', 1, 'center', '#000000'));
@@ -1537,20 +1540,13 @@ export class Renderer {
     this.ui();
     this.time++;
     const t = this.time;
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#1b1a3a'); g.addColorStop(1, '#3a2456');
-    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'rgba(255,255,255,0.035)';
-    for (let x = -H + ((t >> 1) % 40); x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.lineTo(x + H + 16, 0); ctx.lineTo(x + 16, H); ctx.closePath(); ctx.fill(); }
-    ctx.fillStyle = 'rgba(8,8,24,0.82)'; ctx.fillRect(0, 0, W, 22);
-    drawText(ctx, opts.title || 'CHOOSE YOUR FIGHTERS', 8, 6, '#ffe14a', 2, 'left', '#000000');
+    this.themeBack();
+    this.themeTop(opts.title || 'CHOOSE YOUR FIGHTERS', opts.right || 'ENTER  CONTINUE   ESC  BACK');
     const colOf = (i) => (opts.teams ? TEAM_COLORS[(slots[i].team | 0) % 3] : PLAYER_COLORS[i]);
-    // the match type, in the top bar
-    const modeText = opts.teams ? 'TEAMS' : 'FREE-FOR-ALL', mx = 292, mw = 104;
-    ctx.fillStyle = opts.teams ? '#3a2456' : '#24224a'; ctx.fillRect(mx - mw / 2, 4, mw, 14);
-    ctx.fillStyle = opts.teams ? '#ffe14a' : '#5d5a80'; ctx.fillRect(mx - mw / 2, 17, mw, 1);
-    drawText(ctx, (opts.modeKey === false ? '' : 'T  ') + modeText, mx, 8, opts.teams ? '#ffe14a' : '#d9d6f0', 1, 'center');
-    drawText(ctx, opts.right || 'ENTER  CONTINUE   ESC  BACK', W - 8, 9, '#ffffff', 1, 'right');
+    // the match type, in the top bar: a slanted black tag (red for teams)
+    const modeText = opts.teams ? 'TEAMS' : 'FREE-FOR-ALL', mx = 262, mw = 86;
+    this.slant(mx - mw / 2, 4, mw, 11, opts.teams ? RED : INK, 0.3);
+    drawText(ctx, (opts.modeKey === false ? '' : 'T  ') + modeText, mx + 2, 6.5, '#ffffff', 1, 'center');
 
     // --- the roster ---
     const acol = colOf(active);
@@ -1647,46 +1643,78 @@ export class Renderer {
     }
   }
 
-  // A plain list menu: items = [text], index = highlighted one, note = small text under it.
+  // A list menu: items = [text], index = highlighted one, note = small text under it.
+  // Slanted bars; the highlighted one is white, pushed out, with a red shadow.
   drawMenu(title, items, index, note) {
     const ctx = this.ctx;
     this.ui();
     this.time++;
-    this.menuBackdrop(title, 'W / S  CHOOSE     J OR ENTER  OK     ESC  BACK');
+    this.menuBackdrop(title, 'W / S  CHOOSE   J  OK   ESC  BACK');
     items.forEach((text, i) => {
-      const y = 78 + i * 34, on = i === index;
-      ctx.fillStyle = on ? '#ffe14a' : '#2b2a4a'; ctx.fillRect(W / 2 - 122, y - 2, 244, 28);
-      ctx.fillStyle = on ? '#3a2456' : '#16142e'; ctx.fillRect(W / 2 - 120, y, 240, 24);
-      drawText(ctx, text, W / 2, y + 6, on ? '#ffe14a' : '#b9b6d8', 2, 'center', '#000000');
+      const on = i === index, y = 66 + i * 42, x = 40 + (on ? 14 : 0), w = 232, h = 32;
+      this.slant(x + (on ? 4 : 2), y + (on ? 4 : 2), w, h, on ? RED : '#000000');
+      this.slant(x, y, w, h, on ? '#ffffff' : PANEL);
+      drawText(ctx, '0' + (i + 1), x + 16, y + 12, on ? INK : RED, 1, 'left');
+      drawText(ctx, text, x + 32, y + 9, on ? INK : MUTED, 2.2, 'left');
     });
-    if (note) drawText(ctx, note, W / 2, 78 + items.length * 34 + 10, '#ffffff', 1, 'center', '#000000');
+    if (note) { ctx.font = labelFont(1); drawText(ctx, note, 56, 66 + items.length * 42 + 10, '#cfcfe0', 1, 'left'); }
   }
   // Typing a room code: code = letters so far, length = how many it needs, status = text under it.
   drawJoin(code, length, status) {
     const ctx = this.ctx;
     this.ui();
     this.time++;
-    this.menuBackdrop('JOIN A ROOM', 'TYPE THE CODE     BACKSPACE  FIX     ESC  BACK');
-    drawText(ctx, 'ASK THE HOST FOR THEIR ROOM CODE', W / 2, 70, '#ffffff', 1, 'center', '#000000');
+    this.menuBackdrop('JOIN A ROOM', 'A-Z  TYPE   BACKSPACE  FIX   ESC  BACK');
+    drawText(ctx, 'ASK THE HOST FOR THEIR ROOM CODE', W / 2, 62, '#cfcfe0', 1.4, 'center');
     for (let i = 0; i < length; i++) {
-      const x = W / 2 + (i - (length - 1) / 2) * 44, cur = i === code.length;
-      ctx.fillStyle = cur && (this.time >> 4) & 1 ? '#ffe14a' : '#2b2a4a'; ctx.fillRect(x - 19, 92, 38, 46);
-      ctx.fillStyle = '#16142e'; ctx.fillRect(x - 17, 94, 34, 42);
-      if (code[i]) drawText(ctx, code[i], x, 102, '#ffe14a', 4, 'center', '#000000');
+      const w = 46, h = 62, x = W / 2 + (i - (length - 1) / 2) * 60 - w / 2, y = 82, cur = i === code.length, full = !!code[i];
+      this.slant(x + 3, y + 3, w, h, full ? RED : '#000000', 0.18);
+      this.slant(x, y, w, h, full ? '#ffffff' : PANEL, 0.18);
+      if (cur && (this.time >> 4) & 1) { ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; this.slantPath(x - 3, y - 3, w + 6, h + 6, 0.18); ctx.stroke(); }
+      if (full) drawText(ctx, code[i], x + w / 2 + 2, y + 13, INK, 5.5, 'center');
     }
-    if (status) wrapLines(status, 320).forEach((l, i) => drawText(ctx, l, W / 2, 156 + i * 10, '#ffffff', 1, 'center', '#000000'));
+    if (status) wrapLines(ctx, status, 360).forEach((l, i) => drawText(ctx, l, W / 2, 166 + i * 10, '#ffffff', 1, 'center', '#000000'));
   }
-  menuBackdrop(title, right) {
+  // A parallelogram leaning right: x, y is its top-left corner.
+  slantPath(x, y, w, h, lean = 0.25) {
+    const ctx = this.ctx, d = h * lean;
+    ctx.beginPath(); ctx.moveTo(x + d, y); ctx.lineTo(x + w + d, y); ctx.lineTo(x + w - d * 0.0, y + h); ctx.lineTo(x - d * 0.0, y + h); ctx.closePath();
+  }
+  slant(x, y, w, h, color, lean) { this.slantPath(x, y, w, h, lean); this.ctx.fillStyle = color; this.ctx.fill(); }
+  // The menu screens' background: dark, with two red slashes down the right.
+  themeBack() {
     const ctx = this.ctx;
-    const g = ctx.createLinearGradient(0, 0, 0, H);
-    g.addColorStop(0, '#1b1a3a'); g.addColorStop(1, '#3a2456');
+    const g = ctx.createRadialGradient(W * 0.2, H * 0.3, 10, W * 0.2, H * 0.3, W * 0.8);
+    g.addColorStop(0, '#24242e'); g.addColorStop(1, INK);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = 'rgba(255,255,255,0.035)';
-    for (let x = -H + ((this.time >> 1) % 40); x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, H); ctx.lineTo(x + H, 0); ctx.lineTo(x + H + 16, 0); ctx.lineTo(x + 16, H); ctx.closePath(); ctx.fill(); }
-    ctx.fillStyle = 'rgba(8,8,24,0.82)'; ctx.fillRect(0, 0, W, 22);
-    drawText(ctx, title, 8, 6, '#ffe14a', 2, 'left', '#000000');
-    drawText(ctx, right, W - 8, 9, '#ffffff', 1, 'right');
+    const drift = Math.sin(this.time * 0.01) * 3;
+    ctx.fillStyle = RED;
+    const band = (x0, w) => { ctx.beginPath(); ctx.moveTo(x0 + drift, H); ctx.lineTo(x0 + 120 + drift, 0); ctx.lineTo(x0 + 120 + w + drift, 0); ctx.lineTo(x0 + w + drift, H); ctx.closePath(); ctx.fill(); };
+    band(W * 0.47, 7); band(W * 0.53, 54);
   }
+  // White top bar with a slanted bottom edge: the screen title, and key hints
+  // as little black key caps. `right` is "KEY  LABEL   KEY  LABEL" (groups split
+  // by three spaces, key and label by two; a group with no key is just text).
+  themeTop(title, right) {
+    const ctx = this.ctx;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, 0); ctx.lineTo(W, 21); ctx.lineTo(0, 27); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, 0); ctx.lineTo(W, 19); ctx.lineTo(0, 25); ctx.closePath(); ctx.fill();
+    drawText(ctx, title, 10, 4, INK, 2.3, 'left');
+    if (!right) return;
+    const groups = String(right).trim().split(/\s{3,}/).map((g) => { const p = g.split(/\s{2}/); return p.length > 1 ? { key: p[0].trim(), label: p.slice(1).join(' ').trim() } : { label: g.trim() }; });
+    let x = W - 8;
+    for (let k = groups.length - 1; k >= 0; k--) {
+      const g = groups[k], lw = labelWidth(ctx, g.label);
+      x -= lw; drawText(ctx, g.label, x, 7, INK, 1, 'left'); x -= 3;
+      if (g.key) {
+        const kw = labelWidth(ctx, g.key) + 6;
+        x -= kw; ctx.fillStyle = INK; this.roundRect(x, 5, kw, 9, 1.5); drawText(ctx, g.key, x + 3, 7, '#ffffff', 1, 'left');
+      }
+      x -= 10;
+    }
+  }
+  roundRect(x, y, w, h, r) { const ctx = this.ctx; ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); ctx.fill(); }
+  menuBackdrop(title, right) { this.themeBack(); this.themeTop(title, right); }
   // Where roster tile k of n goes. Tiles shrink as the roster grows.
   charGrid(n) {
     for (const size of [46, 38, 30, 24, 19]) {
@@ -1747,15 +1775,14 @@ export class Renderer {
       const shown = tiles[(this.time >> 3) % (tiles.length - 1)].stage; // flick through the stages
       ctx.globalAlpha = 0.35; ctx.drawImage(this.thumb(shown), 0, 0, W, H); ctx.globalAlpha = 1;
     }
-    ctx.fillStyle = 'rgba(8,8,24,0.82)';
-    ctx.fillRect(0, 0, W, 22);
+    ctx.fillStyle = 'rgba(11,11,16,0.86)';
     ctx.fillRect(0, H - 86, W, 86);
-    drawText(ctx, 'STAGE SELECT', 8, 6, '#ffe14a', 2, 'left', '#000000');
-    drawText(ctx, 'A / D  CHOOSE     J OR ENTER  START     ESC  BACK', W - 8, 9, '#ffffff', 1, 'right');
-    drawText(ctx, sel.stage ? sel.stage.name : 'RANDOM', W / 2, H - 80, '#ffffff', 2, 'center', '#000000');
+    ctx.fillStyle = RED; ctx.fillRect(0, H - 86, W, 2);
+    this.themeTop('STAGE SELECT', 'A / D  CHOOSE   J  START   ESC  BACK');
+    drawText(ctx, sel.stage ? sel.stage.name : 'RANDOM', W / 2, H - 80, '#ffffff', 2.2, 'center', '#000000');
     tiles.forEach((t, i) => {
       const r = this.stageTileRect(i, tiles.length);
-      ctx.fillStyle = i === index ? '#ffe14a' : '#2b2a4a';
+      ctx.fillStyle = i === index ? '#ffffff' : PANEL;
       ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
       if (t.stage) ctx.drawImage(this.thumb(t.stage), r.x, r.y, r.w, r.h);
       else {
@@ -1766,7 +1793,7 @@ export class Renderer {
     });
   }
   stageTileRect(i, n) {
-    const w = 96, h = 54, gap = 14;
+    const gap = 14, w = Math.min(96, Math.floor((W - 16 - (n - 1) * gap) / n)), h = Math.round((w * 54) / 96);
     const x0 = Math.round((W - (n * w + (n - 1) * gap)) / 2);
     return { x: x0 + i * (w + gap), y: H - 64, w, h };
   }
@@ -1786,8 +1813,8 @@ export class Renderer {
     });
 
     const title = CONFIG.GAME_TITLE;
-    drawText(ctx, title, W / 2 + 2, 52, '#1a1440', 4, 'center');
-    drawText(ctx, title, W / 2, 50, '#ffe14a', 4, 'center', '#c2452d');
+    drawText(ctx, title, W / 2 + 3, 53, RED, 4.4, 'center');
+    drawText(ctx, title, W / 2, 50, '#ffffff', 4.4, 'center', INK);
     if ((this.time >> 5) & 1) drawText(ctx, 'PRESS ANY KEY', W / 2, 96, '#ffffff', 2, 'center', '#1a1440');
     drawText(ctx, 'V' + GAME_VERSION, W - 4, H - 9, '#ffffff', 1, 'right', '#1a1440');
     drawText(ctx, 'MOVEMENT TEST', 4, H - 9, '#ffffff', 1, 'left', '#1a1440');

@@ -22,6 +22,11 @@ sfx.setVolume(settings.volume);
 sfx.setMuted(settings.muted);
 const director = new SoundDirector();   // turns what happens in a match into sounds
 const renderer = new Renderer(document.getElementById('game'));
+// The menu fonts (Inter Display, see assets/fonts/OFL.txt). Text uses system
+// fonts until they arrive, then switches on the next frame.
+for (const [name, file, desc] of [['Brawl Heading', 'InterDisplay-BlackItalic', { style: 'italic', weight: '900' }], ['Brawl UI', 'InterDisplay-ExtraBold', { weight: '800' }]]) {
+  try { new FontFace(name, 'url(assets/fonts/' + file + '.woff?v=' + GAME_VERSION + ')', desc).load().then((f) => document.fonts.add(f), () => {}); } catch (e) { /* old browser: system fonts */ }
+}
 const keyboard = new Keyboard();
 ['F1', 'F2', 'Escape', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].forEach((k) => keyboard.blocked.add(k));
 
@@ -334,10 +339,15 @@ function drawScreen() {
   renderer.drawMatch(match.state, opts);
   if (match.endTimer > 0) renderer.drawBanner('GAME!');
   if (paused) {
-    renderer.drawPause([
+    // Two pages (A / D or Tab turns; online only Tab, since the match keeps going): the controls, then the specials of the fighters in this match.
+    const who = new Set(match.state.fighters.map((f) => f.charId));
+    const fighters = Object.entries(FIGHTER_HELP).filter(([id]) => who.has(id)).flatMap(([, l]) => l);
+    const head = [
       match.online ? 'CONTROLS  (ONLINE MATCHES CANNOT BE PAUSED)' : 'PAUSED',
-      match.online ? 'ESC  CLOSE         Q  LEAVE THE ROOM' : 'ESC  RESUME        Q  QUIT TO STAGE SELECT',
+      (match.online ? 'ESC  CLOSE         Q  LEAVE THE ROOM' : 'ESC  RESUME        Q  QUIT TO STAGE SELECT') + '        ' + (match.online ? 'TAB' : 'A / D') + '  PAGE ' + (helpPage + 1) + ' OF 2',
       '',
+    ];
+    renderer.drawPause(head.concat(helpPage === 0 ? [
       'MOVE  W A S D      DOUBLE-TAP A / D TO DASH AND RUN',
       'JUMP  SPACE        TAP = SHORT HOP, HOLD = FULL HOP',
       'FAST FALL  TAP S AT OR AFTER THE TOP OF A JUMP',
@@ -346,43 +356,41 @@ function drawScreen() {
       'SHIELD  HOLD I.  + A / D = ROLL, + S = SPOT DODGE, + SPACE = JUMP OUT',
       '        LET GO JUST BEFORE A HIT LANDS TO PARRY.   I IN THE AIR = AIR DODGE',
       'GRAB  U (OR SHIELD + J).  THEN A / D / W / S = THROW THAT WAY, J = PUMMEL',
-      'SPECIAL  K ALONE, OR WITH A / D, W OR S. EACH FIGHTER HAS FOUR:',
-      ' SIMEON  K = JUMP SHOT (HOLD TO CHARGE)     A / D + K = FAST BREAK (HOLD TO CHARGE, 1 IN 10 MISFIRES)',
-      '         W + K = ALLEY-OOP (RISING KICKS)   S + K = BLUFF (COUNTER)',
-      ' KAELYN  K = PUFF PASS (BOOMERANG)          A / D + K = ROLL OUT (SKATING DASH INTO AN UPPERCUT)',
-      '         W + K = KICKFLIP (RISE, THEN DIVE) S + K = HALF PIPE (FLIP JUMP; PRESS K OR J AGAIN TO KICK)',
-      '   LUCA  K = BASS DROP (HOLD TO CHARGE)      A / D + K = SUPPLY & DEMAND (TAP: UP ARROW, HOLD: CRASH)',
-      '         W + K = WIRE TRANSFER (TELEPORT)   S + K = STAGE DIVE (LEAPING KICK)',
-      '   SARA  K = TO-GO (CUP. HOLD: DOUBLE SHOT)  A / D + K = BOARDING CALL (RIDES HER SUITCASE FORWARD)',
-      '         W + K = TAKEOFF (PAPER PLANE, STEER) S + K = FRESH POT (SWING, AND COFFEE ALONG THE FLOOR)',
-      'MALCOLM  K = PICK A CARD (THREE CARDS)     A / D + K = CORNER POCKET (CUE BALL ALONG THE FLOOR)',
-      '         W + K = MUSCLE-UP (RISING)        S + K = ACE UP THE SLEEVE (LEAVES A CARD TRAP)',
-      '    MAX  K = MONEY GUN (HOLD TO SPRAY CASH)       A / D + K = HOSTILE TAKEOVER (BELLY CHARGE)',
-      '         W + K = GOLDEN PARACHUTE (RISE, FLOAT DOWN)  S + K = MARKET CRASH (HOP, THEN DROP LIKE A STONE)',
-      '  OSAMA  K = OIL BEAM (K CHARGES, K FIRES, SHIELD SAVES)    A / D + K = SUPLEX (SHOOT IN, SLAM THEM BEHIND)',
-      '         W + K = JET MODE (BECOMES A PLANE)  S + K = GROUND AND POUND (HAMMER FISTS)',
-      '   ZEID  K = CLOUD CHASER (A CLOUD THAT HANGS)  A / D + K = FLICK (A BOUNCING LIT BUTT)',
-      '         W + K = BIG RIP (RIDE THE PLUME UP)  S + K = BOMB (HOLD IT, J TO THROW)',
-      '    SAM  K = POWDER BLAST (HOLD: A STREAM)  A / D + K = OBJECTION! (GAVEL LUNGE)',
-      '         W + K = APPEAL (SPIN UP WITH THE GAVEL)  S + K = FALCON KICK (SLIDE, OR DIVE IN THE AIR)',
-      'TECH  PRESS I JUST BEFORE HITTING THE FLOOR, A WALL OR THE CEILING WHILE TUMBLING',
-      '      (+ A / D TO TECH ROLL).  MASHING I WILL NOT WORK',
-      'KNOCKED DOWN  J = GETUP ATTACK, A / D = ROLL, SPACE OR W = STAND UP',
-      'LEDGE  GRABBED AUTOMATICALLY WHEN FALLING NEXT TO IT',
-      '       TOWARD STAGE = GET UP, J = LEDGE ATTACK, I = LEDGE ROLL, SPACE = JUMP, S = DROP',
-      '',
-      'M  SOUND ON / OFF      0  TAP JUMP ON / OFF (W ALSO JUMPS)  NOW ' + (settings.tapJump ? 'ON' : 'OFF'),
-      'F1  DEBUG INFO AND STATE HASH',
-      'F2  HITBOXES (RED), HURTBOXES (YELLOW), LEDGE BOXES',
-      '',
       'SMASH  L (+ W / S FOR UP / DOWN), OR TAP A DIRECTION AND PRESS J RIGHT AFTER.  HOLD TO CHARGE',
       'ATTACK  J    ON THE GROUND: JAB (PRESS AGAIN FOR 1-2-3), A / D = FORWARD TILT,',
       '             W = UP TILT, S = DOWN TILT',
       '             IN THE AIR: NEUTRAL, FORWARD, BACK, W = UP, S = DOWN AIR',
       '             WHILE DASHING OR RUNNING: DASH ATTACK',
-    ]);
+      'TECH  PRESS I JUST BEFORE HITTING THE FLOOR, A WALL OR THE CEILING WHILE TUMBLING',
+      '      (+ A / D TO TECH ROLL).  MASHING I WILL NOT WORK',
+      'KNOCKED DOWN  J = GETUP ATTACK, A / D = ROLL, SPACE OR W = STAND UP',
+      'LEDGE  GRABBED AUTOMATICALLY WHEN FALLING NEXT TO IT',
+      '       TOWARD STAGE = GET UP, J = LEDGE ATTACK, I = LEDGE ROLL, SPACE = JUMP, S = DROP',
+    ] : [
+      'SPECIAL  K ALONE, OR WITH A / D, W OR S. EACH FIGHTER HAS FOUR:',
+      '',
+      ...fighters,
+      '',
+      'M  SOUND ON / OFF      0  TAP JUMP ON / OFF (W ALSO JUMPS)  NOW ' + (settings.tapJump ? 'ON' : 'OFF'),
+      'F1  DEBUG INFO AND STATE HASH',
+      'F2  HITBOXES (RED), HURTBOXES (YELLOW), LEDGE BOXES',
+    ]));
   }
 }
+
+// Each fighter's specials, for the pause screen (two lines each).
+const FIGHTER_HELP = {
+  simeon: [' SIMEON  K = JUMP SHOT (HOLD TO CHARGE)     A / D + K = FAST BREAK (HOLD TO CHARGE, 1 IN 10 MISFIRES)', '         W + K = ALLEY-OOP (RISING KICKS)   S + K = BLUFF (COUNTER)'],
+  kaelyn: [' KAELYN  K = PUFF PASS (BOOMERANG)          A / D + K = ROLL OUT (SKATING DASH INTO AN UPPERCUT)', '         W + K = KICKFLIP (RISE, THEN DIVE) S + K = HALF PIPE (FLIP JUMP; PRESS K OR J AGAIN TO KICK)'],
+  luca: ['   LUCA  K = BASS DROP (HOLD TO CHARGE)      A / D + K = SUPPLY & DEMAND (TAP: UP ARROW, HOLD: CRASH)', '         W + K = WIRE TRANSFER (TELEPORT)   S + K = STAGE DIVE (LEAPING KICK)'],
+  sara: ['   SARA  K = TO-GO (CUP. HOLD: DOUBLE SHOT)  A / D + K = BOARDING CALL (RIDES HER SUITCASE FORWARD)', '         W + K = TAKEOFF (PAPER PLANE, STEER) S + K = FRESH POT (SWING, AND COFFEE ALONG THE FLOOR)'],
+  malcolm: ['MALCOLM  K = PICK A CARD (THREE CARDS)     A / D + K = CORNER POCKET (CUE BALL ALONG THE FLOOR)', '         W + K = MUSCLE-UP (RISING)        S + K = ACE UP THE SLEEVE (LEAVES A CARD TRAP)'],
+  max: ['    MAX  K = MONEY GUN (HOLD TO SPRAY CASH)       A / D + K = HOSTILE TAKEOVER (BELLY CHARGE)', '         W + K = GOLDEN PARACHUTE (RISE, FLOAT DOWN)  S + K = MARKET CRASH (HOP, THEN DROP LIKE A STONE)'],
+  osama: ['  OSAMA  K = OIL BEAM (K CHARGES, K FIRES, SHIELD SAVES)    A / D + K = SUPLEX (SHOOT IN, SLAM THEM BEHIND)', '         W + K = JET MODE (BECOMES A PLANE)  S + K = GROUND AND POUND (HAMMER FISTS)'],
+  zeid: ['   ZEID  K = CLOUD CHASER (A CLOUD THAT HANGS)  A / D + K = FLICK (A BOUNCING LIT BUTT)', '         W + K = BIG RIP (RIDE THE PLUME UP)  S + K = BOMB (HOLD IT, J TO THROW)'],
+  sam: ['    SAM  K = POWDER BLAST (HOLD: A STREAM)  A / D + K = OBJECTION! (GAVEL LUNGE)', '         W + K = APPEAL (SPIN UP WITH THE GAVEL)  S + K = FALCON KICK (SLIDE, OR DIVE IN THE AIR)'],
+};
+let helpPage = 0;   // pause screen page
 
 // An online game cannot run in a background tab: tell the others why it stopped.
 document.addEventListener('visibilitychange', () => { if (online) online.room.setAway(document.visibilityState === 'hidden'); });
@@ -457,7 +465,8 @@ window.addEventListener('keydown', (e) => {
     else if (e.code === 'Escape') { if (online) online.room.setPhase('lobby'); screen = 'charSelect'; }
     return;
   }
-  if (e.code === 'Escape') paused = !paused;
+  if (paused && (e.code === 'Tab' || (!(match && match.online) && ['KeyA', 'KeyD', 'ArrowLeft', 'ArrowRight'].includes(e.code)))) { helpPage = 1 - helpPage; sfx.play('menuMove'); return; }
+  if (e.code === 'Escape') { paused = !paused; helpPage = 0; }
   else if (e.code === 'KeyQ' && paused && online) { leaveOnline(); screen = 'menu'; }
   else if (e.code === 'KeyQ' && paused) { screen = 'stageSelect'; match = null; }
   else if (e.code === 'F1') { settings.showDebug = !settings.showDebug; saveSettings(settings); }
