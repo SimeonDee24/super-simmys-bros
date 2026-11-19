@@ -241,7 +241,8 @@ export class Renderer {
             { flash: '#bfeaff', alpha });
         }
       }
-      this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, f.x / FX + shake, f.y / FX, f.facing,
+      const jb = f.state === 'knockdown' && state.tick - f.jabBounce >= 0 && state.tick - f.jabBounce < 6 ? [0, 2, 3, 3, 2, 1][state.tick - f.jabBounce] : 0;   // a jab lock bounces them on the floor
+      this.doll.drawAnim(ctx, ch, f.alt, f.anim, f.animFrame, f.x / FX + shake, f.y / FX - jb, f.facing,
         { flash: tint || undefined, swap: cm && cm.wear,
           // twirl: [from, to] frames during which he spins on the spot
           squash: cm && cm.twirl && cm.twirl.some(([a, b]) => f.stateFrame >= a && f.stateFrame <= b) ? Math.cos(f.stateFrame * 0.85) : undefined });

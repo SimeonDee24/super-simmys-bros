@@ -51,6 +51,9 @@ export const CONFIG = {
   AIRDODGE_LAND_LAG: 11,    // landing lag if you hit the floor during an air dodge
 
   KILL_FREEZE: 34,          // frames the game stops for the kill screen
+  UPB_TURN_FRAMES: 999,     // frames of an up special in which tapping the other way turns him round (the whole move)
+  DI_MAX: 18,               // directional influence: degrees a held direction can bend a launch
+  JAB_LOCK_MAX: 6,          // weak hits in a row that keep a downed fighter on the floor before they are forced up
 
   // --- Hits and knockback ---
   // launch speed (px/frame) = knockback * KB_SPEED_NUM / KB_SPEED_DEN / 256

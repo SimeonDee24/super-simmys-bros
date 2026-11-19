@@ -38,6 +38,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     charge: 0,                        // chargeable moves (Jump Shot)
     stored: 0,                        // charge kept for later (Osama's Oil Beam, like a charge shot)
     item: '', itemFuse: 0, tossDir: 0, // an item in his hand (Zeid's bomb) and its fuse; how it is being thrown
+    diPending: 0, jabLocks: 0, jabBounce: -1,   // DI to apply after hitlag; weak hits taken while lying down
     fuel: 1000,                       // stream moves (Max's money gun): runs down while held, refills when not
     airUsed: 0,
     dropThru: 0,                      // frames left falling through a platform
@@ -196,6 +197,8 @@ function trySpecial(c, air) {
   // `once` moves can be used one time in the air until he lands, grabs a ledge or is hit
   if (mv.once && air) { if (f.airUsed) return false; f.airUsed = 1; }
   if (slot === 'side' && c.dir) f.facing = c.dir;
+  // up specials can be aimed either way: holding left or right with up faces that way
+  if (slot === 'up' && c.dir) f.facing = c.dir;
   // a special with its own air version (Falcon Kick dives when used in the air)
   if (air && mv.air) name = mv.air;
   startMove(f, name, air);
@@ -584,6 +587,9 @@ const STATES = {
   attack(c) {
     const { f, st } = c;
     let mv = c.ch.moves[f.move];
+    // Up specials can still be turned round in their first few frames:
+    // press the other way and he faces it.
+    if (f.move === c.ch.specials.up && f.stateFrame <= CONFIG.UPB_TURN_FRAMES && c.tap === -f.facing) { f.facing = c.tap; f.vx = -f.vx; }
     // Chargeable move: while the special button is held, stay on the charge
     // frame and build up charge (up to `max`).
     // (specials charge with the special button; smash attacks with smash or attack)
@@ -1062,6 +1068,19 @@ export function updateFighter(match, f, input) {
     if (f.state === 'out' || f.state === 'dead' || f.state === 'respawn') { f.item = ''; f.itemFuse = 0; }
     else if (f.state === 'hitstun' || f.state === 'grabbed' || f.state === 'dizzy' || f.state === 'shieldBreak' || f.state === 'ledge') releaseItem(match, f, 0, -FX);
     else if (--f.itemFuse <= 0) releaseItem(match, f, 0, 0, true);
+  }
+  // Directional influence: on the first frame after the hitlag of a hit, the
+  // direction held bends the launch by up to DI_MAX degrees (most when held
+  // at right angles to it, as in Smash). Up / down / diagonals all count.
+  if (f.diPending) {
+    f.diPending = 0;
+    const dy = (input & BTN.UP) ? 1 : (input & BTN.DOWN) ? -1 : 0;
+    if (f.state === 'hitstun' && f.kbSpeed > 0 && (dir || dy)) {
+      const held = dir === 0 ? (dy > 0 ? 90 : 270) : dy === 0 ? (dir > 0 ? 0 : 180) : dir > 0 ? (dy > 0 ? 45 : 315) : (dy > 0 ? 135 : 225);
+      const rel = ((held - f.kbAngle) % 360 + 360) % 360;
+      const bend = Math.trunc((CONFIG.DI_MAX * sinDeg(rel)) / 4096);
+      f.kbAngle = ((f.kbAngle + bend) % 360 + 360) % 360;
+    }
   }
   STATES[f.state]({ match, f, ch, st, input, raw: pressed, pressed: pressed | f.buf, dir, tap, dashInput });
   f.prevIn = input;

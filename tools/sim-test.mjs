@@ -649,7 +649,8 @@ SIM_SPECIALS.side = SIM_SIDE;
   b.x = 30 * FX; b.y = 330 * FX; b.grounded = 0; b.ground = -1; b.state = 'air'; b.vy = 0; b.jumpsLeft = 1;
   let saved = false;
   for (let i = 0; i < 260 && b.state !== 'dead' && !saved; i++) {
-    const toward = b.x < 52 * FX ? BTN.RIGHT : b.x > 60 * FX ? BTN.LEFT : 0;   // stay beside the ledge, not under the stage
+    // stay beside the ledge, not under the stage (but don't tap away from it during the up special: that turns him round)
+    const toward = b.x < 52 * FX ? BTN.RIGHT : b.x > 60 * FX && (i < 30 || i > 60) ? BTN.LEFT : 0;
     const inp = i === 2 ? BTN.JUMP | toward : i === 30 ? BTN.SPECIAL | BTN.UP : toward;
     step(r, [inp, 0]); saved = b.state === 'ledge' || b.grounded === 1;
   }
@@ -1399,6 +1400,37 @@ for (const hold of [0, 30]) {
   };
   check('kill screen on the game-ending KO only (not an earlier stock, not while a third fighter is still in)',
     go(2, (f) => { f[1].stocks = 1; }) && !go(2, () => {}) && !go(3, (f) => { f[1].stocks = 1; }) && go(3, (f) => { f[1].stocks = 1; f[2].stocks = 0; f[2].state = 'out'; }));
+}
+
+// Directional influence, jab locks, turning an up special round
+{
+  // DI: a forward smash at 100%; holding up bends the launch higher, down lower, toward it no change
+  const di = (hold) => {
+    const s = createMatch(setup); const [a, v] = s.fighters; for (let i = 0; i < 70; i++) step(s, [0, 0]);
+    v.x = a.x + 26 * FX; v.percent = 1000; a.facing = 1; step(s, [BTN.SMASH | BTN.RIGHT, 0]);
+    for (let i = 0; i < 60; i++) { step(s, [0, hold]); if (v.state === 'hitstun' && v.stateFrame > 2) return v.kbAngle; }
+    return -1;
+  };
+  const none = di(0), up = di(BTN.UP), down = di(BTN.DOWN), along = di(BTN.RIGHT);
+  check('DI: holding a direction bends the launch (up raises it, down lowers it), up to 18 degrees', none > 0 && up > none && down < none && up - none <= 18 && none - down <= 18,
+    `none ${none}, up ${up}, down ${down}, toward ${along}`);
+  // jab lock: hit while lying on the floor by a jab, they bounce and stay down; after too many they get up
+  const s = createMatch(setup); const [a, v] = s.fighters; v.x = a.x + 14 * FX; for (let i = 0; i < 70; i++) step(s, [0, 0]);
+  v.state = 'knockdown'; v.anim = 'knockdown'; v.stateFrame = 0; v.vx = 0;
+  let stayed = true, hits = 0, forcedUp = false;
+  for (let n = 0; n < 9 && !forcedUp; n++) {
+    const p0 = v.percent; step(s, [BTN.ATTACK, 0]); for (let i = 0; i < 16; i++) step(s, [0, 0]);
+    if (v.percent > p0) hits++;
+    if (v.state === 'getupStand') forcedUp = true; else if (v.state !== 'knockdown') stayed = false;
+  }
+  check('jab lock: jabbing someone lying on the floor keeps them down, until they are forced up', hits >= 4 && stayed && forcedUp, `${hits} hits, stayed down ${stayed}, forced up ${forcedUp}`);
+  // up special: holding the other way faces that way; pressing it in the first frames turns him too
+  const k = createMatch({ ...setup, players: [{ charId: 'kaelyn', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const ka = k.fighters[0]; ka.facing = 1;
+  step(k, [BTN.SPECIAL | BTN.UP | BTN.LEFT, 0]); const turned = ka.facing === -1 && ka.move === 'kickflip';
+  const k2 = createMatch({ ...setup, players: [{ charId: 'kaelyn', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const kb = k2.fighters[0]; kb.facing = 1;
+  step(k2, [BTN.SPECIAL | BTN.UP, 0]); step(k2, [0, 0]); step(k2, [BTN.LEFT, 0]); const late = kb.facing === -1;
+  for (let i = 0; i < 6; i++) step(k2, [0, 0]); step(k2, [BTN.RIGHT, 0]);
+  check('up special can be turned to face either way (held at the start, or tapped during it)', turned && late && kb.facing === 1, `held ${turned}, tapped ${late}, tapped back ${kb.facing}`);
 }
 
 process.exit(fails ? 1 : 0);

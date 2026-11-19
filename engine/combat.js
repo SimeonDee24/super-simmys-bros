@@ -98,6 +98,22 @@ export function applyHit(state, att, vic, hit, proj = null) {
   let kb = hb.fkb ? setKnockback(hb.fkb, st.weight, hb.bkb, hb.kbg)
     : knockback(vic.percent, hb.damage, st.weight, hb.bkb, hb.kbg);
 
+  // Jab lock: someone lying on the floor (a missed tech) hit by something weak
+  // (not enough to send them tumbling) bounces in place and stays down, the
+  // getup timer starting over. After JAB_LOCK_MAX in a row they are forced up.
+  if (vic.state === 'knockdown' && vic.grounded && kb < CONFIG.TUMBLE_KB) {
+    const lag = lagFor(hb);
+    vic.hitlag = lag;
+    if (!proj) { att.hitlag = lag; att.hitGroups |= spentBit(hb, vic); }
+    vic.jabLocks = (vic.jabLocks | 0) + 1;
+    vic.vx = 0;
+    if (vic.jabLocks > CONFIG.JAB_LOCK_MAX) { vic.jabLocks = 0; vic.intangible = CONFIG.GETUP_INTANGIBLE; setState(vic, 'getupStand', 'getupStand'); }
+    else { setState(vic, 'knockdown', 'knockdown'); vic.animFrame = 99; vic.jabBounce = state.tick; }
+    vic.hitX = hit.px; vic.hitY = hit.py; vic.lastHitTick = state.tick; vic.lastHitDmg = hb.damage;
+    return;
+  }
+  vic.jabLocks = 0;
+
   // Launch angle. 361 = "Sakurai angle": flat at low knockback on the
   // ground, rising to 38 degrees; 45 in the air.
   let angle = hb.angle;
@@ -144,6 +160,7 @@ export function applyHit(state, att, vic, hit, proj = null) {
   vic.move = '';
   vic.facing = dir > 0 ? -1 : 1; // face the attacker
   setState(vic, 'hitstun', kb >= CONFIG.TUMBLE_KB && !vic.grounded ? 'tumble' : 'hurt');
+  vic.diPending = 1;   // DI: the direction they hold when the hitlag ends bends the launch
 
   // For effects and (later) sound: where and how hard the last hit landed.
   vic.hitX = hit.px; vic.hitY = hit.py;
