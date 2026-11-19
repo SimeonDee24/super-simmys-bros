@@ -14,6 +14,7 @@ const DEFAULTS = {
   tapJump: false,     // 0 toggles: up (W) also jumps
   showBoxes: false,   // hurtbox / hitbox / ledge-box display
   showDebug: false,   // tick, state hash, fighter state
+  models3d: true,     // 9 toggles: draw fighters that have one with their 3D model
   cpuLevel: 'lv3',     // P2 CPU: 'dummy' (training) or 'lv1' to 'lv5'
   // The four fighter slots on the select screen. type: 'human' (slot 1 only),
   // 'cpu' or 'off'; char and alt index the roster and its skins; level is the CPU level.

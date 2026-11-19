@@ -1,5 +1,5 @@
 {
-  "version": "0.52.3",
+  "version": "0.53.0",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -36,7 +36,9 @@
     "render/background.js",
     "render/doll.js",
     "render/font.js",
+    "render/model3d.js",
     "render/renderer.js",
+    "render/simeon3d.js",
     "ui/settings.js",
     "ui/updatecheck.js",
     "audio/director.js",

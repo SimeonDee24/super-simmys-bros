@@ -7,6 +7,7 @@
 // the detail of the collision size). Rendering only: nothing here feeds the
 // simulation.
 import { samplePose, solve } from '../engine/skeleton.js';
+import { ModelRenderer } from './model3d.js';
 
 const SIZE = 128, OX = 64, OY = 96;   // work area in world pixels; feet sit at (OX, OY)
 const UP = 8;                         // RotSprite enlargement
@@ -41,6 +42,7 @@ export class DollRenderer {
     this.cache = new Map();
     this.big = new Map();
     this.heads = new Map();
+    this.models = new ModelRenderer();   // characters with a 3D model are drawn by it instead
   }
 
   // Work canvas sized for this character's art scale.
@@ -136,6 +138,7 @@ export class DollRenderer {
   // (in world pixels; the destination's own transform decides the real size).
   // opts: { flash: css colour to tint the whole figure, alpha }
   draw(dest, ch, altIndex, poseObj, x, y, facing, opts = {}) {
+    if (this.models.has(ch.id)) { this.models.draw(dest, ch, altIndex, poseObj, x, y, facing, opts); return; }
     this.setScale(ch.artScale || 1);
     const s = solve(ch.skeleton, poseObj);
     const ctx = this.ctx, k = this.k;

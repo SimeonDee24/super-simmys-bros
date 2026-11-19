@@ -22,6 +22,7 @@ sfx.setVolume(settings.volume);
 sfx.setMuted(settings.muted);
 const director = new SoundDirector();   // turns what happens in a match into sounds
 const renderer = new Renderer(document.getElementById('game'));
+renderer.doll.models.enabled = settings.models3d;
 // The menu fonts (Inter Display, see assets/fonts/OFL.txt). Text uses system
 // fonts until they arrive, then switches on the next frame.
 for (const [name, file, desc] of [['Brawl Heading', 'InterDisplay-BlackItalic', { style: 'italic', weight: '900' }], ['Brawl UI', 'InterDisplay-ExtraBold', { weight: '800' }]]) {
@@ -375,6 +376,7 @@ function drawScreen() {
       ...fighters,
       '',
       'M  SOUND ON / OFF      0  TAP JUMP ON / OFF (W ALSO JUMPS)  NOW ' + (settings.tapJump ? 'ON' : 'OFF'),
+      '9  3D MODELS ON / OFF  NOW ' + (settings.models3d ? 'ON' : 'OFF'),
       'F1  DEBUG INFO AND STATE HASH',
       'F2  HITBOXES (RED), HURTBOXES (YELLOW), LEDGE BOXES',
     ]));
@@ -426,6 +428,13 @@ window.addEventListener('keydown', (e) => {
     settings.tapJump = !settings.tapJump; saveSettings(settings);
     sfx.play(settings.tapJump ? 'menuOk' : 'menuBack');
     toast = { text: 'TAP JUMP ' + (settings.tapJump ? 'ON: W ALSO JUMPS' : 'OFF: ONLY SPACE JUMPS'), until: performance.now() + 1800 };
+    return;
+  }
+  // 9 switches 3D models on and off, on any screen
+  if (e.code === 'Digit9' || e.code === 'Numpad9') {
+    settings.models3d = !settings.models3d; saveSettings(settings); renderer.doll.models.enabled = settings.models3d;
+    sfx.play(settings.models3d ? 'menuOk' : 'menuBack');
+    toast = { text: '3D MODELS ' + (settings.models3d ? 'ON' : 'OFF: CLASSIC PIXEL ART'), until: performance.now() + 1800 };
     return;
   }
   if (e.code === 'KeyM') { settings.muted = !settings.muted; sfx.setMuted(settings.muted); saveSettings(settings); if (!settings.muted) sfx.play('menuOk'); say(settings.muted ? 'SOUND OFF  (M TURNS IT BACK ON)' : 'SOUND ON', 1600); return; }
