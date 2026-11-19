@@ -57,9 +57,10 @@ export const CONFIG = {
   KB_SPEED_NUM: 1344, KB_SPEED_DEN: 100000,   // = 0.0525 px per knockback unit
   KB_DECAY: 23,             // launch speed lost per frame (1/256 px) = 0.09 px
   // Tumbling hits fly 1.6x faster, with a steeper slowdown, so they snap away
-  // but end up about as far as before (KO percents tuned to stay the same):
-  KB_FAST_NUM: 2150,        // = 0.084 px per knockback unit
-  KB_FAST_DECAY: 74,
+  // and are tuned so KOs land near Smash Ultimate (a forward smash at centre
+  // stage about 115%, an up smash about 135%):
+  KB_FAST_NUM: 1960,        // = 0.077 px per knockback unit
+  KB_FAST_DECAY: 80,
   // Big hits (tumbling knockback) also get a burst, as in Smash Ultimate: an
   // extra share of the speed above the tumble threshold that fades fast
   // (to 80% each frame), so strong hits snap away and then ease off.

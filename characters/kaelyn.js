@@ -12,7 +12,7 @@ const stats = {
   runSpeed: px(3.05),
   dashSpeed: px(3.3),
   airSpeed: px(2.85),
-  fallSpeed: px(2.75),
+  fallSpeed: px(2.37),
 };
 
 // ---------------------------------------------------------------------------
@@ -278,7 +278,7 @@ const moves = {
   // during the flip to kick out of it instead (14%, launches hard, and she
   // springs back off the hit). Once per jump in the air.
   halfPipe: { faf: 52, landLag: 10, wear: SKATES, once: true, intangible: 12,
-    rocket: { frame: 3, frames: 46, speed: [px(2.4), px(2.4)], lift: px(4.6), gravity: 100, drag: 0, bounce: [px(1.0), px(3.0)] },
+    rocket: { frame: 3, frames: 46, speed: [px(2.4), px(2.4)], lift: px(4.2), gravity: 100, drag: 0, bounce: [px(1.0), px(3.0)] },
     followUp: { from: 10, to: 40, move: 'halfPipeKick' },
     hitboxes: hits(30, 48, [['footF', 7], ['footB', 7]], 8, 270, 30, 70) },
   halfPipeKick: { faf: 34, landLag: 12, wear: SKATES,

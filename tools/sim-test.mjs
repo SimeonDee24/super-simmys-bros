@@ -328,7 +328,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   // holding shield for too long breaks it
   s = near(60); [a, v] = s.fighters;
   let broke = false, dizzy = false;
-  for (let i = 0; i < 400; i++) { step(s, [0, BTN.SHIELD]); if (v.state === 'shieldBreak') broke = true; if (v.state === 'dizzy') dizzy = true; }
+  for (let i = 0; i < 500; i++) { step(s, [0, BTN.SHIELD]); if (v.state === 'shieldBreak') broke = true; if (v.state === 'dizzy') dizzy = true; }
   check('shield breaks: launched up, then dizzy', broke && dizzy);
   for (let i = 0; i < 300; i++) step(s, [0, 0]);
   check('recovers from dizzy with part of the shield back', v.state === 'idle' && v.shieldHp >= CONFIG.SHIELD_BREAK_REFILL);
@@ -550,7 +550,7 @@ for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BT
     return false;
   };
   const backThrowKO = (pct) => throwKO('back', pct);
-  check('back throw near the edge: survivable at 100%, KOs at 140%', !backThrowKO(100) && backThrowKO(140));
+  check('back throw near the edge: survivable at 120%, KOs at 180%', !backThrowKO(120) && backThrowKO(180));
   check('forward throw near the edge: still survivable at 180%', !throwKO('forward', 180));
   check('down throw near the edge: still survivable at 250%', !throwKO('down', 250));
   // mashing breaks free sooner
