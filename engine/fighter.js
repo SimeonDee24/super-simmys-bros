@@ -35,6 +35,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     parryTick: -1, shieldHitTick: -1, breakTick: -1,
     counterDmg: 0, counterTick: -1,   // counter specials
     charge: 0,                        // chargeable moves (Jump Shot)
+    stored: 0,                        // charge kept for later (Osama's Oil Beam, like a charge shot)
     fuel: 1000,                       // stream moves (Max's money gun): runs down while held, refills when not
     airUsed: 0,
     dropThru: 0,                      // frames left falling through a platform
@@ -156,6 +157,8 @@ export function startMove(f, name, air) {
   const mv = getCharacter(f.charId).moves[name];
   if (mv.intangible) f.intangible = mv.intangible;
   f.charge = 0;
+  // a move that can store its charge picks up where it left off
+  if (mv.charge && mv.charge.store && f.stored > 0) { f.charge = f.stored; f.stored = 0; }
   setState(f, 'attack', name);
 }
 
@@ -565,8 +568,14 @@ const STATES = {
     // (specials charge with the special button; smash attacks with smash or attack)
     const holdBtn = mv.charge && mv.charge.smash ? BTN.SMASH | BTN.ATTACK : BTN.SPECIAL;
     // (a stream with `stopEmpty` also stops once its fuel runs out)
-    if (mv.charge && f.stateFrame === mv.charge.at + 1 && (c.input & holdBtn) && f.charge < mv.charge.max && !(mv.stream && mv.stream.stopEmpty && f.fuel <= 0)) {
+    // Storable charge (like a charge shot): shield while charging to keep the
+    // charge for later; reaching full charge keeps it too. Only charges on
+    // the ground (`ground`); in the air it fires straight away.
+    const stash = () => { f.stored = f.charge; f.charge = 0; f.move = ''; if (f.moveAir) setState(f, 'air', 'fall'); else setState(f, 'idle', 'idle'); };
+    if (mv.charge && mv.charge.store && f.stateFrame === mv.charge.at + 1 && f.charge > 0 && f.charge < mv.charge.max && (c.input & BTN.SHIELD)) { stash(); return; }
+    if (mv.charge && f.stateFrame === mv.charge.at + 1 && (c.input & holdBtn) && f.charge < mv.charge.max && !(mv.stream && mv.stream.stopEmpty && f.fuel <= 0) && !(mv.charge.ground && !f.grounded)) {
       f.charge++;
+      if (mv.charge.store && f.charge >= mv.charge.max) { stash(); return; }
       f.stateFrame = mv.charge.at;
       // Stream moves: while held, a projectile every few frames. The range
       // shrinks as the fuel runs down (it refills while not in use).

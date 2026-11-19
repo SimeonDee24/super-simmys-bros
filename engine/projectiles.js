@@ -22,6 +22,16 @@ export function countProjectiles(state, owner, kind) {
   return n;
 }
 
+// Shots that grow with charge: the hit goes from `hit` (no charge) to
+// `full` (full charge). Damage and knockback scale smoothly; past a third of
+// a charge it launches instead of just flinching.
+export function chargedHit(d, power) {
+  const k = (a, b) => a + Math.trunc(((b - a) * power) / 1000);
+  const h = d.hit, F = d.full;
+  return { damage: k(h.damage, F.damage), angle: power >= 330 ? F.angle : h.angle, bkb: k(h.bkb, F.bkb), kbg: k(h.kbg, F.kbg), ...(power < 330 && h.fkb ? { fkb: h.fkb } : {}) };
+}
+export function sizeOf(d, power) { return d.full ? d.r + Math.trunc(((d.fullR - d.r) * (power || 0)) / 1000) : d.r; }
+
 // Called by the move on its spawn frame. `charge` (0..max) makes the shot
 // travel further and higher.
 export function spawnProjectile(state, f, mv) {
@@ -37,6 +47,8 @@ export function spawnProjectile(state, f, mv) {
     vy: (-(d.speed[1] + c * d.chargeSpeed[1])) | 0,
     bounces: 0, rolling: 0, life: d.life, spent: 0, spin: 0, born: state.tick | 0,
     dir: f.facing, cool: 0,
+    // how charged the shot was, 0..1000 (for shots that grow with charge)
+    ...(d.full ? { power: mv.charge ? Math.trunc((c * 1000) / mv.charge.max) : 0 } : {}),
   });
 }
 
@@ -131,8 +143,8 @@ export function resolveProjectileHits(state) {
     // a slow-rolling ball is harmless; a rolling one hits weaker than in flight
     const speed = Math.abs(p.vx);
     if (p.rolling && speed < d.minRollSpeed) continue;
-    const hb = p.rolling ? d.rollHit : d.hit;
-    const ball = { cx: p.x, cy: p.y, r: (d.r + d.hitPad) * FX };
+    const hb = p.rolling ? d.rollHit : d.full ? chargedHit(d, p.power) : d.hit;
+    const ball = { cx: p.x, cy: p.y, r: (d.full ? sizeOf(d, p.power) + d.hitPad : d.r + d.hitPad) * FX };
     const src = { x: p.x, dir: p.vx >= 0 ? 1 : -1 };
     for (const vic of state.fighters) {
       if (vic.slot === p.owner || vic.team === state.fighters[p.owner].team || vic.invuln > 0 || vic.intangible > 0 || UNHITTABLE[vic.state]) continue;

@@ -220,10 +220,12 @@ const hits = (from, to, list, damage, angle, bkb, kbg, extra) =>
   list.map(([at, r]) => hit(from, to, at, r, damage, angle, bkb, kbg, extra));
 
 const moves = {
-  // Neutral special: Oil Beam. Spits a fast jet of oil straight ahead, like a
-  // laser: it flies far, hits for 3% with almost no knockback, and he can
-  // fire again quickly. Works in the air too.
-  oilBeam: { faf: 20, spawn: { frame: 7, from: 'neck', projectile: 'oil' }, hitboxes: [] },
+  // Neutral special: Oil Beam, a charge shot. Hold to build up oil (just over
+  // a second for full), let go to spit it: 2% uncharged, up to 22% and a
+  // launch at full. Shield while charging (or reach full) to keep the charge
+  // for later; the next press fires from there. Charges only on the ground;
+  // in the air it fires at once with whatever is stored.
+  oilBeam: { faf: 24, charge: { at: 4, max: 70, store: true, ground: true }, spawn: { frame: 8, from: 'neck', projectile: 'oil' }, hitboxes: [] },
 
   // Side special: Suplex. Shoots in low for a double-leg; if he catches
   // someone, he lifts them and arches back, slamming them behind him (12%).
@@ -282,8 +284,12 @@ export const OSAMA = {
   specials: { neutral: 'oilBeam', side: 'suplexShoot', up: 'jetMode', down: 'groundAndPound' },
   projectiles: {
     // a jet of oil, straight and fast like a laser
-    oil: { type: 'dart', draw: 'oil', r: 3, hitPad: 2, speed: [px(7.0), 0], chargeSpeed: [0, 0], life: 30, fadeFrames: 3,
-      hit: { damage: 30, angle: 361, bkb: 0, kbg: 100, fkb: 10 } },
+    // Uncharged it is a weak spit (2%, a little flinch); full charge is a big
+    // glob for 22% that launches. Bigger and a little slower the more it's charged.
+    oil: { type: 'dart', draw: 'oil', r: 3, hitPad: 2, speed: [px(5.6), 0], chargeSpeed: [-2, 0], life: 44, fadeFrames: 3,
+      fullR: 9,
+      hit: { damage: 20, angle: 361, bkb: 0, kbg: 100, fkb: 6 },
+      full: { damage: 220, angle: 40, bkb: 42, kbg: 64 } },
   },
   // his own throws, used by the Suplex (path: [frame, forward, up] of the opponent)
   throws: {

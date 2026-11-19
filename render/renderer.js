@@ -226,6 +226,7 @@ export class Renderer {
     for (const f of state.fighters) this.drawHeldBall(f, getCharacter(f.charId), 0, 0);
     for (const p of state.projectiles || []) this.drawProjectile(p, 0, 0);
     for (const f of state.fighters) this.drawChargeMeter(state, f, getCharacter(f.charId), 0, 0);
+    for (const f of state.fighters) this.drawStoredCharge(state, f, getCharacter(f.charId));
     this.drawEffects(state);
     if (opts.showBoxes) { this.world(); this.drawBoxes(state, stage, 0, 0); }
     this.ui();
@@ -1085,12 +1086,15 @@ export class Renderer {
     }
     if (d.draw === 'oil') {
       // a glossy black jet of oil, stretched along its path like a laser
-      const dir = p.vx >= 0 ? 1 : -1;
+      // (bigger the more it was charged: a thin spit up to a fat glob)
+      const dir = p.vx >= 0 ? 1 : -1, k = 1 + ((p.power || 0) / 1000) * 2;
       ctx.save(); ctx.globalAlpha = fade;
-      ctx.fillStyle = '#100d16'; ctx.fillRect(x - dir * 14 - (dir < 0 ? 0 : 0), y - 2, dir * 16, 4);
-      ctx.fillStyle = '#2a2433'; ctx.fillRect(x - dir * 13, y - 1.4, dir * 14, 2.8);
-      ctx.fillStyle = '#7a5fb0'; ctx.fillRect(x - dir * 11, y - 1, dir * 9, 0.8);   // an oily sheen
-      ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.arc(x + dir * 2, y, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.translate(x, y); ctx.scale(k, k);
+      ctx.fillStyle = '#100d16'; ctx.fillRect(-dir * 14, -2, dir * 16, 4);
+      ctx.fillStyle = '#2a2433'; ctx.fillRect(-dir * 13, -1.4, dir * 14, 2.8);
+      ctx.fillStyle = '#7a5fb0'; ctx.fillRect(-dir * 11, -1, dir * 9, 0.8);   // an oily sheen
+      ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.arc(dir * 2, 0, 2.2 + (k - 1) * 0.6, 0, Math.PI * 2); ctx.fill();
+      if (p.power >= 1000) { ctx.fillStyle = '#b89cff'; ctx.fillRect(dir * 1, -1.4, 1, 1); }   // full charge glints
       ctx.restore();
       return;
     }
@@ -1216,6 +1220,21 @@ export class Renderer {
     const x = (f.x + f.facing * ((a[0] + b[0]) >> 1)) / FX + f.facing * 2;
     const y = (f.y + ((a[1] + b[1]) >> 1)) / FX - 3;
     this.drawBall(x, y, ch.projectiles.basketball.r, 0);
+  }
+  // A stored charge (Oil Beam): a drop of oil at his mouth that swells with
+  // the charge and pulses, flashing when full.
+  drawStoredCharge(state, f, ch) {
+    if (!f.stored || (f.state === 'attack' && f.move) || f.state === 'out') return;
+    const mv = ch.moves[ch.specials.neutral];
+    if (!mv || !mv.charge) return;
+    const full = f.stored >= mv.charge.max;
+    const s = solve(ch.skeleton, samplePose(ch.animations[f.anim] || ch.animations.idle, f.animFrame));
+    const n = jointAt(s, 'neck');
+    const x = (f.x + f.facing * n[0]) / FX + f.facing * 5, y = (f.y + n[1]) / FX - 3;
+    const r = 1.3 + (2.2 * f.stored) / mv.charge.max + ((state.tick >> 3) & 1) * 0.4;
+    const ctx = this.ctx;
+    ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = full && (state.tick >> 2) & 1 ? '#ffffff' : '#7a5fb0'; ctx.fillRect(x - r * 0.4, y - r * 0.5, 1, 1);
   }
   // Power meter over his head while charging a shot.
   drawChargeMeter(state, f, ch, camX, camY) {
