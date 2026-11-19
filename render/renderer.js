@@ -177,6 +177,7 @@ export class Renderer {
     for (const f of state.fighters) {
       if (f.state === 'dead' || f.state === 'out') continue;
       const ch = getCharacter(f.charId);
+      if (this.transformed(f, ch)) { this.drawPlane(state, f, ch); continue; }
       if (this.vanished(f, ch)) {
         // mid-teleport: only a glint of light where he is travelling
         this.star(f.x / FX, f.y / FX - 22, 5 + (state.tick & 3), (ch.trailColors || ['#fff', '#9fe9ff'])[1], '#ffffff', state.tick * 0.7);
@@ -619,6 +620,34 @@ export class Renderer {
     const mv = f.state === 'attack' && f.move ? ch.moves[f.move] : null;
     return !!(mv && mv.teleport && f.stateFrame >= mv.teleport.vanish && f.stateFrame < mv.teleport.appear);
   }
+  // Mid-transformation (Osama's plane): the fighter is drawn as something else.
+  transformed(f, ch) {
+    const mv = f.state === 'attack' && f.move ? ch.moves[f.move] : null;
+    return mv && mv.transform && f.stateFrame >= mv.transform.from && f.stateFrame <= mv.transform.to ? mv.transform : null;
+  }
+  // A little propeller plane, nose toward where it is heading, in his colours.
+  drawPlane(state, f, ch) {
+    const ctx = this.ctx, x = f.x / FX, y = f.y / FX - 22, dir = f.facing;
+    const pal = ch.palettes[f.alt].colors, body = pal.t || '#c9ced8', trim = pal.u || '#ffffff', OUT = '#100d16';
+    const tilt = Math.max(-0.6, Math.min(0.6, Math.atan2(f.vy, Math.abs(f.vx) + 64)));
+    ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1); ctx.rotate(tilt);
+    // puff of smoke on the frame he changes
+    const tr = this.transformed(f, ch);
+    if (tr && f.stateFrame - tr.from < 6) { ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.arc(0, 0, 16 - (f.stateFrame - tr.from) * 2, 0, Math.PI * 2); ctx.fill(); }
+    const poly = (pts, fill) => { ctx.fillStyle = fill; ctx.beginPath(); pts.forEach(([px2, py2], i) => (i ? ctx.lineTo(px2, py2) : ctx.moveTo(px2, py2))); ctx.closePath(); ctx.fill(); };
+    poly([[-14, -9], [-9, -9], [-6, -2], [-14, -2]], OUT); poly([[-13, -8], [-9.5, -8], [-7, -2.6], [-13, -2.6]], body);   // tail fin
+    ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(0, 0, 15, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = body; ctx.beginPath(); ctx.ellipse(0, 0, 14, 4, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = trim; ctx.fillRect(-10, -1, 20, 1.4);
+    poly([[-3, 0], [5, 0], [1, 9], [-6, 9]], OUT); poly([[-2.4, 0.6], [4, 0.6], [0.6, 8.2], [-5, 8.2]], trim);   // wing
+    ctx.fillStyle = '#9fd8f5'; ctx.beginPath(); ctx.ellipse(6, -2.6, 3.6, 2.2, 0, Math.PI, 0); ctx.fill();          // cockpit
+    // his head in the cockpit
+    ctx.fillStyle = pal.h || '#8a6a4a'; ctx.beginPath(); ctx.arc(5.5, -4.6, 2, Math.PI, 0); ctx.fill();
+    // spinning propeller
+    ctx.fillStyle = OUT; ctx.fillRect(14, -1.2, 2, 2.4);
+    ctx.fillStyle = 'rgba(220,226,235,0.85)'; const pr = 6 * Math.abs(Math.sin(state.tick * 1.3)); ctx.fillRect(15.4, -pr, 1.2, pr * 2);
+    ctx.restore();
+  }
 
   // DJ decks and a speaker stack, for moves that set `deck` (Bass Drop).
   // The speakers thump harder as the move charges; on the blast frame a
@@ -1041,6 +1070,17 @@ export class Renderer {
       const r = ace ? 2.6 : 1.2;
       ctx.beginPath(); ctx.moveTo(0, -r); ctx.lineTo(r, 0); ctx.lineTo(0, r); ctx.lineTo(-r, 0); ctx.closePath(); ctx.fill();
       if (ace) { ctx.fillStyle = '#ffd23a'; ctx.fillRect(-w / 2 + 1, -h / 2 + 1, 1.4, 2.4); ctx.fillRect(w / 2 - 2.4, h / 2 - 3.4, 1.4, 2.4); }
+      ctx.restore();
+      return;
+    }
+    if (d.draw === 'oil') {
+      // a glossy black jet of oil, stretched along its path like a laser
+      const dir = p.vx >= 0 ? 1 : -1;
+      ctx.save(); ctx.globalAlpha = fade;
+      ctx.fillStyle = '#100d16'; ctx.fillRect(x - dir * 14 - (dir < 0 ? 0 : 0), y - 2, dir * 16, 4);
+      ctx.fillStyle = '#2a2433'; ctx.fillRect(x - dir * 13, y - 1.4, dir * 14, 2.8);
+      ctx.fillStyle = '#7a5fb0'; ctx.fillRect(x - dir * 11, y - 1, dir * 9, 0.8);   // an oily sheen
+      ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.arc(x + dir * 2, y, 2.2, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
       return;
     }

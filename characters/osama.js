@@ -1,5 +1,5 @@
-// OSAMA — an MMA fighter. Every special and smash attack is a fight move:
-// strikes, a flying knee, ground and pound and a suplex. He shares every
+// OSAMA — an MMA fighter: strikes, ground and pound and a suplex, plus a jet
+// of oil and a plane he turns into. He shares every
 // normal attack, grab and throw with Simeon (same skeleton, same
 // animations); his look, a few stats, his smash attacks and his four
 // specials are his own.
@@ -129,22 +129,17 @@ const STAND = { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6
 const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: [-14, -18], footF: 25, footB: 35 };
 // fighting stance: hands up guarding the chin
 const GUARD = { hip: [0, 2], torso: 8, head: 4, armF: [40, 120], armB: [30, 125], legF: [20, -12], legB: [-16, -6], ...FISTS };
-const SUPERMAN = { torso: 20, head: -6, armF: [96, 4], armB: [-60, 40], legF: [10, -20], legB: [-60, -50], footB: 30, ...FISTS, face: 'yell' };
-// rising flying knee: front knee driven up, arms pulled down
-const KNEE = { torso: -12, head: -10, armF: [-30, 60], armB: [-50, 50], legF: [120, -150], legB: [-20, -20], footB: 30, ...FISTS, face: 'yell' };
 // shooting in for the suplex: low, arms out to wrap the waist
 const SHOOT = { hip: [0, 6], torso: 40, head: -24, armF: [90, 30], armB: [80, 40], legF: [50, -60], legB: [-40, -20], handF: 'open', handB: 'open', face: 'yell' };
 
 const animations = {
-  // Superman Punch: a skip, a leap, and a straight right thrown from the air.
-  supermanPunch: anim(false, [
-    [4, GUARD],
-    [4, { ...GUARD, hip: [0, 4], legF: [30, -40], legB: [-10, -30] }],
-    [4, { torso: 6, armF: [-40, 110], armB: [30, 100], legF: [20, -30], legB: [-40, -40], ...FISTS }],
-    [3, SUPERMAN],
-    [16, SUPERMAN],
-    [10, { torso: 8, armF: [60, 40], armB: [-30, 40], legF: [20, -24], legB: [-14, -18], ...FISTS }],
-    [2, AIR],
+  // Oil Beam: leans in and spits a jet of oil straight ahead.
+  oilBeam: anim(false, [
+    [4, { torso: -6, head: -10, armF: [20, 40], armB: [-20, 30], legF: [10, -8], legB: [-8, -4], ...FISTS }],
+    [3, { torso: 10, head: 8, armF: [-10, 40], armB: [-30, 30], legF: [18, -14], legB: [-14, -6], ...FISTS, face: 'yell' }],
+    [10, { torso: 12, head: 10, armF: [-10, 40], armB: [-30, 30], legF: [18, -14], legB: [-14, -6], ...FISTS, face: 'yell' }],
+    [6, GUARD],
+    [2, STAND],
   ]),
   // Suplex: shoots in low...
   suplexShoot: anim(false, [
@@ -163,13 +158,12 @@ const animations = {
     [8, { hip: [0, 6], torso: 10, armF: [40, 40], armB: [-30, 40], legF: [40, -60], legB: [-10, -40] }],
     [4, STAND],
   ]),
-  // Flying Knee: jumps off the back foot and drives the front knee up.
-  flyingKnee: anim(false, [
-    [4, { hip: [0, 5], torso: 14, armF: [40, 100], armB: [30, 110], legF: [40, -70], legB: [10, -60], ...FISTS }],
-    [4, KNEE],
-    [12, { ...KNEE, legF: [126, -156] }],
-    [8, { torso: 6, armF: [100, 40], armB: [-80, 30], legF: [40, -60], legB: [-20, -30], ...FISTS }],
-    [20, AIR],
+  // Jet Mode: crouches, then (as a plane, drawn by the renderer) flies off;
+  // this is the pose he lands back in.
+  jetMode: anim(false, [
+    [4, { hip: [0, 6], torso: 20, armF: [90, 10], armB: [-90, 10], legF: [50, -95], legB: [30, -80], handF: 'open', handB: 'open' }],
+    [40, { torso: 10, armF: [90, 10], armB: [-90, 10], legF: [10, -14], legB: [-10, -10], handF: 'open', handB: 'open', face: 'smile' }],
+    [10, AIR],
   ]),
   // Ground and Pound: drops onto one knee and rains down hammer fists.
   groundAndPound: anim(false, [
@@ -226,13 +220,10 @@ const hits = (from, to, list, damage, angle, bkb, kbg, extra) =>
   list.map(([at, r]) => hit(from, to, at, r, damage, angle, bkb, kbg, extra));
 
 const moves = {
-  // Neutral special: Superman Punch. Leaps forward and throws a straight
-  // punch from the air: 11%. Once per jump in the air.
-  supermanPunch: { faf: 46, landLag: 10, once: true, noDrift: true,
-    rocket: { frame: 9, frames: 20, speed: [px(3.0), px(3.0)], lift: px(2.4), gravity: 70, drag: 8, bounce: [px(0.6), px(1.4)] },
-    ledgeGrab: { from: 20 },
-    trail: { part: 'fistF', from: 13, to: 26, width: 7, straight: true },
-    hitboxes: hits(13, 26, [['fistF', 8], ['elbowF', 6]], 11, 361, 40, 80) },
+  // Neutral special: Oil Beam. Spits a fast jet of oil straight ahead, like a
+  // laser: it flies far, hits for 3% with almost no knockback, and he can
+  // fire again quickly. Works in the air too.
+  oilBeam: { faf: 20, spawn: { frame: 7, from: 'neck', projectile: 'oil' }, hitboxes: [] },
 
   // Side special: Suplex. Shoots in low for a double-leg; if he catches
   // someone, he lifts them and arches back, slamming them behind him (12%).
@@ -242,16 +233,13 @@ const moves = {
     grab: { frames: [9, 24], onlyGround: true, throw: 'suplex', boxes: [{ at: 'handF', r: 9, off: [4, 0] }, { at: 'chest', r: 8, off: [6, 0] }] },
     hitboxes: [] },
 
-  // Up special: Flying Knee. Leaps straight up driving a knee: 12% at the
-  // start, 5% after. Steers a little. Falls helpless afterwards.
-  flyingKnee: { faf: 48, landLag: 14, helpless: true,
-    fly: { frame: 4, frames: 17, rise: px(4.7), accel: px(1.8), drift: px(1.0), steer: px(0.09) },
+  // Up special: Jet Mode. Transforms into a little plane and flies up and
+  // forward for most of a second, steering freely; the nose hits for 9%.
+  // Turns back into himself at the end and falls helpless.
+  jetMode: { faf: 54, landLag: 14, helpless: true, transform: { kind: 'plane', from: 4, to: 46 },
+    fly: { frame: 4, frames: 40, rise: px(2.6), accel: px(0.5), drift: px(2.6), steer: px(0.22) },
     ledgeGrab: { from: 4, rising: true },
-    trail: { part: 'kneeF', from: 4, to: 22, width: 8 },
-    hitboxes: [
-      ...hits(4, 9, [['kneeF', 9], ['footF', 6]], 12, 80, 40, 82, { group: 0 }),
-      ...hits(10, 21, [['kneeF', 8], ['footF', 6]], 5, 70, 40, 70, { group: 1 }),
-    ] },
+    hitboxes: [hit(5, 46, 'chest', 11, 9, 50, 50, 70, { off: [8, 0] })] },
 
   // Down special: Ground and Pound. Drops onto a knee and hammers down in
   // front of him: three hammer fists (3% each) and a heavy last blow (6%,
@@ -291,7 +279,12 @@ export const OSAMA = {
   trailColors: ['#c2322e', '#ff8a5c', '#ffffff'],   // fight-night red
   animations: { ...SIMEON.animations, ...animations },
   moves: { ...SIMEON.moves, ...moves },
-  specials: { neutral: 'supermanPunch', side: 'suplexShoot', up: 'flyingKnee', down: 'groundAndPound' },
+  specials: { neutral: 'oilBeam', side: 'suplexShoot', up: 'jetMode', down: 'groundAndPound' },
+  projectiles: {
+    // a jet of oil, straight and fast like a laser
+    oil: { type: 'dart', draw: 'oil', r: 3, hitPad: 2, speed: [px(7.0), 0], chargeSpeed: [0, 0], life: 30, fadeFrames: 3,
+      hit: { damage: 30, angle: 361, bkb: 0, kbg: 100, fkb: 10 } },
+  },
   // his own throws, used by the Suplex (path: [frame, forward, up] of the opponent)
   throws: {
     suplex: {

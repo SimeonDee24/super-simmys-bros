@@ -1175,13 +1175,14 @@ for (const hold of [0, 30]) {
   const sb = mk(-16); const d2 = run(sb, BTN.SMASH | BTN.DOWN);
   check('Head Kick 17%, Uppercut 15%, Leg Kicks 13% in front and behind', f === 17 && u === 15 && d1 === 13 && d2 === 13 && sb.fighters[1].x < sb.fighters[0].x, `${f}% / ${u}% / ${d1}% / ${d2}%`);
   TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
-  check('Superman Punch leaps in with a punch: 11%', run(mk(50), BTN.SPECIAL, 70) === 11);
+  { const far = run(mk(150), BTN.SPECIAL, 70); const s2 = mk(400); step(s2, [BTN.SPECIAL, 0]); let n = 0; for (let i = 0; i < 60; i++) { step(s2, [i % 22 === 0 ? BTN.SPECIAL : 0, 0]); n = Math.max(n, s2.projectiles.length); }
+    check('Oil Beam: a fast jet of oil that reaches far (3%) and can be fired again quickly', far === 3 && n >= 2, `${far}%, ${n} jets out at once`); }
   { const s = mk(30); const [a, v] = s.fighters; let threw = false; step(s, [BTN.SPECIAL | BTN.RIGHT, 0]); for (let i = 0; i < 90; i++) { step(s, [0, 0]); if (a.state === 'throwing') threw = true; }
     const miss = mk(400); run(miss, BTN.SPECIAL | BTN.RIGHT, 70);
     check('Suplex: catches them, slams them down behind him (12%); whiffs harmlessly at range', threw && v.percent === 120 && (v.x - a.x) * a.facing < 0 && miss.fighters[1].percent === 0 && miss.fighters[0].state !== 'throwing', `${v.percent / 10}%`); }
-  { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); }
-    const k = run(mk(8, -20), BTN.SPECIAL | BTN.UP, 50);
-    check('Flying Knee rises about 120px and hits hard early (12% plus follow-up)', top > 70 && top < 140 && k >= 12, `${top.toFixed(0)}px, ${k}%`); }
+  { const s = mk(400); const a = s.fighters[0], y0 = a.y, x0 = a.x; let top = 0, wasHelpless = false; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 70; i++) { step(s, [BTN.RIGHT, 0]); top = Math.max(top, (y0 - a.y) / FX); if (a.state === 'helpless') wasHelpless = true; }
+    const k = run(mk(20, -10), BTN.SPECIAL | BTN.UP, 50);
+    check('Jet Mode: flies up and forward as a plane (steerable), the nose hits for 9%, then helpless', top > 60 && (a.x - x0) / FX > 60 && k === 9 && wasHelpless, `${top.toFixed(0)}px up, ${((a.x - x0) / FX).toFixed(0)}px across, ${k}%`); }
   check('Ground and Pound: three hammer fists and a heavy last blow (15%)', run(mk(18), BTN.SPECIAL | BTN.DOWN, 70) === 15, run(mk(18), BTN.SPECIAL | BTN.DOWN, 70) + '%');
 }
 
