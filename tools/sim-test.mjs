@@ -54,6 +54,16 @@ check('full hop about 55px', Math.abs(full.h - 55) < 4, `${full.h.toFixed(1)}px,
 check('short hop about 31px', Math.abs(short.h - 31) < 3, `${short.h.toFixed(1)}px, ${short.air} frames airborne`);
 check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + full.left);
 
+// Reverse aerial rush: run right, switch to left (cleanly, with a neutral
+// frame, or rolling the keys), jump, then back air. Should be a bair while
+// still sliding right.
+for (const [label, gap] of [['clean switch', []], ['let go first', [[1, 0]]], ['both keys held', [[2, BTN.LEFT | BTN.RIGHT]]]]) {
+  const s = createMatch(setup); const f = s.fighters[0];
+  const seq = [[1, BTN.RIGHT], [1, 0], [30, BTN.RIGHT], ...gap, [2, BTN.LEFT], [1, BTN.LEFT | BTN.JUMP], [3, BTN.LEFT], [1, BTN.RIGHT | BTN.ATTACK]];
+  for (const [n, m] of seq) for (let i = 0; i < n; i++) step(s, [m, 0]);
+  check('RAR (' + label + '): back air while sliding forward', f.move === 'bair' && f.facing === -1 && f.vx > 0, `move ${f.move}, facing ${f.facing}, vx ${(f.vx / FX).toFixed(2)}`);
+}
+
 // Double-tap dash reaches run speed; single hold only walks.
 {
   const s = createMatch(setup); const f = s.fighters[0];

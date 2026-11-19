@@ -409,6 +409,9 @@ const STATES = {
     f.vx = approach(f.vx, 0, st.traction);
     if (tryGroundAttack(c) || tryJump(c) || tryShield(c)) return;
     if (c.dashInput) { startDash(c, c.dashInput); return; }
+    // Holding back while skidding turns round, keeping the slide (so a jump
+    // here is a reverse aerial rush, the same as from a run turnaround).
+    if (c.dir === -f.facing && f.vx * f.facing > 0) { f.facing = -f.facing; setState(f, 'turn', 'brake'); return; }
     if (f.stateFrame >= st.brakeFrames) setState(f, 'idle', 'idle');
   },
 
@@ -1018,6 +1021,8 @@ export function updateFighter(match, f, input) {
   let dir = 0;
   if (input & BTN.LEFT) dir -= 1;
   if (input & BTN.RIGHT) dir += 1;
+  // Both held (rolling from one key to the other): the one pressed last wins.
+  if (!dir && (input & BTN.LEFT) && (input & BTN.RIGHT)) dir = (pressed & BTN.LEFT) ? -1 : (pressed & BTN.RIGHT) ? 1 : f.tapDir;
 
   // Double-tap detection for dashing.
   let tap = 0;
