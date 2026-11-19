@@ -43,7 +43,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     flick: 0, flickTimer: 0,          // the direction just tapped, for flick + attack smashes
     techTimer: 0, techLock: 0,        // teching: press window, and lockout after a press                       // 1 once a once-per-jump special has been used in the air
     // Grabs: who I am holding / who is holding me
-    holding: -1, heldBy: -1, grabTimer: 0, pummelFrame: 0, throwName: '', throwFacing: 1, releaseFrames: 0, grabTick: -1, kbAngle: 0, kbSpeed: 0, gv: 0,
+    holding: -1, heldBy: -1, grabTimer: 0, pummelFrame: 0, throwName: '', throwFacing: 1, releaseFrames: 0, grabTick: -1, kbAngle: 0, kbSpeed: 0, kbBurst: 0, kbDecay: 0, gv: 0,
     hitX: 0, hitY: 0, lastHitTick: -1, lastHitDmg: 0,
     koX: 0, koY: 0,         // where the last KO happened (pixels), for the blast effect
     invuln: 0,
@@ -745,9 +745,11 @@ const STATES = {
   // gravity builds up separately on top of it.
   hitstun(c) {
     const { f, st } = c;
-    f.kbSpeed = Math.max(0, f.kbSpeed - CONFIG.KB_DECAY - (f.grounded ? st.traction : 0));
-    const kbx = mulTrig(f.kbSpeed, cosDeg(f.kbAngle));
-    const kby = -mulTrig(f.kbSpeed, sinDeg(f.kbAngle));
+    f.kbSpeed = Math.max(0, f.kbSpeed - (f.kbDecay || CONFIG.KB_DECAY) - (f.grounded ? st.traction : 0));
+    f.kbBurst = f.grounded ? 0 : Math.max(0, Math.trunc((f.kbBurst * CONFIG.KB_BURST_KEEP) / 256) - 4);   // a big hit's extra snap, fading fast
+    const sp = f.kbSpeed + f.kbBurst;
+    const kbx = mulTrig(sp, cosDeg(f.kbAngle));
+    const kby = -mulTrig(sp, sinDeg(f.kbAngle));
     if (f.grounded) { f.vx = kbx; f.vy = 0; }
     else {
       f.gv = Math.min(f.gv + st.gravity, st.fallSpeed);

@@ -98,7 +98,12 @@ export function applyHit(state, att, vic, hit, proj = null) {
   const launch = dir > 0 ? angle : 180 - angle;
 
   vic.kbAngle = ((launch % 360) + 360) % 360;
-  vic.kbSpeed = Math.trunc((kb * CONFIG.KB_SPEED_NUM) / CONFIG.KB_SPEED_DEN);
+  // (fixed-knockback hits are the links of multi-hit moves: they stay gentle so the hits carry)
+  const fast = kb >= CONFIG.TUMBLE_KB && !hb.fkb;
+  vic.kbSpeed = Math.trunc((kb * (fast ? CONFIG.KB_FAST_NUM : CONFIG.KB_SPEED_NUM)) / CONFIG.KB_SPEED_DEN);
+  vic.kbDecay = fast ? CONFIG.KB_FAST_DECAY : CONFIG.KB_DECAY;
+  const burstFrom = Math.trunc((CONFIG.TUMBLE_KB * CONFIG.KB_FAST_NUM) / CONFIG.KB_SPEED_DEN);
+  vic.kbBurst = fast && vic.kbSpeed > burstFrom ? Math.trunc(((vic.kbSpeed - burstFrom) * CONFIG.KB_BURST) / 100) : 0;
   vic.gv = 0;
   vic.hitstun = Math.max(1, Math.trunc((kb * CONFIG.HITSTUN_NUM) / CONFIG.HITSTUN_DEN));
   // Hitlag: short for normal moves; a move can ask for more (smash attacks will).

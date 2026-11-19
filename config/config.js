@@ -52,8 +52,19 @@ export const CONFIG = {
 
   // --- Hits and knockback ---
   // launch speed (px/frame) = knockback * KB_SPEED_NUM / KB_SPEED_DEN / 256
+  // Light hits (below tumbling) keep the gentle speed, so multi-hit moves and
+  // combos still hold together:
   KB_SPEED_NUM: 1344, KB_SPEED_DEN: 100000,   // = 0.0525 px per knockback unit
   KB_DECAY: 23,             // launch speed lost per frame (1/256 px) = 0.09 px
+  // Tumbling hits fly 1.6x faster, with a steeper slowdown, so they snap away
+  // but end up about as far as before (KO percents tuned to stay the same):
+  KB_FAST_NUM: 2150,        // = 0.084 px per knockback unit
+  KB_FAST_DECAY: 74,
+  // Big hits (tumbling knockback) also get a burst, as in Smash Ultimate: an
+  // extra share of the speed above the tumble threshold that fades fast
+  // (to 80% each frame), so strong hits snap away and then ease off.
+  KB_BURST: 60,             // percent of the speed above the threshold
+  KB_BURST_KEEP: 205,       // kept each frame, out of 256
   HITSTUN_NUM: 36, HITSTUN_DEN: 100000,       // hitstun frames = knockback * 0.36 (Smash uses 0.4)
   HITLAG_BASE: 3,           // freeze frames on any hit...
   HITLAG_PER_DMG: 35,       // ...plus 0.35 frames per 1% damage
