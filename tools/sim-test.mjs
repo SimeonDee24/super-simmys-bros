@@ -745,7 +745,7 @@ for (const hold of [0, 30]) {
 // Roster: two fighters, two skins each, sharing every normal attack
 {
   const { CHARACTERS } = await import('../characters/index.js');
-  check('nine characters with two skins each', CHARACTERS.length === 9 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
+  check('ten characters with two skins each', CHARACTERS.length === 10 && CHARACTERS.every((c) => c.palettes.length === 2), CHARACTERS.map((c) => c.name + ':' + c.palettes.length).join(' '));
   const [sim, kae, luc] = CHARACTERS;
   const shared = ['jab1', 'ftilt', 'utilt', 'dtilt', 'dashAttack', 'nair', 'fair', 'bair', 'uair', 'dair', 'grab'];
   check('Kaelyn shares all normals, grabs and throws with Simeon', shared.every((m) => kae.moves[m] === sim.moves[m]) && kae.throws === sim.throws);
@@ -1323,6 +1323,30 @@ for (const hold of [0, 30]) {
     seen.add(out[0].char);
   }
   check('Random picks a real fighter (and a free skin) when the match starts, and covers the whole roster', ok && seen.size === CHARACTERS.length, `${seen.size} of ${CHARACTERS.length} seen`);
+}
+
+// Matt: volleyball, frisbee, League, Roblox
+{
+  const { getCharacter } = await import('../characters/index.js');
+  const mt = getCharacter('matt'), sim = getCharacter('simeon');
+  check('Matt has his own smashes and specials', ['fsmash', 'usmash', 'dsmash'].every((m) => mt.moves[m] !== sim.moves[m]) && ['neutral', 'side', 'up', 'down'].every((k) => mt.moves[mt.specials[k]] && mt.animations[mt.specials[k]]));
+  const mk = (dx = 26, dy = 0) => { const s = createMatch({ ...setup, players: [{ charId: 'matt', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [a, v] = s.fighters; v.x = a.x + dx * FX; v.y += dy * FX; if (dy) { v.grounded = 0; v.ground = -1; } return s; };
+  const run = (s, first, n = 80) => { step(s, [first, 0]); for (let i = 0; i < n; i++) step(s, [0, 0]); return s.fighters[1].percent / 10; };
+  TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
+  const f = run(mk(26), BTN.SMASH), u = run(mk(3, -40), BTN.SMASH | BTN.UP), d1 = run(mk(16), BTN.SMASH | BTN.DOWN), d2 = run(mk(-16), BTN.SMASH | BTN.DOWN);
+  check('Power Serve 17%, Set 15%, Disc Sweep 13% in front and behind', f === 17 && u === 15 && d1 === 13 && d2 === 13, `${f}% / ${u}% / ${d1}% / ${d2}%`);
+  TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
+  { const sp = run(mk(60), BTN.SPECIAL, 90);
+    const fr = mk(400); step(fr, [BTN.SPECIAL | BTN.RIGHT, 0]); let far = 0, back = false;
+    for (let i = 0; i < 200; i++) { step(fr, [0, 0]); const p = (fr.projectiles || [])[0]; if (p) far = Math.max(far, (p.x - fr.fighters[0].x) / FX); else if (far > 0) back = true; }
+    const fh = run(mk(70), BTN.SPECIAL | BTN.RIGHT, 60);
+    check('Spike: a volleyball spiked forward (7%); Frisbee flies out over 100px and comes back (6%)', sp === 7 && far > 100 && back && fh === 6, `${sp}% / out ${Math.round(far)}px back ${back} / ${fh}%`); }
+  { const s = mk(400); const a = s.fighters[0], y0 = a.y; step(s, [BTN.SPECIAL | BTN.UP, 0]); let top = 0, gone = false; for (let i = 0; i < 40; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); if (a.intangible > 0 && a.stateFrame > 7 && a.stateFrame < 15) gone = true; }
+    const h = mk(400); const ha = h.fighters[0]; step(h, [BTN.SPECIAL | BTN.UP | BTN.RIGHT, 0]); for (let i = 0; i < 20; i++) step(h, [BTN.RIGHT, 0]);
+    check('Flash blinks about 110px (up, or the way held), untouchable while gone', top > 80 && top < 150 && gone && (ha.x - h.fighters[0].x === 0) && ha.x > y0 * 0 && (ha.x - mk(400).fighters[0].x) / FX > 80, `${Math.round(top)}px up, sideways ${Math.round((ha.x - mk(400).fighters[0].x) / FX)}px`); }
+  { const o1 = run(mk(14), BTN.SPECIAL | BTN.DOWN, 60), o2 = run(mk(-14), BTN.SPECIAL | BTN.DOWN, 60);
+    const s = mk(400); const a = s.fighters[0]; step(s, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 8; i++) step(s, [0, 0]);
+    check('Oof!: bursts into blocks that hit all round him (10% each side), untouchable at the start', o1 === 10 && o2 === 10 && a.intangible > 0, `${o1}% / ${o2}%`); }
 }
 
 process.exit(fails ? 1 : 0);

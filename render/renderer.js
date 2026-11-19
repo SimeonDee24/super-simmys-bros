@@ -190,7 +190,7 @@ export class Renderer {
     for (const f of state.fighters) {
       if (f.state === 'dead' || f.state === 'out') continue;
       const ch = getCharacter(f.charId);
-      if (this.transformed(f, ch)) { this.drawPlane(state, f, ch); continue; }
+      if (this.transformed(f, ch)) { if (this.transformed(f, ch).kind === 'blocks') this.drawBlocks(state, f, ch); else this.drawPlane(state, f, ch); continue; }
       if (this.vanished(f, ch)) {
         // mid-teleport: only a glint of light where he is travelling
         this.star(f.x / FX, f.y / FX - 22, 5 + (state.tick & 3), (ch.trailColors || ['#fff', '#9fe9ff'])[1], '#ffffff', state.tick * 0.7);
@@ -479,7 +479,16 @@ export class Renderer {
         ctx.fillStyle = '#ffb43a'; ctx.beginPath(); ctx.ellipse(lx, ly - 2, 1.4, 2.6 + ((fr >> 1) & 1), 0, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = '#fff3b0'; ctx.beginPath(); ctx.ellipse(lx, ly - 1.4, 0.7, 1.4, 0, 0, Math.PI * 2); ctx.fill();
       }
-    } else if (g.kind === 'gavel') held(() => {
+    } else if (g.kind === 'vball') {
+      // a volleyball resting on his hand (above it when the hand is raised)
+      this.drawVolleyball(hx, hy - 4, 4.4, fr * 40);
+    } else if (g.kind === 'frisbee') held(() => {
+      // a frisbee gripped at its rim
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(0, 6, 3.4, 7.4, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff7a1c'; ctx.beginPath(); ctx.ellipse(0, 6, 2.6, 6.6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.ellipse(0.6, 6, 1.2, 4, 0, 0, Math.PI * 2); ctx.fill();
+    });
+    else if (g.kind === 'gavel') held(() => {
       // a judge's gavel: dark wood handle, a barrel head across the end
       ctx.fillStyle = OUT; ctx.fillRect(-1.2, -3, 2.4, 15); ctx.fillRect(-4.6, 10, 9.2, 6);
       ctx.fillStyle = '#6b3f22'; ctx.fillRect(-0.6, -2.4, 1.2, 13);
@@ -641,6 +650,30 @@ export class Renderer {
     return mv && mv.transform && f.stateFrame >= mv.transform.from && f.stateFrame <= mv.transform.to ? mv.transform : null;
   }
   // A little propeller plane, nose toward where it is heading, in his colours.
+  // Oof!: he bursts into blocks of his own colours (hair, skin, hoodie,
+  // trousers, shoes) that fly out round him, hang, and snap back together.
+  drawBlocks(state, f, ch) {
+    const ctx = this.ctx, tr = this.transformed(f, ch), pal = ch.palettes[f.alt].colors, OUT = '#100d16';
+    const t = (f.stateFrame - tr.from) / Math.max(1, tr.to - tr.from);
+    const out = t < 0.25 ? 1 - (1 - t / 0.25) ** 2 : t > 0.75 ? 1 - ((t - 0.75) / 0.25) ** 2 : 1;
+    const cx = f.x / FX, cy = f.y / FX - 22;
+    const cols = [pal.h, pal.k, pal.t, pal.T, pal.u, pal.j, pal.J, pal.w || '#f6f6f2', pal.k, pal.t, pal.h, pal.j];
+    cols.forEach((c, i) => {
+      const a = (i / cols.length) * Math.PI * 2 + 0.3, d = (10 + (i % 3) * 6) * out;
+      const x = cx + Math.cos(a) * d * 1.1, y = cy + Math.sin(a) * d * 0.9 + (i % 4) * 3 - 4, s = 5 + (i % 2), rot = out * (i & 1 ? 1.2 : -1.2) + t * 3;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+      ctx.fillStyle = OUT; ctx.fillRect(-s / 2 - 0.7, -s / 2 - 0.7, s + 1.4, s + 1.4);
+      ctx.fillStyle = c; ctx.fillRect(-s / 2, -s / 2, s, s);
+      ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(-s / 2, -s / 2, s, 1);
+      ctx.restore();
+    });
+    // a little "OOF!" that floats up as he breaks apart
+    if (t < 0.6) {
+      ctx.save(); ctx.globalAlpha = Math.min(1, (0.6 - t) * 4);
+      drawText(ctx, 'OOF!', cx, cy - 26 - t * 14, '#ffffff', 2, 'center', OUT);
+      ctx.restore();
+    }
+  }
   drawPlane(state, f, ch) {
     const ctx = this.ctx, x = f.x / FX, y = f.y / FX - 22, dir = f.facing;
     const pal = ch.palettes[f.alt].colors, body = pal.t || '#c9ced8', trim = pal.u || '#ffffff', OUT = '#100d16';
@@ -1035,6 +1068,20 @@ export class Renderer {
 
   // --- Basketball ---
   // An orange ball with dark seams that turn as it travels.
+  // A volleyball: white with yellow and blue panels curving round it.
+  drawVolleyball(x, y, r, spin, alpha = 1) {
+    const ctx = this.ctx;
+    ctx.save(); ctx.globalAlpha = alpha;
+    ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.arc(x, y, r + 0.6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#f7f5ee'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.clip();
+    ctx.translate(x, y); ctx.rotate((spin / 2048) * Math.PI);
+    ctx.lineWidth = r * 0.42;
+    ctx.strokeStyle = '#f2c230'; ctx.beginPath(); ctx.arc(-r * 0.9, -r * 0.9, r * 1.2, 0, Math.PI / 2); ctx.stroke();
+    ctx.strokeStyle = '#2f5fcf'; ctx.beginPath(); ctx.arc(r * 1.1, r * 0.2, r * 1.15, Math.PI * 0.8, Math.PI * 1.35); ctx.stroke();
+    ctx.strokeStyle = '#f2c230'; ctx.beginPath(); ctx.arc(-r * 0.2, r * 1.3, r * 1.1, Math.PI * 1.25, Math.PI * 1.75); ctx.stroke();
+    ctx.restore();
+  }
   drawBall(x, y, r, spin, alpha = 1) {
     const ctx = this.ctx;
     ctx.save();
@@ -1056,6 +1103,17 @@ export class Renderer {
     const d = getCharacter(p.charId).projectiles[p.kind];
     const fade = p.spent ? Math.max(0.2, p.life / d.fadeFrames) : 1;
     const x = p.x / FX, y = p.y / FX, ctx = this.ctx;
+    if (d.draw === 'vball') { this.drawVolleyball(x, y, d.r, p.spin, fade); return; }
+    if (d.draw === 'frisbee') {
+      // a spinning disc seen almost edge-on, with a white ring
+      ctx.save(); ctx.globalAlpha = fade; ctx.translate(x, y); ctx.rotate(p.vy / FX * 0.08);
+      ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.ellipse(0, 0, 7.6, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#ff7a1c'; ctx.beginPath(); ctx.ellipse(0, 0, 6.8, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.ellipse(0, -0.3, 4.2, 1.3, 0, 0, Math.PI * 2); ctx.stroke();
+      const sp = (p.spin / 256) % 2; ctx.fillStyle = '#ffd9a8'; ctx.fillRect(-5 + (sp > 1 ? 2 - sp : sp) * 10 - 0.5, -1.6, 1.4, 1);
+      ctx.restore();
+      return;
+    }
     if (d.draw === 'bomb') {
       if (p.boom) {
         // the blast: a flash of fire that swells, then smoke that thins
