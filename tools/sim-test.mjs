@@ -1175,24 +1175,26 @@ for (const hold of [0, 30]) {
   const sb = mk(-16); const d2 = run(sb, BTN.SMASH | BTN.DOWN);
   check('Head Kick 17%, Uppercut 15%, Leg Kicks 13% in front and behind', f === 17 && u === 15 && d1 === 13 && d2 === 13 && sb.fighters[1].x < sb.fighters[0].x, `${f}% / ${u}% / ${d1}% / ${d2}%`);
   TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
-  { const tap = run(mk(150), BTN.SPECIAL, 70);
-    // hold to full: he keeps the charge instead of firing
+  { // press twice quickly: a weak, slow spit
+    const t = mk(150); step(t, [BTN.SPECIAL, 0]); step(t, [0, 0]); step(t, [BTN.SPECIAL, 0]); let out = -1;
+    for (let i = 0; i < 100; i++) { step(t, [0, 0]); if (out < 0 && (t.projectiles || []).length) out = i + 3; }
+    const tap = t.fighters[1].percent / 10;
+    // one press: it charges by itself and, once full, he keeps it
     const s = mk(150); const [a, v] = s.fighters; let shots = 0;
-    for (let i = 0; i < 90; i++) { step(s, [BTN.SPECIAL, 0]); shots = Math.max(shots, (s.projectiles || []).length); }
-    const kept = a.stored === 70 && shots === 0 && a.state !== 'attack';
-    for (let i = 0; i < 10; i++) step(s, [0, 0]);
-    step(s, [BTN.SPECIAL, 0]); let fast = 0; for (let i = 0; i < 80; i++) { step(s, [0, 0]); if (a.stateFrame < 30 && s.projectiles && s.projectiles.length) fast = 1; }
-    const full = v.percent / 10, launched = v.state === 'hitstun' || v.tumbling || v.y < a.y - 4 * FX || Math.abs(v.x - a.x) > 170 * FX;
+    step(s, [BTN.SPECIAL, 0]); for (let i = 0; i < 110; i++) { step(s, [0, 0]); shots = Math.max(shots, (s.projectiles || []).length); }
+    const kept = a.stored === 90 && shots === 0 && a.state !== 'attack';
+    step(s, [BTN.SPECIAL, 0]); for (let i = 0; i < 100; i++) step(s, [0, 0]);
+    const full = v.percent / 10, launched = v.y < a.y - 4 * FX || Math.abs(v.x - a.x) > 170 * FX || v.tumbling;
     // shield while charging keeps part of it
     const sh = mk(400); const o = sh.fighters[0];
-    for (let i = 0; i < 30; i++) step(sh, [BTN.SPECIAL, 0]); step(sh, [BTN.SPECIAL | BTN.SHIELD, 0]);
-    const part = o.stored > 15 && o.stored < 70 && !(sh.projectiles || []).length;
-    // in the air it does not charge: it fires straight away
+    step(sh, [BTN.SPECIAL, 0]); for (let i = 0; i < 30; i++) step(sh, [0, 0]); step(sh, [BTN.SHIELD, 0]);
+    const part = o.stored > 15 && o.stored < 90 && !(sh.projectiles || []).length;
+    // in the air it does not charge: it spits straight away
     const air = mk(400); const b = air.fighters[0]; b.y -= 100 * FX; b.grounded = 0; b.ground = -1; b.state = 'air';
-    for (let i = 0; i < 20; i++) step(air, [BTN.SPECIAL, 0]);
+    step(air, [BTN.SPECIAL, 0]); for (let i = 0; i < 24; i++) step(air, [0, 0]);
     const airShot = (air.projectiles || []).length === 1 && air.projectiles[0].power === 0;
-    check('Oil Beam is a charge shot: tap 2%, hold to store a full charge, fire it for 22% and a launch; shield keeps part; no charging in the air',
-      tap === 2 && kept && fast && full === 22 && launched && part && airShot, `tap ${tap}%, full ${full}%, stored ${a.stored}/${o.stored}, kept ${kept}, part ${part}, air ${airShot}`); }
+    check('Oil Beam is a charge shot: press to charge, press again to spit (2%), full charge is saved and fires for 18%; shield saves part; no charging in the air',
+      tap === 2 && out >= 15 && kept && full === 18 && launched && part && airShot, `tap ${tap}% (out on frame ${out}), full ${full}%, kept ${kept}, part ${o.stored}, air ${airShot}`); }
   { const s = mk(30); const [a, v] = s.fighters; let threw = false; step(s, [BTN.SPECIAL | BTN.RIGHT, 0]); for (let i = 0; i < 90; i++) { step(s, [0, 0]); if (a.state === 'throwing') threw = true; }
     const miss = mk(400); run(miss, BTN.SPECIAL | BTN.RIGHT, 70);
     check('Suplex: catches them, slams them down behind him (12%); whiffs harmlessly at range', threw && v.percent === 120 && (v.x - a.x) * a.facing < 0 && miss.fighters[1].percent === 0 && miss.fighters[0].state !== 'throwing', `${v.percent / 10}%`); }

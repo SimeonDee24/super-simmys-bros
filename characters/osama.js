@@ -136,6 +136,7 @@ const animations = {
   // Oil Beam: leans in and spits a jet of oil straight ahead.
   oilBeam: anim(false, [
     [4, { torso: -6, head: -10, armF: [20, 40], armB: [-20, 30], legF: [10, -8], legB: [-8, -4], ...FISTS }],
+    [10, { torso: -12, head: -16, armF: [30, 50], armB: [-10, 40], legF: [10, -8], legB: [-8, -4], ...FISTS }],
     [3, { torso: 10, head: 8, armF: [-10, 40], armB: [-30, 30], legF: [18, -14], legB: [-14, -6], ...FISTS, face: 'yell' }],
     [10, { torso: 12, head: 10, armF: [-10, 40], armB: [-30, 30], legF: [18, -14], legB: [-14, -6], ...FISTS, face: 'yell' }],
     [6, GUARD],
@@ -220,12 +221,13 @@ const hits = (from, to, list, damage, angle, bkb, kbg, extra) =>
   list.map(([at, r]) => hit(from, to, at, r, damage, angle, bkb, kbg, extra));
 
 const moves = {
-  // Neutral special: Oil Beam, a charge shot. Hold to build up oil (just over
-  // a second for full), let go to spit it: 2% uncharged, up to 22% and a
-  // launch at full. Shield while charging (or reach full) to keep the charge
-  // for later; the next press fires from there. Charges only on the ground;
-  // in the air it fires at once with whatever is stored.
-  oilBeam: { faf: 24, charge: { at: 4, max: 70, store: true, ground: true }, spawn: { frame: 8, from: 'neck', projectile: 'oil' }, hitboxes: [] },
+  // Neutral special: Oil Beam, a charge shot like Samus's. Press once and he
+  // starts building up oil by himself (1.5 seconds for full); press again to
+  // spit it. Shield while charging to save the charge, and reaching full
+  // saves it automatically: the next press spits it. 2% with no charge, up to
+  // 18% and a launch at full. Charges only on the ground; in the air it
+  // spits at once with whatever is saved. A slow, readable shot either way.
+  oilBeam: { faf: 40, charge: { at: 4, max: 90, store: true, ground: true }, spawn: { frame: 18, from: 'neck', projectile: 'oil' }, hitboxes: [] },
 
   // Side special: Suplex. Shoots in low for a double-leg; if he catches
   // someone, he lifts them and arches back, slamming them behind him (12%).
@@ -286,10 +288,10 @@ export const OSAMA = {
     // a jet of oil, straight and fast like a laser
     // Uncharged it is a weak spit (2%, a little flinch); full charge is a big
     // glob for 22% that launches. Bigger and a little slower the more it's charged.
-    oil: { type: 'dart', draw: 'oil', r: 3, hitPad: 2, speed: [px(5.6), 0], chargeSpeed: [-2, 0], life: 44, fadeFrames: 3,
-      fullR: 9,
+    oil: { type: 'dart', draw: 'oil', r: 3, hitPad: 1, speed: [px(3.6), 0], chargeSpeed: [0, 0], life: 70, fadeFrames: 3,
+      fullR: 8,
       hit: { damage: 20, angle: 361, bkb: 0, kbg: 100, fkb: 6 },
-      full: { damage: 220, angle: 40, bkb: 42, kbg: 64 } },
+      full: { damage: 180, angle: 40, bkb: 38, kbg: 60 } },
   },
   // his own throws, used by the Suplex (path: [frame, forward, up] of the opponent)
   throws: {
