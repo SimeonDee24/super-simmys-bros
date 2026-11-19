@@ -300,6 +300,41 @@ export class Renderer {
       poly([[-0.6, -3.4], [0.6, -3.4], [0.6, 15.6], [6.8, 16.1], [6.8, 17.8], [-0.6, 17.8]], '#e9dcc0');
       ctx.fillStyle = cols[0]; ctx.fillRect(-0.6, 2, 1.2, 3); ctx.fillStyle = '#2a2a33'; ctx.fillRect(1.5, 16.4, 5.3, 1.4);
     });
+    else if (g.kind === 'horse') {
+      // a chestnut horse at a gallop under her: she sits on its back, its legs
+      // reaching and gathering in turn; dark mane and tail, white blaze
+      const x = f.x / FX, y = f.y / FX, ph = fr * 0.55;
+      const BODY = '#8a5530', SHADE = '#6b3f22', MANE = '#2a1a14', HOOF = '#1b1310';
+      ctx.save(); ctx.translate(x, y); ctx.scale(dir, 1);
+      const leg = (hx, phase, near) => {
+        const sw = Math.sin(ph + phase) * 6, lift = Math.max(0, Math.cos(ph + phase)) * 3;
+        ctx.strokeStyle = OUT; ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(hx, -14); ctx.lineTo(hx + sw * 0.5, -7 - lift); ctx.lineTo(hx + sw, -1 - lift); ctx.stroke();
+        ctx.strokeStyle = near ? BODY : SHADE; ctx.lineWidth = 2.2;
+        ctx.beginPath(); ctx.moveTo(hx, -14); ctx.lineTo(hx + sw * 0.5, -7 - lift); ctx.lineTo(hx + sw, -1 - lift); ctx.stroke();
+        ctx.fillStyle = HOOF; ctx.fillRect(hx + sw - 1.4, -2 - lift, 2.8, 1.6);
+      };
+      leg(-9, 1.6, false); leg(8, 0, false);                               // far legs, behind
+      // tail
+      ctx.fillStyle = MANE; ctx.beginPath(); ctx.moveTo(-15, -21); ctx.quadraticCurveTo(-24, -18 + Math.sin(ph) * 2, -22, -9); ctx.lineTo(-18, -12); ctx.quadraticCurveTo(-18, -17, -14, -18); ctx.closePath(); ctx.fill();
+      // body
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(0, -18, 16.2, 6.8, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = BODY; ctx.beginPath(); ctx.ellipse(0, -18, 15.2, 5.9, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = SHADE; ctx.fillRect(-12, -14.5, 24, 1.6);
+      // neck and head
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(9, -22); ctx.lineTo(16, -33); ctx.lineTo(22, -34); ctx.lineTo(27, -27); ctx.lineTo(25, -24); ctx.lineTo(19, -26); ctx.lineTo(15, -16); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = BODY; ctx.beginPath(); ctx.moveTo(10, -21.5); ctx.lineTo(16.5, -32); ctx.lineTo(21.5, -33); ctx.lineTo(26, -27.2); ctx.lineTo(24.4, -25); ctx.lineTo(18.6, -27); ctx.lineTo(14.4, -17); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f6f2ea'; ctx.fillRect(22, -31.5, 1.4, 4.5);                       // blaze
+      ctx.fillStyle = OUT; ctx.fillRect(19.6, -31, 1.2, 1.2);                             // eye
+      ctx.fillStyle = MANE; ctx.beginPath(); ctx.moveTo(15, -33); ctx.lineTo(18, -36); ctx.lineTo(18.6, -33); ctx.closePath(); ctx.fill();   // ear
+      ctx.fillStyle = MANE; ctx.beginPath(); ctx.moveTo(10, -22); ctx.lineTo(15.6, -32.6); ctx.lineTo(13.4, -32); ctx.lineTo(7, -22); ctx.closePath(); ctx.fill();   // mane
+      // reins from her hands to its mouth
+      ctx.strokeStyle = '#3a241b'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo((hx - x) * dir, hy - y); ctx.lineTo(24, -26); ctx.stroke();
+      leg(-11, 0, true); leg(10, 1.6, true);                              // near legs, in front
+      // a puff of dust behind the hooves
+      ctx.fillStyle = 'rgba(200,180,150,0.5)'; ctx.beginPath(); ctx.arc(-20 - (fr % 8), -2, 3 + (fr % 4), 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
     else if (g.kind === 'gust') {
       // Tac Dash: streaks of wind trailing behind her
       const x = f.x / FX, y = f.y / FX;

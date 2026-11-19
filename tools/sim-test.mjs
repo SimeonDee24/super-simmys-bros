@@ -1467,11 +1467,11 @@ for (const hold of [0, 30]) {
   const f = run(mk(28), BTN.SMASH), u = run(mk(3, -40), BTN.SMASH | BTN.UP), d1 = run(mk(-16), BTN.SMASH | BTN.DOWN), d2 = run(mk(16), BTN.SMASH | BTN.DOWN);
   check('Designer Bag 17%, Spin Move 15%, Buck Kick 13% behind and in front', f === 17 && u === 15 && d1 === 13 && d2 === 13, `${f}% / ${u}% / ${d1}% / ${d2}%`);
   TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
-  const ck = run(mk(80), BTN.SPECIAL, 60), dash = run(mk(50), BTN.SPECIAL | BTN.RIGHT, 50);
-  const d = mk(400); const da = d.fighters[0], x0 = da.x; step(d, [BTN.SPECIAL | BTN.RIGHT, 0]); let untouchable = false; for (let i = 0; i < 40; i++) { step(d, [0, 0]); if (i === 6 && da.intangible > 0) untouchable = true; }
+  const ck = run(mk(80), BTN.SPECIAL, 60), dash = run(mk(60), BTN.SPECIAL | BTN.RIGHT, 60);
+  const d = mk(400); const da = d.fighters[0], x0 = da.x; step(d, [BTN.SPECIAL | BTN.RIGHT, 0]); for (let i = 0; i < 60; i++) step(d, [0, 0]); const untouchable = true;
   const o = mk(400); const oa = o.fighters[0], y0 = oa.y; step(o, [BTN.SPECIAL | BTN.UP, 0]); let top = 0; for (let i = 0; i < 50; i++) { step(o, [0, 0]); top = Math.max(top, (y0 - oa.y) / FX); }
-  check('Cookie Toss 5%; Tac Dash bursts forward (6%), untouchable at first; Ollie rides up about 110px', ck === 5 && dash === 6 && untouchable && (da.x - x0) / FX > 50 && top > 80 && top < 150,
-    `${ck}% / ${dash}% dashed ${Math.round((da.x - x0) / FX)}px untouchable ${untouchable} / up ${Math.round(top)}px`);
+  check('Cookie Toss 5%; Giddy Up gallops forward on her horse (11%); Ollie rides up about 110px', ck === 5 && dash === 11 && (da.x - x0) / FX > 90 && top > 80 && top < 150,
+    `${ck}% / ${dash}% galloped ${Math.round((da.x - x0) / FX)}px / up ${Math.round(top)}px`);
   // Serve!: a counter. Simeon jabs her while she poses: she takes nothing, he takes at least 8%
   const c = createMatch({ ...setup, players: [{ charId: 'faybua', alt: 0 }, { charId: 'simeon', alt: 1 }] }); const [ca, cv] = c.fighters; cv.x = ca.x + 14 * FX; cv.facing = -1;
   step(c, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 5; i++) step(c, [0, 0]); step(c, [0, BTN.ATTACK]); for (let i = 0; i < 50; i++) step(c, [0, 0]);

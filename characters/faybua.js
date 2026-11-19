@@ -150,6 +150,8 @@ const OPEN = { handF: 'open', handB: 'open' };
 const STAND = { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6, -2] };
 const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: [-14, -18], footF: 25, footB: 35 };
 const POSE = { hip: [1, 0], torso: -4, head: -8, armF: [150, 120], armB: [-30, 110], legF: [14, -4], legB: [-14, -2], handF: 'open', handB: 'fist', face: 'smile' };
+// riding: knees up and forward round the horse's sides, reins in both hands
+const RIDE_H = { hip: [0, 0], torso: 12, head: -6, armF: [70, 60], armB: [55, 70], legF: [75, -95], legB: [65, -90], footF: 20, footB: 20, ...FISTS, face: 'smile' };
 const OLLIE = { hip: [0, 2], torso: 8, armF: [60, 30], armB: [-70, 30], legF: [50, -90], legB: [10, -70], footF: 20, footB: 10, ...OPEN, face: 'smile' };
 
 const animations = {
@@ -160,11 +162,14 @@ const animations = {
     [12, { torso: 6, armF: [96, 4], armB: [-40, 30], legF: [16, -10], legB: [-12, -6], handF: 'open', face: 'smile' }],
     [8, STAND],
   ]),
-  // Tac Dash: crouches, then bursts forward low and fast.
-  dash: anim(false, [
-    [4, { hip: [0, 5], torso: 20, armF: [-40, 40], armB: [-60, 40], legF: [40, -70], legB: [10, -40], ...FISTS }],
-    [12, { hip: [0, 3], torso: 34, head: -14, armF: [-70, 20], armB: [-90, 20], legF: [30, -40], legB: [-40, -20], footB: 30, ...OPEN }],
-    [10, { torso: 10, armF: [20, 30], armB: [-30, 30], legF: [20, -24], legB: [-14, -10] }],
+  // Giddy Up: swings up onto her horse (drawn by the renderer) and gallops
+  // forward holding the reins, then hops off.
+  horse: anim(false, [
+    [5, { hip: [0, 4], torso: 14, armF: [60, 40], armB: [40, 40], legF: [40, -60], legB: [10, -40], ...FISTS }],
+    [5, { ...RIDE_H, torso: 6 }],
+    [28, RIDE_H],
+    [8, { hip: [0, 3], torso: 6, armF: [80, 30], armB: [-40, 30], legF: [40, -60], legB: [-10, -40], ...OPEN }],
+    [10, { torso: 4, armF: [40, 30], armB: [-30, 30], legF: [14, -12], legB: [-12, -6] }],
     [2, STAND],
   ]),
   // Ollie: pops her skateboard and rides it up into the air.
@@ -235,14 +240,17 @@ const moves = {
   // fast, spinning: 5%. Two out at a time.
   cookie: { faf: 28, limit: 2, spawn: { frame: 8, from: 'fistF', projectile: 'cookie' }, hitboxes: [] },
 
-  // Side special: Tac Dash (a tactical shooter's dash). A burst of wind and
-  // she shoots forward low and fast, untouchable for the first few frames;
-  // clips anyone she runs through (6%). Once per jump in the air.
-  dash: { faf: 34, landLag: 10, once: true, noDrift: true, intangible: 12, float: { gravity: 0, fall: 0 },
-    gear: { kind: 'gust', from: 4, to: 18 },
-    rocket: { frame: 4, frames: 12, speed: [px(6.6), px(6.6)], lift: 0, gravity: 0, drag: 70, bounce: [px(0.6), px(1.0)], ground: true },
-    ledgeGrab: { from: 8 },
-    hitboxes: hits(5, 14, [['chest', 9], ['hip', 8]], 6, 40, 40, 60) },
+  // Side special: Giddy Up. Rides her horse at a gallop, trampling anyone in
+  // front of it (11%, launching up and forward). Stays on the floor when used
+  // there; in the air the horse leaps forward. Once per jump in the air.
+  horse: { faf: 58, landLag: 14, once: true, noDrift: true, float: { gravity: 20, fall: 25 },
+    gear: { kind: 'horse', from: 5, to: 45 },
+    rocket: { frame: 10, frames: 28, speed: [px(4.6), px(4.6)], lift: 0, gravity: 30, drag: 8, bounce: [px(1.0), px(1.8)], ground: true },
+    ledgeGrab: { from: 30 },
+    hitboxes: [
+      hit(10, 38, 'hip', 11, 11, 50, 55, 75, { off: [22, 6] }),   // the horse's chest and head
+      hit(10, 38, 'hip', 9, 11, 50, 55, 75, { off: [12, 14] }),   // its front legs
+    ] },
 
   // Up special: Ollie. Pops her skateboard and rides it straight up; the
   // board hits on the way (8%). Falls helpless afterwards.
@@ -289,7 +297,7 @@ export const FAYBUA = {
   trailColors: ['#8a6fcc', '#d9ccff', '#ffffff'],   // lilac
   animations: { ...SIMEON.animations, ...animations },
   moves: { ...SIMEON.moves, ...moves },
-  specials: { neutral: 'cookie', side: 'dash', up: 'ollie', down: 'pose' },
+  specials: { neutral: 'cookie', side: 'horse', up: 'ollie', down: 'pose' },
   projectiles: {
     // a sandwich cookie, flicked flat: flies straight and spins
     cookie: { type: 'dart', draw: 'cookie', r: 3, hitPad: 2, speed: [px(5.2), 0], chargeSpeed: [0, 0], gravity: 0, maxFall: 0,
