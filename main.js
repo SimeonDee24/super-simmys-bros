@@ -543,7 +543,7 @@ function safely(fn) {
     if (!crash) {
       crash = {
         text: String(e && e.message || e).toUpperCase().slice(0, 70),
-        details: 'UBC Brawl v' + GAME_VERSION + '\nscreen: ' + screen + (online ? ' (online, ' + (online.room.isHost ? 'host' : 'friend') + ')' : '') + '\n' + navigator.userAgent + '\n\n' + msg,
+        details: 'UBC Brawlers v' + GAME_VERSION + '\nscreen: ' + screen + (online ? ' (online, ' + (online.room.isHost ? 'host' : 'friend') + ')' : '') + '\n' + navigator.userAgent + '\n\n' + msg,
       };
     }
   }

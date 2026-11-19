@@ -1,4 +1,4 @@
-# UBC Brawl
+# UBC Brawlers
 
 A 2D pixel-art platform fighter that runs in the browser. Plain HTML, CSS and
 JavaScript modules: no build step, no frameworks, no asset files.
