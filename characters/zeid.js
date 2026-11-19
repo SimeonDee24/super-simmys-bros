@@ -143,11 +143,11 @@ const animations = {
   ]),
   // Flick: flicks a cigarette butt off his thumb.
   flick: anim(false, [
-    [5, { torso: -4, armF: [20, 120], armB: [-10, 20], legF: [10, -8], legB: [-8, -4], handF: 'fist' }],
-    [5, { torso: -8, armF: [-30, 130], armB: [-10, 20], legF: [12, -10], legB: [-10, -6], handF: 'fist' }],
+    [7, { torso: -4, armF: [20, 120], armB: [-10, 20], legF: [10, -8], legB: [-8, -4], handF: 'fist' }],
+    [8, { torso: -8, armF: [-30, 130], armB: [-10, 20], legF: [12, -10], legB: [-10, -6], handF: 'fist' }],
     [3, { torso: 10, armF: [95, 10], armB: [-20, 30], legF: [18, -14], legB: [-14, -6], handF: 'open', face: 'smile' }],
-    [12, { torso: 8, armF: [100, 4], armB: [-20, 30], legF: [18, -14], legB: [-14, -6], handF: 'open', face: 'smile' }],
-    [8, { torso: 4, armF: [50, 30], armB: [-20, 30], legF: [10, -8], legB: [-8, -4] }],
+    [16, { torso: 8, armF: [100, 4], armB: [-20, 30], legF: [18, -14], legB: [-14, -6], handF: 'open', face: 'smile' }],
+    [10, { torso: 4, armF: [50, 30], armB: [-20, 30], legF: [10, -8], legB: [-8, -4] }],
     [1, STAND],
   ]),
   // Big Rip: crouches with the vape at his lips, then rides a plume of vapour up.
@@ -209,16 +209,17 @@ const hits = (from, to, list, damage, angle, bkb, kbg, extra) =>
   list.map(([at, r]) => hit(from, to, at, r, damage, angle, bkb, kbg, extra));
 
 const moves = {
-  // Neutral special: Cloud Chaser. A long pull on the vape, then blows a
-  // puff of vapour that bounces slowly along the floor like a fireball and
-  // pops on whoever it hits (4%). Slow to come out and to recover from;
-  // two at a time at most.
-  cloudChaser: { faf: 56, limit: 2, gear: { kind: 'vape', from: 0, to: 30 },
-    spawn: { frame: 20, from: 'neck', projectile: 'cloud' }, hitboxes: [] },
+  // Neutral special: Cloud Chaser. Blows a big cloud that drifts forward,
+  // stops, and hangs in the air for about two seconds, hitting anyone inside
+  // it every quarter second (2% a time). One cloud at a time.
+  cloudChaser: { faf: 42, limit: 1, gear: { kind: 'vape', from: 0, to: 30 },
+    spawn: { frame: 17, from: 'neck', projectile: 'cloud' }, hitboxes: [] },
 
-  // Side special: Flick. Flicks a lit cigarette butt in a fast, low arc: 7%.
-  flick: { faf: 32, gear: { kind: 'cig', from: 0, to: 12 },
-    spawn: { frame: 13, from: 'fistF', projectile: 'butt' }, hitboxes: [] },
+  // Side special: Flick. Flicks a lit cigarette butt down at the floor and it
+  // bounces along like a fireball, slowly, popping on whoever it hits (5%).
+  // Slow to come out and to recover from; two at a time at most.
+  flick: { faf: 50, limit: 2, gear: { kind: 'cig', from: 0, to: 18 },
+    spawn: { frame: 18, from: 'fistF', projectile: 'butt' }, hitboxes: [] },
 
   // Up special: Big Rip. Takes a big hit and rides a plume of vapour straight
   // up, steering freely; the plume under him hits several times (2% each)
@@ -274,14 +275,14 @@ export const ZEID = {
   moves: { ...SIMEON.moves, ...moves },
   specials: { neutral: 'cloudChaser', side: 'flick', up: 'bigRip', down: 'stubOut' },
   projectiles: {
-    // a ball of vapour that bounces along the floor (like a fireball) and
-    // pops on whoever it hits: 4%
-    cloud: { draw: 'cloud', r: 5, hitPad: 1, speed: [px(1.7), px(-0.6)], chargeSpeed: [0, 0],
+    // a big cloud that drifts out and hangs in the air
+    cloud: { type: 'cloud', draw: 'cloud', r: 11, hitPad: 1, speed: [px(2.6), 0], chargeSpeed: [0, 0], drag: px(0.07), rise: px(0.12),
+      life: 120, fadeFrames: 24, rehit: 15, hit: { damage: 20, angle: 70, bkb: 0, kbg: 100, fkb: 30 } },
+    // a lit cigarette butt, flicked at the floor: bounces along at the same
+    // height every time (like a fireball) and pops on a hit
+    butt: { draw: 'butt', r: 3, hitPad: 1, speed: [px(2.0), px(-0.6)], chargeSpeed: [0, 0],
       gravity: px(0.17), maxFall: px(3.2), bounceTo: px(2.3), bounce: 0, bounceKeepX: 256, minBounce: 0, maxBounces: 99,
       rollFriction: 0, minRollSpeed: 0, popUp: px(1.2),
-      life: 80, fadeFrames: 10, hit: { damage: 40, angle: 361, bkb: 18, kbg: 45 } },
-    // a lit cigarette butt, flicked
-    butt: { type: 'dart', draw: 'butt', r: 2, hitPad: 3, speed: [px(5.0), px(1.3)], chargeSpeed: [0, 0], gravity: px(0.13), maxFall: px(4),
-      life: 50, fadeFrames: 4, hit: { damage: 70, angle: 361, bkb: 30, kbg: 60 } },
+      life: 80, fadeFrames: 6, hit: { damage: 50, angle: 361, bkb: 20, kbg: 50 } },
   },
 };

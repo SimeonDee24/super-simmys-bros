@@ -1227,15 +1227,19 @@ for (const hold of [0, 30]) {
   const f1 = run(mk(16), BTN.SMASH), f3 = run(mk(54), BTN.SMASH), u = run(mk(4, -40), BTN.SMASH | BTN.UP), d1 = run(mk(16), BTN.SMASH | BTN.DOWN), d2 = run(mk(-16), BTN.SMASH | BTN.DOWN);
   check('Exhale reaches far (16% close, 12% at the far end), Smoke Rings 14%, Lighter Flare 14% both sides', f1 === 16 && f3 === 12 && u === 14 && d1 === 14 && d2 === 14, `${f1}% / ${f3}% / ${u}% / ${d1}% / ${d2}%`);
   TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
-  { // the cloud bounces along the floor like a fireball and pops on a hit
-    const s = mk(400); const a = s.fighters[0]; step(s, [BTN.SPECIAL, 0]); let bounces = 0, top = 0, out = -1, wasDown = false;
-    for (let i = 0; i < 100; i++) { step(s, [0, 0]); const p = (s.projectiles || [])[0]; if (!p) continue; if (out < 0) out = i + 1;
-      if (p.vy < 0 && wasDown) bounces++; wasDown = p.vy > 0; if (bounces) top = Math.max(top, (a.y - p.y) / FX); }
-    const h = mk(70); run(h, BTN.SPECIAL, 90); const dmg = h.fighters[1].percent / 10;
-    check('Cloud Chaser: a slow puff that bounces along the floor like a fireball (4%, gone after one hit)', bounces >= 3 && top < 26 && out >= 19 && dmg === 4, `${bounces} bounces up to ${Math.round(top)}px, out on frame ${out}, ${dmg}%`);
+  { // the cloud hangs and hits more than once
+    const s = mk(60); const v = s.fighters[1]; let hitsTaken = 0, last = 0;
+    step(s, [BTN.SPECIAL, 0]); for (let i = 0; i < 150; i++) { step(s, [0, 0]); if (v.percent > last) { hitsTaken++; last = v.percent; } v.x = s.projectiles[0] ? s.projectiles[0].x : v.x; }
+    check('Cloud Chaser: a cloud that hangs in the air and hits again and again (2% a time)', hitsTaken >= 3 && last % 20 === 0, `${hitsTaken} hits, ${last / 10}%`);
   }
 
-  check('Flick: a lit butt, 7%', run(mk(70), BTN.SPECIAL | BTN.RIGHT, 70) === 7);
+  { // the butt bounces along the floor like a fireball and pops on a hit
+    const s = mk(400); const a = s.fighters[0]; step(s, [BTN.SPECIAL | BTN.RIGHT, 0]); let bounces = 0, top = 0, out = -1, wasDown = false;
+    for (let i = 0; i < 100; i++) { step(s, [0, 0]); const p = (s.projectiles || [])[0]; if (!p) continue; if (out < 0) out = i + 1;
+      if (p.vy < 0 && wasDown) bounces++; wasDown = p.vy > 0; if (bounces) top = Math.max(top, (a.y - p.y) / FX); }
+    const dmg = run(mk(70), BTN.SPECIAL | BTN.RIGHT, 90);
+    check('Flick: a lit butt that bounces slowly along the floor like a fireball (5%, gone after one hit)', bounces >= 3 && top < 26 && out >= 17 && dmg === 5, `${bounces} bounces up to ${Math.round(top)}px, out on frame ${out}, ${dmg}%`);
+  }
   { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); }
     check('Big Rip rides a plume up about 120px', top > 70 && top < 140, `${top.toFixed(0)}px`); }
   { const under = run(mk(8), BTN.SPECIAL | BTN.DOWN, 60), side = run(mk(-16), BTN.SPECIAL | BTN.DOWN, 60);
