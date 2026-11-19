@@ -27,18 +27,18 @@ const stats = {
 
   // Jumps
   jumpSquat: 3,            // frames on the ground before leaving it
-  jumpVel: px(4.5),        // full hop  (about 53 px high)
-  shortHopVel: px(3.35),   // short hop (about 30 px high)
-  doubleJumpVel: px(4.6),
+  jumpVel: px(3.86),       // full hop  (about 53 px high)
+  shortHopVel: px(2.87),   // short hop (about 30 px high)
+  doubleJumpVel: px(3.95),
   doubleJumpH: px(1.6),    // sideways speed when double jumping with a direction held
   doubleJumpAnimFrames: 18,
   jumpMaxH: px(2.9),       // sideways speed kept when jumping out of a run
   airJumps: 1,
 
   // Air
-  gravity: px(0.19),         // floaty, like Smash Ultimate
-  fallSpeed: px(2.5),
-  fastFallSpeed: px(3.9),
+  gravity: px(0.14),         // floaty, like Smash Ultimate
+  fallSpeed: px(1.95),
+  fastFallSpeed: px(3.1),
   airSpeed: px(2.7),
   airAccel: px(0.22),
   airFriction: px(0.026),
@@ -49,7 +49,7 @@ const stats = {
   ledgeGetupFrames: 22,
   // Ledge roll (shield while hanging): climbs up, then rolls onto the stage away from the edge.
   ledgeRoll: { rise: 10, roll: [11, 28], speed: px(2.2), intangible: [1, 24], faf: 36 },
-  ledgeJumpVel: px(4.81),
+  ledgeJumpVel: px(4.13),
   ledgeJumpH: px(1.2),
 
   // Shield and dodges. intangible = [first, last] frame he cannot be hit.

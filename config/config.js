@@ -50,6 +50,12 @@ export const CONFIG = {
   // --- Air dodge ---
   AIRDODGE_LAND_LAG: 11,    // landing lag if you hit the floor during an air dodge
 
+  // Rocket and flying specials (recoveries, dives, lunges) were designed
+  // around this gravity, so they keep it even though fighters themselves fall
+  // more gently now: their heights and distances stay as tuned.
+  MOVE_GRAVITY: 59,         // 0.23 px per frame per frame
+  MOVE_FALL: 742,           // 2.9 px per frame
+
   // --- Hits and knockback ---
   // launch speed (px/frame) = knockback * KB_SPEED_NUM / KB_SPEED_DEN / 256
   // Light hits (below tumbling) keep the gentle speed, so multi-hit moves and

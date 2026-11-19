@@ -653,7 +653,7 @@ const STATES = {
         if (!f.grounded) f.vy = -mv.rocket.bounce[1];
       } else if (f.stateFrame <= mv.rocket.frame + mv.rocket.frames) {
         f.vx -= Math.trunc((f.vx * (f.hitGroups ? 60 : mv.rocket.drag)) / 1000);
-        if (!f.grounded) f.vy = Math.min(f.vy + Math.trunc((st.gravity * mv.rocket.gravity) / 100), st.fallSpeed);
+        if (!f.grounded) f.vy = Math.min(f.vy + Math.trunc((CONFIG.MOVE_GRAVITY * mv.rocket.gravity) / 100), CONFIG.MOVE_FALL);
       } else if (f.grounded) f.vx = approach(f.vx, 0, st.traction);
       else airMotion(c);
     } else if (mv.teleport && f.stateFrame >= mv.teleport.vanish && f.stateFrame <= mv.teleport.appear) {
@@ -694,8 +694,8 @@ const STATES = {
       f.vx = approach(f.vx, c.dir * fl.drift, fl.steer);
       if (f.stateFrame <= fl.frame + fl.frames) f.vy = approach(f.vy, -fl.rise, fl.accel);
       // drifting down slowly (a parachute): normal gravity until the rise is spent, then a gentle fall
-      else if (fl.glide) f.vy = Math.min(f.vy + (f.vy < 0 ? st.gravity * 2 : Math.trunc((st.gravity * fl.glide.gravity) / 100)), Math.trunc((st.fallSpeed * fl.glide.fall) / 100));
-      else f.vy = Math.min(f.vy + st.gravity, st.fallSpeed);
+      else if (fl.glide) f.vy = Math.min(f.vy + (f.vy < 0 ? CONFIG.MOVE_GRAVITY * 2 : Math.trunc((CONFIG.MOVE_GRAVITY * fl.glide.gravity) / 100)), Math.trunc((CONFIG.MOVE_FALL * fl.glide.fall) / 100));
+      else f.vy = Math.min(f.vy + CONFIG.MOVE_GRAVITY, CONFIG.MOVE_FALL);
     } else if (f.moveAir) {
       // floating moves (counters) stop the fall when they start
       if (mv.float && f.stateFrame <= 1 && f.vy > 0) f.vy = 0;

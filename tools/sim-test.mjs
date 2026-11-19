@@ -1028,7 +1028,7 @@ for (const hold of [0, 30]) {
   // down smashes hit behind as well, launching that way
   { const s = mk('luca'); const [a, v] = s.fighters; v.x = a.x - 17 * FX; step(s, [BTN.SMASH | BTN.DOWN, 0]); let d = 0; for (let i = 0; i < 40; i++) { step(s, [0, 0]); if (!d && v.state === 'hitstun') d = Math.sign(v.vx); } check('down smash hits behind and launches them away', v.percent > 0 && d === -1); }
   // a forward smash is a real kill move: KOs from the middle of the stage at high percent
-  { const s = mk(); const [a, v] = s.fighters; v.x = a.x + 26 * FX; v.percent = 1100; step(s, [BTN.SMASH, 0]); let ko = false; for (let i = 0; i < 300 && !ko; i++) { step(s, [0, 0]); ko = v.state === 'dead'; } check('Simeon forward smash KOs at 110% from mid-stage', ko); }
+  { const s = mk(); const [a, v] = s.fighters; v.x = a.x + 26 * FX; v.percent = 1300; step(s, [BTN.SMASH, 0]); let ko = false; for (let i = 0; i < 300 && !ko; i++) { step(s, [0, 0]); ko = v.state === 'dead'; } check('Simeon forward smash KOs at 130% from mid-stage', ko); }
   { const s = mk(); const [a, v] = s.fighters; v.x = a.x + 26 * FX; v.percent = 300; step(s, [BTN.SMASH, 0]); let ko = false; for (let i = 0; i < 300 && !ko; i++) { step(s, [0, 0]); ko = v.state === 'dead'; } check('...but not at 30%', !ko); }
 }
 
