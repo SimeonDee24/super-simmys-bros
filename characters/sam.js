@@ -14,8 +14,7 @@ const stats = {
 
 // ---------------------------------------------------------------------------
 // Body parts: pixel art at 2 art pixels per world pixel, facing right.
-// Thick wavy black hair with a fringe swept down to his brows (one curl
-// hanging past his eye), a beaded
+// Black modern mullet (short on top and at the sides, long at the back), a beaded
 // necklace with a pendant, a black sleeveless tank. Second skin: wraparound
 // shades (G) and a teal scarf (S).
 // ---------------------------------------------------------------------------
@@ -41,18 +40,32 @@ const face = (...edits) => {
   return { pivot: [5, 14], px: rows.map((r) => r.join('')) };
 };
 // (hair column = head column + 1, row = head row + 4)
+// A modern mullet: a short textured crop on top with a choppy fringe above
+// his brows, faded short at the sides (ear showing), and long at the back,
+// flowing down past his neck with a little flick at the end.
 const HAIR = [
-  '...hhhhhhhh.......',
-  '.hhhhhhhhhhhhh....',
-  'hhhhnhhhhhhnhhhh..',
+  '....hhhhhhh.......',
+  '..hhhhnhhhhhhh....',
+  '.hhhhhhhhhhnhhhh..',
   'hhhhhhhhHhhhhhhhh.',
   'hhhHhhhhhhhhHhhhhh',
   'hhhhhhhhhhhhhhhhhh',
-  '.hhhhhhhhhhhhhhhhh',
-  '..hhhhhhhhhHhhhhhh',
-  '..hh..hhhhhHhhhhh.',
-  '..h...........hh..',
-  '...............h..',
+  'hhhhhhhhhnhhhhhhhh',
+  'hhhh.hhhhhhh.hhhh.',
+  'hhhhn.......h.h...',
+  'hhhhn.............',
+  'hhhH..............',
+  'hhhh..............',
+  'hhhh..............',
+  'hhHh..............',
+  'hhhhh.............',
+  'hhhhh.............',
+  '.hhHh.............',
+  '.hhhhh............',
+  '.hhhh.............',
+  'hhhHh.............',
+  'hhh...............',
+  'h.................',
 ];
 const parts = {
   ...SIMEON.parts,   // hands, legs and sneakers are shared
