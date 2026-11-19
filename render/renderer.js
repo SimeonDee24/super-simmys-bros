@@ -509,6 +509,11 @@ export class Renderer {
     } else if (g.kind === 'vball') {
       // a volleyball resting on his hand (above it when the hand is raised)
       this.drawVolleyball(hx, hy - 4, 4.4, fr * 40);
+    } else if (g.kind === 'header') {
+      // the volleyball tossed up over his head, coming down onto his forehead
+      const nk = s.neck, t = fr / Math.max(1, g.to);
+      const bx = f.x / FX + dir * (nk[0] / FX + 3 + t * 3), by = f.y / FX + nk[1] / FX - 12 - Math.sin(Math.PI * Math.min(1, t * 1.15)) * 24;
+      this.drawVolleyball(bx, by, 4.4, fr * 60);
     } else if (g.kind === 'frisbee') held(() => {
       // a frisbee gripped at its rim
       ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(0, 6, 3.4, 7.4, 0, 0, Math.PI * 2); ctx.fill();

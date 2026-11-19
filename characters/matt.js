@@ -131,13 +131,14 @@ const STAND = { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6
 const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: [-14, -18], footF: 25, footB: 35 };
 
 const animations = {
-  // Spike: tosses the ball up, reaches back, and slams it down and forward.
-  spike: anim(false, [
-    [6, { torso: -4, armF: [120, 20], armB: [-10, 20], legF: [10, -8], legB: [-8, -4], ...OPEN }],
-    [6, { hip: [0, -1], torso: -14, head: -10, armF: [200, 40], armB: [140, 30], legF: [12, -14], legB: [-10, -8], ...OPEN }],
-    [3, { hip: [0, -1], torso: 14, head: 4, armF: [120, 4], armB: [-30, 30], legF: [16, -14], legB: [-12, -8], ...OPEN, face: 'yell' }],
-    [12, { torso: 18, armF: [70, 4], armB: [-30, 30], legF: [16, -12], legB: [-12, -6], ...OPEN, face: 'yell' }],
-    [12, { torso: 6, armF: [30, 20], armB: [-20, 20], legF: [10, -8], legB: [-8, -4] }],
+  // Header: tosses the volleyball up over his head, leans back, and snaps
+  // forward to head it.
+  header: anim(false, [
+    [6, { torso: -2, head: -6, armF: [150, 30], armB: [140, 30], legF: [8, -6], legB: [-8, -4], ...OPEN }],
+    [6, { hip: [0, 1], torso: -16, head: -16, armF: [-30, 30], armB: [-50, 30], legF: [14, -10], legB: [-10, -6], ...OPEN }],
+    [3, { hip: [1, 0], torso: 18, head: 18, armF: [-40, 30], armB: [-70, 30], legF: [20, -14], legB: [-14, -8], ...FISTS, face: 'yell' }],
+    [12, { torso: 14, head: 12, armF: [-30, 30], armB: [-60, 30], legF: [18, -12], legB: [-12, -6], ...FISTS, face: 'yell' }],
+    [10, { torso: 6, armF: [10, 20], armB: [-20, 20], legF: [10, -8], legB: [-8, -4] }],
     [1, STAND],
   ]),
   // Frisbee: the disc across his chest, then a backhand flick straight out.
@@ -206,16 +207,19 @@ const hits = (from, to, list, damage, angle, bkb, kbg, extra) =>
   list.map(([at, r]) => hit(from, to, at, r, damage, angle, bkb, kbg, extra));
 
 const moves = {
-  // Neutral special: Spike. Tosses a volleyball up and spikes it down and
-  // forward; it bounces along the floor. 7% (5% once it is rolling). One
-  // ball at a time. Works in the air too.
-  spike: { faf: 40, limit: 1, gear: { kind: 'vball', from: 0, to: 14 },
-    spawn: { frame: 15, from: 'fistF', projectile: 'vball' }, hitboxes: [] },
-
-  // Side special: Frisbee. A backhand throw: the disc flies out about 130px,
-  // curves, and comes back to him, hitting on the way out and back (6%).
+  // Neutral special: Frisbee. A backhand throw: the disc flies out about
+  // 140px, curves, and comes back to him, hitting on the way out and back
+  // (6%). One frisbee at a time.
   frisbee: { faf: 34, limit: 1, gear: { kind: 'frisbee', from: 0, to: 12 },
     spawn: { frame: 13, from: 'fistF', projectile: 'frisbee' }, hitboxes: [] },
+
+  // Side special: Header (like Wii Fit Trainer's). Tosses a volleyball up,
+  // then heads it: it flies forward and down at an angle and bounces along
+  // the floor (7%). Headbutting someone point-blank hits too (4%). One ball
+  // at a time. Works in the air too.
+  header: { faf: 42, limit: 1, gear: { kind: 'header', from: 0, to: 14 },
+    spawn: { frame: 15, from: 'neck', projectile: 'vball' },
+    hitboxes: [hit(15, 17, 'neck', 7, 4, 45, 40, 60)] },
 
   // Up special: Flash. Blinks a short way in the held direction (up if none)
   // in a flash of gold light, hitting anyone where he reappears (6%). Falls
@@ -263,12 +267,12 @@ export const MATT = {
   trailColors: ['#f2b51a', '#ffe680', '#ffffff'],   // gold, for Flash
   animations: { ...SIMEON.animations, ...animations },
   moves: { ...SIMEON.moves, ...moves },
-  specials: { neutral: 'spike', side: 'frisbee', up: 'flash', down: 'oof' },
+  specials: { neutral: 'frisbee', side: 'header', up: 'flash', down: 'oof' },
   projectiles: {
-    // a volleyball spiked down at an angle: bounces, then rolls
+    // a volleyball headed forward and down at an angle: bounces, then rolls
     vball: {
       draw: 'vball', r: 4, hitPad: 1,
-      speed: [px(4.4), -px(1.4)], chargeSpeed: [0, 0],
+      speed: [px(4.6), -px(1.8)], chargeSpeed: [0, 0],
       gravity: px(0.16), maxFall: px(4.5),
       bounce: 150, bounceKeepX: 190, minBounce: px(0.7), maxBounces: 3,
       rollFriction: px(0.06), minRollSpeed: px(0.4),
