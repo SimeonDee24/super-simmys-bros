@@ -61,6 +61,12 @@ export function stepProjectiles(state) {
   for (let i = list.length - 1; i >= 0; i--) {
     const p = list[i], d = def(p), r = d.r * FX;
     p.life--;
+    // A bomb (`explode`): when its fuse runs out it blows up where it is.
+    // The blast stays still for a few frames, then it is gone.
+    if (d.explode) {
+      if (p.boom) { if (--p.boom <= 0) list.splice(i, 1); continue; }
+      if (p.life <= 0) { blowUp(p, d); continue; }
+    }
     if (p.cool > 0) p.cool--;
     if (d.type === 'cloud') {
       // A puff of smoke: drifts out, slows to a stop, rises a little and
@@ -137,6 +143,54 @@ export function stepProjectiles(state) {
   }
 }
 
+function blowUp(p, d) { p.boom = d.explode.frames; p.vx = 0; p.vy = 0; p.rolling = 0; p.life = d.explode.frames + 1; }
+
+// Where a round thing touches a fighter: 'shield', 'parry', 'body' or null.
+function contact(vic, ball) {
+  const shielding = SHIELDING[vic.state];
+  const parrying = vic.state === 'shieldDrop' && vic.stateFrame <= CONFIG.PARRY_WINDOW;
+  if (shielding || parrying) {
+    const [sx, sy] = shieldCentre(vic), sr = shieldRadius(vic);
+    const dx = ball.cx - sx, dy = ball.cy - sy, rr = ball.r + sr;
+    if (dx * dx + dy * dy <= rr * rr) return parrying ? 'parry' : 'shield';
+  }
+  const vch = getCharacter(vic.charId);
+  for (const h of hurtboxes(vch.skeleton, fighterSolve(vic, vch), vic.facing)) {
+    const hx1 = vic.x + h[0], hy1 = vic.y + h[1], hx2 = vic.x + h[2], hy2 = vic.y + h[3];
+    const nx = ball.cx < hx1 ? hx1 : ball.cx > hx2 ? hx2 : ball.cx;
+    const ny = ball.cy < hy1 ? hy1 : ball.cy > hy2 ? hy2 : ball.cy;
+    const dx = ball.cx - nx, dy = ball.cy - ny;
+    if (dx * dx + dy * dy <= ball.r * ball.r) return parrying ? 'parry' : 'body';
+  }
+  return null;
+}
+
+// A bomb: touching an opponent sets it off; the blast hits every opponent
+// inside it once, launching them away from its centre.
+function bombHits(state, p, d) {
+  const owner = state.fighters[p.owner];
+  const foes = state.fighters.filter((v) => v.slot !== p.owner && v.team !== owner.team && !(v.invuln > 0) && !(v.intangible > 0) && !UNHITTABLE[v.state]);
+  if (!p.boom) {
+    const ball = { cx: p.x, cy: p.y, r: (d.r + d.hitPad) * FX };
+    if (!foes.some((v) => contact(v, ball))) return;
+    blowUp(p, d);
+  }
+  const ball = { cx: p.x, cy: p.y, r: d.explode.r * FX };
+  for (const vic of foes) {
+    const bit = 1 << vic.slot;
+    if ((p.hitMask | 0) & bit) continue;
+    const result = contact(vic, ball);
+    if (!result) continue;
+    p.hitMask = (p.hitMask | 0) | bit;
+    const hb = d.explode.hit, src = { x: p.x, dir: vic.x >= p.x ? 1 : -1 };
+    const ctr = result === 'body' ? inCounter(vic) : null;
+    if (ctr) applyCounter(state, owner, vic, hb, ctr, src);
+    else if (result === 'parry') applyParry(state, owner, vic, hb, src);
+    else if (result === 'shield') applyShieldHit(state, owner, vic, hb, src);
+    else applyHit(state, owner, vic, { def: hb, px: p.x >> 8, py: p.y >> 8 }, src);
+  }
+}
+
 // Projectiles against fighters: shield, parry and counters all apply.
 export function resolveProjectileHits(state) {
   const list = state.projectiles;
@@ -144,6 +198,7 @@ export function resolveProjectileHits(state) {
   for (const p of list) {
     if (p.spent || p.cool > 0) continue;
     const d = def(p);
+    if (d.explode) { bombHits(state, p, d); continue; }
     // a slow-rolling ball is harmless; a rolling one hits weaker than in flight
     const speed = Math.abs(p.vx);
     if (p.rolling && speed < d.minRollSpeed) continue;

@@ -1245,8 +1245,18 @@ for (const hold of [0, 30]) {
   }
   { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); }
     check('Big Rip rides a plume up about 120px', top > 70 && top < 140, `${top.toFixed(0)}px`); }
-  { const under = run(mk(8), BTN.SPECIAL | BTN.DOWN, 60), side = run(mk(-16), BTN.SPECIAL | BTN.DOWN, 60);
-    check('Stub Out: 9% under his heel, embers on both sides (5%)', under >= 9 && side === 5, `${under}% / ${side}%`); }
+  { // a bomb lobbed at someone blows up on them; one left alone blows up on its fuse; nobody is hit twice
+    const s = mk(60); const v = s.fighters[1]; step(s, [BTN.SPECIAL | BTN.DOWN, 0]); let boomAt = -1;
+    let up = false;
+    for (let i = 0; i < 160; i++) { step(s, [0, 0]); const p = (s.projectiles || [])[0]; if (p && p.boom && boomAt < 0) boomAt = i; if (v.y < s.fighters[0].y - 15 * FX) up = true; }
+    const touch = v.percent / 10;
+    const f = mk(400); step(f, [BTN.SPECIAL | BTN.DOWN, 0]); let fuse = -1, gone = -1;
+    for (let i = 0; i < 200; i++) { step(f, [0, 0]); const p = (f.projectiles || [])[0]; if (p && p.boom && fuse < 0) fuse = i; if (fuse >= 0 && !p && gone < 0) gone = i; }
+    // a bomb sitting on the floor blows up when someone walks into it, hitting them once
+    const w = mk(200); const [za, zv] = w.fighters; step(w, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 60; i++) step(w, [0, 0]);
+    const still = w.projectiles[0] && !w.projectiles[0].boom && zv.percent === 0; for (let i = 0; i < 60; i++) step(w, [0, BTN.LEFT]);
+    check('Bomb: lobbed forward, blows up on touch for 7% (launches up), or on its own after about two seconds; one hit per blast',
+      touch === 7 && up && fuse > 100 && fuse < 140 && gone > fuse && still && zv.percent === 70, `touch ${touch}% (boom at ${boomAt}), fuse ${fuse}, gone ${gone}, walk-in ${zv.percent / 10}% (resting ${still})`); }
 }
 
 // Sam: melee, plus a powder stream

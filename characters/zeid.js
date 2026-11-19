@@ -158,15 +158,15 @@ const animations = {
     [10, { torso: 4, armF: [80, 30], armB: [-90, 20], legF: [20, -30], legB: [-14, -20], handF: 'fist' }],
     [14, AIR],
   ]),
-  // Stub Out: lifts a foot and grinds a cigarette out under his heel.
-  stubOut: anim(false, [
-    [5, { torso: -4, armF: [40, 40], armB: [-40, 40], legF: [70, -90], legB: [-4, -4] }],
-    [4, { hip: [0, -1], torso: -6, armF: [60, 40], armB: [-60, 40], legF: [86, -110], legB: [-4, -4], face: 'yell' }],
-    [3, { hip: [0, 3], torso: 10, armF: [20, 30], armB: [-30, 30], legF: [24, -10], legB: [-14, -10], face: 'yell' }],
-    [6, { hip: [0, 3], torso: 10, armF: [20, 30], armB: [-30, 30], legF: [28, -12], legB: [-14, -10] }],
-    [6, { hip: [0, 3], torso: 10, armF: [20, 30], armB: [-30, 30], legF: [20, -8], legB: [-14, -10] }],
-    [10, { torso: 4, armF: [10, 20], armB: [-10, 20], legF: [10, -6], legB: [-8, -4], face: 'smile' }],
-    [2, STAND],
+  // Bomb: reaches into his pocket, pulls out a bomb, and lobs it forward.
+  bomb: anim(false, [
+    [6, { torso: 4, head: 6, armF: [-20, 20], armB: [-6, 8], legF: [6, -4], legB: [-6, -2], handF: 'fist' }],
+    [6, { torso: -8, head: -4, armF: [-70, 40], armB: [30, 30], legF: [12, -8], legB: [-10, -4], handF: 'fist', face: 'smile' }],
+    [4, { torso: -12, head: -6, armF: [-100, 30], armB: [40, 30], legF: [14, -10], legB: [-12, -6], handF: 'fist', face: 'smile' }],
+    [3, { torso: 10, armF: [80, 10], armB: [-30, 30], legF: [20, -14], legB: [-14, -6], handF: 'open', face: 'yell' }],
+    [12, { torso: 8, armF: [70, 10], armB: [-30, 30], legF: [18, -12], legB: [-14, -6], handF: 'open', face: 'smile' }],
+    [10, { torso: 4, armF: [30, 20], armB: [-20, 20], legF: [10, -6], legB: [-8, -4] }],
+    [1, STAND],
   ]),
   // --- Smash attacks ---
   // Exhale: a huge pull (held here while charging), then a long jet of smoke straight ahead.
@@ -232,13 +232,11 @@ const moves = {
       hit(26, 28, 'hip', 12, 4, 80, 50, 70, { group: 4, off: [0, 6] }),
     ] },
 
-  // Down special: Stub Out. Grinds a cigarette out under his heel: 9% right
-  // under his foot, and a spray of embers on both sides (5%).
-  stubOut: { faf: 44, float: { gravity: 40, fall: 50 }, gear: { kind: 'embers', from: 12, to: 26, active: [12, 26] }, hitboxes: [
-      hit(12, 15, 'footF', 9, 9, 75, 45, 70, { group: 0 }),
-      hit(13, 17, 'hip', 9, 5, 60, 40, 60, { group: 1, off: [16, 16], radial: true }),
-      hit(13, 17, 'hip', 9, 5, 60, 40, 60, { group: 1, off: [-16, 16], radial: true }),
-    ] },
+  // Down special: Bomb (like Toon Link's). Pulls out a bomb and lobs it
+  // forward; it bounces, rolls to a stop, and blows up when it touches an
+  // opponent or when its fuse runs out (about two seconds): 7%, launching up
+  // and away from the blast. One bomb at a time.
+  bomb: { faf: 42, limit: 1, spawn: { frame: 17, from: 'fistF', projectile: 'bomb' }, hitboxes: [] },
 
   // --- Smash attacks (see simeon.js for how they are performed) ---
   // Forward: Exhale. A long jet of smoke straight ahead: 16% close in, a
@@ -273,8 +271,13 @@ export const ZEID = {
   trailColors: ['#8a8f99', '#d9dde4', '#ffffff'],   // smoke greys
   animations: { ...SIMEON.animations, ...animations },
   moves: { ...SIMEON.moves, ...moves },
-  specials: { neutral: 'cloudChaser', side: 'flick', up: 'bigRip', down: 'stubOut' },
+  specials: { neutral: 'cloudChaser', side: 'flick', up: 'bigRip', down: 'bomb' },
   projectiles: {
+    // a round black bomb with a lit fuse: lobbed, bounces, rolls, then BOOM
+    bomb: { draw: 'bomb', r: 4, hitPad: 1, speed: [px(2.2), px(1.2)], chargeSpeed: [0, 0],
+      gravity: px(0.17), maxFall: px(4), bounce: 110, bounceKeepX: 170, minBounce: px(0.9), maxBounces: 3,
+      rollFriction: px(0.05), minRollSpeed: 0, popUp: 0, life: 120, fadeFrames: 999, hit: { damage: 0, angle: 0, bkb: 0, kbg: 0 },
+      explode: { r: 22, frames: 14, hit: { damage: 70, angle: 80, bkb: 52, kbg: 55 } } },
     // a big cloud that drifts out and hangs in the air
     cloud: { type: 'cloud', draw: 'cloud', r: 11, hitPad: 1, speed: [px(2.6), 0], chargeSpeed: [0, 0], drag: px(0.07), rise: px(0.12),
       life: 120, fadeFrames: 24, rehit: 15, hit: { damage: 20, angle: 70, bkb: 0, kbg: 100, fkb: 30 } },

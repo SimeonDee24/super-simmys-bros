@@ -1052,6 +1052,29 @@ export class Renderer {
     const d = getCharacter(p.charId).projectiles[p.kind];
     const fade = p.spent ? Math.max(0.2, p.life / d.fadeFrames) : 1;
     const x = p.x / FX, y = p.y / FX, ctx = this.ctx;
+    if (d.draw === 'bomb') {
+      if (p.boom) {
+        // the blast: a flash of fire that swells, then smoke that thins
+        const k = 1 - p.boom / d.explode.frames, R = d.explode.r * (0.55 + 0.45 * Math.min(1, k * 2.5));
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, 1 - k * 0.9);
+        ctx.fillStyle = '#5a5560'; for (let i = 0; i < 6; i++) { const a = i * 1.05 + k; ctx.beginPath(); ctx.arc(x + Math.cos(a) * R * 0.6, y + Math.sin(a) * R * 0.5 - k * 6, R * 0.45, 0, Math.PI * 2); ctx.fill(); }
+        ctx.fillStyle = '#ff7a1c'; ctx.beginPath(); ctx.arc(x, y, R * (1 - k * 0.5), 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(x, y, R * 0.65 * (1 - k * 0.7), 0, Math.PI * 2); ctx.fill();
+        if (k < 0.3) { ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(x, y, R * 0.35, 0, Math.PI * 2); ctx.fill(); }
+        ctx.restore();
+        return;
+      }
+      // a black bomb with a shine and a burning fuse; flashes red near the end
+      const late = p.life < 36 && (p.life >> 2) & 1;
+      ctx.fillStyle = '#100d16'; ctx.beginPath(); ctx.arc(x, y, d.r + 0.8, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = late ? '#c8322b' : '#2a2633'; ctx.beginPath(); ctx.arc(x, y, d.r, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8a8496'; ctx.fillRect(x - 2, y - 2.5, 1.5, 1.5);
+      ctx.fillStyle = '#100d16'; ctx.fillRect(x - 1, y - d.r - 2.2, 2, 2);          // the cap
+      ctx.strokeStyle = '#c9b48a'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x, y - d.r - 2); ctx.quadraticCurveTo(x + 2, y - d.r - 4, x + 2.5, y - d.r - 5); ctx.stroke();
+      ctx.fillStyle = (p.life >> 1) & 1 ? '#ffd23f' : '#ff7a1c'; ctx.fillRect(x + 1.8, y - d.r - 6, 1.6, 1.6);   // spark
+      return;
+    }
     if (d.draw === 'vape') {
       // a green and orange vape, spinning end over end, with a puff behind it
       ctx.save();
