@@ -1349,4 +1349,20 @@ for (const hold of [0, 30]) {
     check('Oof!: bursts into blocks that hit all round him (10% each side), untouchable at the start', o1 === 10 && o2 === 10 && a.intangible > 0, `${o1}% / ${o2}%`); }
 }
 
+// The kill screen: only for the KO that ends the game
+{
+  const go = (n, setStocks) => {
+    const s = createMatch({ stageId: 'nest', players: Array.from({ length: n }, (_, i) => ({ charId: 'simeon', alt: i & 1 })), stocks: 3, seed: 1 });
+    for (let i = 0; i < 90; i++) step(s, s.fighters.map(() => 0));
+    setStocks(s.fighters);
+    const v = s.fighters[1]; v.x = s.fighters[0].x + 26 * FX; v.y = s.fighters[0].y; v.percent = 1600;
+    for (const f of s.fighters.slice(2)) f.x = s.fighters[0].x - 120 * FX;
+    step(s, s.fighters.map((_, i) => (i === 0 ? BTN.SMASH | BTN.RIGHT : 0))); let frz = false;
+    for (let i = 0; i < 60; i++) { step(s, s.fighters.map(() => 0)); if (s.killFreeze > 0) frz = true; }
+    return frz;
+  };
+  check('kill screen on the game-ending KO only (not an earlier stock, not while a third fighter is still in)',
+    go(2, (f) => { f[1].stocks = 1; }) && !go(2, () => {}) && !go(3, (f) => { f[1].stocks = 1; }) && go(3, (f) => { f[1].stocks = 1; f[2].stocks = 0; f[2].state = 'out'; }));
+}
+
 process.exit(fails ? 1 : 0);

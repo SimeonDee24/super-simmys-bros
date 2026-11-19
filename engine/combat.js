@@ -125,8 +125,10 @@ export function applyHit(state, att, vic, hit, proj = null) {
   // A hit that will send them out of the stage: the kill screen (as in
   // Smash Ultimate the game stops for a moment, zoomed on them, the
   // background red). Part of the game state, so it is the same for everyone.
-  // (only on their last stock)
-  if (vic.stocks === 1 && kb >= CONFIG.TUMBLE_KB && !state.killFreeze && willKO(state, vic)) {
+  // (only for the KO that ends the game: their last stock, with only one
+  // team left standing after it, whether 2, 3 or 4 fighters started)
+  const left = new Set(state.fighters.filter((o) => o !== vic && o.stocks > 0 && o.state !== 'out').map((o) => o.team));
+  if (vic.stocks === 1 && left.size === 1 && kb >= CONFIG.TUMBLE_KB && !state.killFreeze && willKO(state, vic)) {
     state.killFreeze = CONFIG.KILL_FREEZE;
     state.killCam = { slot: vic.slot, by: att.slot, tick: state.tick };
   }
