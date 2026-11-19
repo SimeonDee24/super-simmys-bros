@@ -1465,7 +1465,7 @@ for (const hold of [0, 30]) {
   const run = (s, first, n = 80) => { step(s, [first, 0]); for (let i = 0; i < n; i++) step(s, [0, 0]); return s.fighters[1].percent / 10; };
   TEST_CONFIG.SMASH_FLICK_FRAMES = FLICK;
   const f = run(mk(28), BTN.SMASH), u = run(mk(3, -40), BTN.SMASH | BTN.UP), d1 = run(mk(-16), BTN.SMASH | BTN.DOWN), d2 = run(mk(16), BTN.SMASH | BTN.DOWN);
-  check('Designer Bag 17%, Spin Move 15%, Buck Kick 13% behind and in front', f === 17 && u === 15 && d1 === 13 && d2 === 13, `${f}% / ${u}% / ${d1}% / ${d2}%`);
+  check('Scythe 17%, Spin Move 15%, Buck Kick 13% behind and in front', f === 17 && u === 15 && d1 === 13 && d2 === 13, `${f}% / ${u}% / ${d1}% / ${d2}%`);
   TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
   const ck = run(mk(80), BTN.SPECIAL, 60), dash = run(mk(60), BTN.SPECIAL | BTN.RIGHT, 60);
   const d = mk(400); const da = d.fighters[0], x0 = da.x; step(d, [BTN.SPECIAL | BTN.RIGHT, 0]); for (let i = 0; i < 60; i++) step(d, [0, 0]); const untouchable = true;

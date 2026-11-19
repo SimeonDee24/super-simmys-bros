@@ -366,6 +366,16 @@ export class Renderer {
       ctx.restore();
       this.star(x + dir * 10, y - 12, 6 + (1 - k) * 4, '#ffffff', '#d9ccff', fr * 0.3);
     }
+    else if (g.kind === 'scythe') held(() => {
+      // a scythe: a long dark handle with a wrapped grip, and a curved silver
+      // blade hooking out from the end
+      ctx.fillStyle = OUT; ctx.fillRect(-1.5, -6, 3, 26);
+      ctx.fillStyle = '#3a2a3f'; ctx.fillRect(-0.8, -5.3, 1.6, 24.6);
+      ctx.fillStyle = '#6b4fa8'; ctx.fillRect(-0.8, -1, 1.6, 4);                     // grip wrap
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.moveTo(-1, 16); ctx.quadraticCurveTo(10, 14, 16, 26); ctx.quadraticCurveTo(9, 20, -1, 21.5); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#c9ced8'; ctx.beginPath(); ctx.moveTo(0, 16.8); ctx.quadraticCurveTo(9.6, 15.2, 14.6, 24.4); ctx.quadraticCurveTo(8.6, 19.6, 0, 20.8); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#f2f4f8'; ctx.beginPath(); ctx.moveTo(1, 17.2); ctx.quadraticCurveTo(8.6, 16.2, 13, 22.6); ctx.quadraticCurveTo(8, 17.8, 1, 18.2); ctx.closePath(); ctx.fill();   // edge shine
+    });
     else if (g.kind === 'handbag') held(() => {
       // a handbag swung by its strap
       ctx.strokeStyle = OUT; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-1.5, 0); ctx.quadraticCurveTo(0, 6, 1.5, 0); ctx.moveTo(0, 2); ctx.lineTo(0, 8); ctx.stroke();

@@ -194,7 +194,7 @@ const animations = {
     [4, STAND],
   ]),
   // --- Smash attacks ---
-  // Designer Bag: winds back and swings her handbag by the strap.
+  // Scythe: winds back and swings a scythe round in a big arc.
   fsmash: anim(false, [
     [6, { torso: -4, armF: [120, 30], armB: [80, 60], legF: [16, -12], legB: [-12, -6], ...FISTS }],
     [7, { hip: [-1, 1], torso: -18, head: 6, armF: [200, 30], armB: [150, 60], legF: [24, -20], legB: [-16, -6], ...FISTS }],
@@ -269,10 +269,11 @@ const moves = {
   ] },
 
   // --- Smash attacks (see simeon.js for how they are performed) ---
-  // Forward: Designer Bag. Swings her handbag by the strap: 17%.
-  fsmash: { faf: 52, charge: { at: 13, max: 60, smash: true }, gear: { kind: 'handbag', from: 0, to: 42 },
-    trail: { part: 'weaponF', from: 16, to: 20, width: 11, arc: true }, hitboxes: [
-      ...hits(16, 19, [['weaponF', 11], ['weaponMidF', 8], ['fistF', 6]], 17, 361, 32, 98, { chargeScale: [170, 238], lagMult: 150 }),
+  // Forward: Scythe. A big sweeping swing of a scythe: 17%, the blade at the
+  // end reaching further than most smashes.
+  fsmash: { faf: 54, charge: { at: 13, max: 60, smash: true }, gear: { kind: 'scythe', from: 0, to: 44 },
+    trail: { part: 'weaponF', from: 16, to: 20, width: 14, arc: true }, hitboxes: [
+      ...hits(16, 19, [['weaponF', 13], ['weaponMidF', 9], ['fistF', 6]], 17, 361, 32, 98, { chargeScale: [170, 238], lagMult: 150 }),
     ] },
   // Up: Spin Move. A dance spin with her arms swept over her head: 15%.
   usmash: { faf: 46, charge: { at: 8, max: 60, smash: true }, twirl: [[10, 22]], hitboxes: [
