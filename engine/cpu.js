@@ -99,6 +99,7 @@ export class CpuController {
   press(mask) { return mask & ~this.last ? mask : 0; }
 
   sample(state, slot) {
+    if (state.killFreeze > 0) return 0;   // the game is stopped for a kill screen: wait, don't use up plans
     const out = this.decide(state, slot) | 0;
     this.last = out;
     return out;

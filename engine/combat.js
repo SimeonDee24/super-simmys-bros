@@ -5,7 +5,26 @@ import { FX, sinDeg, cosDeg, mulTrig } from './fixed.js';
 import { CONFIG } from '../config/config.js';
 import { samplePose, solve, hurtboxes } from './skeleton.js';
 import { getCharacter } from '../characters/index.js';
+import { getStage } from '../stages/index.js';
 import { setState, breakShield } from './fighter.js';
+
+// Would this launch carry them past a side or top blast zone before they can
+// act again? Follows the launch the same way the hitstun state moves them
+// (without the stage in the way).
+function willKO(state, f) {
+  const b = getStage(state.stageId).blast, st = getCharacter(f.charId).stats;
+  let x = f.x, y = f.y - 22 * FX, sp = f.kbSpeed, burst = f.kbBurst, gv = 0;
+  const decay = f.kbDecay || CONFIG.KB_DECAY;
+  for (let i = 0; i < f.hitstun + 8; i++) {
+    sp = Math.max(0, sp - decay);
+    burst = Math.max(0, Math.trunc((burst * CONFIG.KB_BURST_KEEP) / 256) - 4);
+    gv = Math.min(gv + st.gravity, st.fallSpeed);
+    x += mulTrig(sp + burst, cosDeg(f.kbAngle));
+    y += -mulTrig(sp + burst, sinDeg(f.kbAngle)) + gv;
+    if (x < b.left * FX || x > b.right * FX || y < b.top * FX) return true;
+  }
+  return false;
+}
 
 export function fighterSolve(f, ch) {
   const a = ch.animations[f.anim] || ch.animations.idle;
@@ -110,6 +129,13 @@ export function applyHit(state, att, vic, hit, proj = null) {
   const lag = lagFor(hb);
   vic.hitlag = lag;
   if (!proj) { att.hitlag = lag; att.hitGroups |= spentBit(hb, vic); }
+  // A hit that will send them out of the stage: the kill screen (as in
+  // Smash Ultimate the game stops for a moment, zoomed on them, the
+  // background red). Part of the game state, so it is the same for everyone.
+  if (fast && !state.killFreeze && willKO(state, vic)) {
+    state.killFreeze = CONFIG.KILL_FREEZE;
+    state.killCam = { slot: vic.slot, by: att.slot, tick: state.tick };
+  }
 
   const lifts = angle > 0 && angle < 180;
   if (lifts || !vic.grounded) { vic.grounded = 0; vic.ground = -1; }

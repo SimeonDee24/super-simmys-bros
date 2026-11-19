@@ -90,6 +90,11 @@ export class SoundDirector {
         }
       });
     }
+    // --- the kill screen: a heavy crack when it starts ---
+    if (state.killCam && state.killFreeze > 0 && (!this.killTick || this.killTick !== state.killCam.tick)) {
+      this.killTick = state.killCam.tick;
+      out.push({ name: 'hitL', strength: 1.6, pan: 0 }); out.push({ name: 'bass', strength: 1, pan: 0 });
+    }
     // --- projectiles: thrown, bouncing, caught ---
     const balls = new Map();
     for (const p of state.projectiles || []) {

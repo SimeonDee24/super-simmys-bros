@@ -183,10 +183,37 @@ export class Renderer {
       }
     }
     this.view = { x: this.cam.x + shX, y: this.cam.y + shY, z: this.cam.z, S: this.S };
-    this.bg.draw(ctx, this.time, this.view);
-    this.world();
+    // The kill screen: zoomed in on the fighter who has just been hit for a
+    // KO, against a red burst instead of the stage.
+    const kc = state.killFreeze > 0 && state.killCam ? state.killCam : null;
+    const kv = kc ? state.fighters[kc.slot] : null;
+    if (kv) {
+      // (zooms from where the camera was when it started, over the first few frames)
+      if (!this.killBase || this.killBase.tick !== kc.tick) this.killBase = { tick: kc.tick, x: this.view.x, y: this.view.y, z: this.view.z };
+      const base = this.killBase, k = Math.min(1, (state.tick - kc.tick) / 5);
+      const jx = Math.sin(state.tick * 2.3) * 0.6, jy = Math.cos(state.tick * 3.1) * 0.6;
+      const tz = Math.min(3, Math.max(2, base.z * 1.7));
+      this.view = { x: base.x + (kv.x / FX - base.x) * k + jx, y: base.y + (kv.y / FX - 24 - base.y) * k + jy, z: base.z + (tz - base.z) * k, S: this.S };
+      this.cam.x = this.view.x; this.cam.y = this.view.y; this.cam.z = this.view.z;   // and eases back out afterwards
+      this.world();
+      const cx = kv.x / FX, cy = kv.y / FX - 24, R = 260 / this.view.z;
+      const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, R);
+      g.addColorStop(0, '#ffd6a0'); g.addColorStop(0.18, '#ff5a1f'); g.addColorStop(0.55, '#c3121c'); g.addColorStop(1, '#3a0207');
+      ctx.fillStyle = g; ctx.fillRect(cx - R * 2, cy - R * 2, R * 4, R * 4);
+      // speed lines bursting out from them
+      ctx.save(); ctx.translate(cx, cy);
+      for (let i = 0; i < 28; i++) {
+        const a = i * 2.39996 + (kc.tick % 7), len = R * (0.5 + ((i * 37) % 10) / 12), w = 0.6 + (i % 3) * 0.5;
+        ctx.fillStyle = i % 3 ? 'rgba(255,220,180,0.35)' : 'rgba(255,255,255,0.55)';
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * 14, Math.sin(a) * 14); ctx.lineTo(Math.cos(a + 0.02 * w) * len, Math.sin(a + 0.02 * w) * len); ctx.lineTo(Math.cos(a - 0.02 * w) * len, Math.sin(a - 0.02 * w) * len); ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    } else {
+      this.bg.draw(ctx, this.time, this.view);
+      this.world();
+    }
 
-    for (const f of state.fighters) this.drawShadow(f, stage);
+    if (!kv) for (const f of state.fighters) this.drawShadow(f, stage);
     for (const f of state.fighters) {
       if (f.state === 'dead' || f.state === 'out') continue;
       const ch = getCharacter(f.charId);
@@ -1566,6 +1593,13 @@ export class Renderer {
     if (sub) drawText(ctx, sub, W / 2, 124, '#ffffff', 1, 'center', '#000000');
   }
 
+  // "sound off" in the bottom-left corner while muted
+  drawMuted() {
+    const ctx = this.ctx;
+    this.ui();
+    ctx.fillStyle = 'rgba(0,22,48,0.85)'; this.roundRect(4, H - 14, 76, 10, 2);
+    drawText(ctx, 'SOUND OFF   M', 9, H - 12, GOLD, 1, 'left');
+  }
   drawToast(text, alpha = 1) {
     const ctx = this.ctx;
     this.ui();

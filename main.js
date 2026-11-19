@@ -281,6 +281,8 @@ function goFromSelect() {
 
 function render() {
   drawScreen();
+  // sound switched off (M): say so in the corner, so it is never a mystery
+  if (settings.muted) renderer.drawMuted();
   if (online && match && match.online) {
     const w = online.room.waiting();
     if (w) {
@@ -423,7 +425,7 @@ window.addEventListener('keydown', (e) => {
     toast = { text: 'TAP JUMP ' + (settings.tapJump ? 'ON: W ALSO JUMPS' : 'OFF: ONLY SPACE JUMPS'), until: performance.now() + 1800 };
     return;
   }
-  if (e.code === 'KeyM') { settings.muted = !settings.muted; sfx.setMuted(settings.muted); saveSettings(settings); if (!settings.muted) sfx.play('menuOk'); return; }
+  if (e.code === 'KeyM') { settings.muted = !settings.muted; sfx.setMuted(settings.muted); saveSettings(settings); if (!settings.muted) sfx.play('menuOk'); say(settings.muted ? 'SOUND OFF  (M TURNS IT BACK ON)' : 'SOUND ON', 1600); return; }
   menuSound(e.code);
   if (screen === 'title') {
     if (!e.ctrlKey && !e.metaKey && !e.altKey && e.code !== 'F5' && e.code !== 'F12') screen = 'menu';

@@ -56,6 +56,8 @@ export const CONFIG = {
   MOVE_GRAVITY: 59,         // 0.23 px per frame per frame
   MOVE_FALL: 742,           // 2.9 px per frame
 
+  KILL_FREEZE: 34,          // frames the game stops for the kill screen
+
   // --- Hits and knockback ---
   // launch speed (px/frame) = knockback * KB_SPEED_NUM / KB_SPEED_DEN / 256
   // Light hits (below tumbling) keep the gentle speed, so multi-hit moves and

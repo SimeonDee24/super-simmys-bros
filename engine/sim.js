@@ -36,6 +36,8 @@ export function teamsLeft(state) {
 
 export function step(state, inputs) {
   const stage = getStage(state.stageId);
+  // The kill screen: everything stops for a moment after a hit that will KO.
+  if (state.killFreeze > 0) { state.killFreeze--; state.tick++; return state; }
   for (let i = 0; i < state.fighters.length; i++) {
     const f = state.fighters[i];
     const st = getCharacter(f.charId).stats;
