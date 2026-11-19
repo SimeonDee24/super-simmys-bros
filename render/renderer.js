@@ -1550,7 +1550,7 @@ export class Renderer {
     ctx.fillStyle = opts.teams ? '#3a2456' : '#24224a'; ctx.fillRect(mx - mw / 2, 4, mw, 14);
     ctx.fillStyle = opts.teams ? '#ffe14a' : '#5d5a80'; ctx.fillRect(mx - mw / 2, 17, mw, 1);
     drawText(ctx, (opts.modeKey === false ? '' : 'T  ') + modeText, mx, 8, opts.teams ? '#ffe14a' : '#d9d6f0', 1, 'center');
-    drawText(ctx, opts.right || 'J  CONTINUE   ESC  BACK', W - 8, 9, '#ffffff', 1, 'right');
+    drawText(ctx, opts.right || 'ENTER  CONTINUE   ESC  BACK', W - 8, 9, '#ffffff', 1, 'right');
 
     // --- the roster ---
     const acol = colOf(active);
@@ -1560,10 +1560,12 @@ export class Renderer {
       const r = this.charTileRect(k, tiles), id = ch ? k : -1;
       const here = slots.map((sl, i) => (sl.type !== 'off' && sl.char === id ? i : -1)).filter((i) => i >= 0);
       const sel = slots[active].char === id;
+      const cur = opts.cursor, hover = cur && cur.x >= r.x - 2 && cur.x < r.x + r.w + 2 && cur.y >= r.y - 2 && cur.y < r.y + r.h + 2;
       // frame: the active slot's colour when its cursor is here
       ctx.fillStyle = sel ? acol : here.length ? '#8a86b0' : '#2b2a4a';
       ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
       if (sel) { ctx.fillStyle = rgba('#ffffff', 0.25 + 0.25 * Math.sin(t * 0.14)); ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4); }
+      if (hover && !sel) { ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4); }
       const bg = ctx.createLinearGradient(0, r.y, 0, r.y + r.h);
       const tint = (ch && ch.trailColors && ch.trailColors[1]) || '#6a64c8';
       bg.addColorStop(0, shade(tint, 0.5)); bg.addColorStop(1, '#16142e');
@@ -1576,14 +1578,10 @@ export class Renderer {
       const band = Math.max(8, Math.round(r.h * 0.2));
       ctx.fillStyle = 'rgba(8,8,24,0.85)'; ctx.fillRect(r.x, r.y + r.h - band, r.w, band);
       drawText(ctx, ch ? ch.name : 'RANDOM', r.x + r.w / 2, r.y + r.h - band + (band - 5) / 2, '#ffffff', 1, 'center');
-      // a numbered token for every slot that has picked this fighter
-      here.forEach((i, n) => {
-        const tx = r.x + 6 + n * 11, ty = r.y + 6 + (i === active ? Math.sin(t * 0.14) * 1.2 : 0);
-        ctx.fillStyle = '#0c0b1c'; ctx.beginPath(); ctx.arc(tx, ty, 5.6, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = colOf(i); ctx.beginPath(); ctx.arc(tx, ty, 4.6, 0, Math.PI * 2); ctx.fill();
-        drawText(ctx, String(i + 1), tx, ty - 2.5, '#101020', 1, 'center');
-      });
     });
+    // a numbered token on the fighter each slot has picked (not the one in the hand)
+    const spots = this.tokenSpots(chars, slots, opts.cursor ? opts.cursor.held : -1);
+    for (const i of Object.keys(spots).map(Number)) this.drawToken(spots[i].x, spots[i].y + (i === active ? Math.sin(t * 0.14) * 1.2 : 0), colOf(i), i + 1);
 
     // --- the four player panels ---
     slots.forEach((sl, i) => {
@@ -1622,9 +1620,20 @@ export class Renderer {
       drawText(ctx, opts.teams ? TEAM_NAMES[(sl.team | 0) % 3] + ' TEAM' : ch ? ch.palettes[sl.alt].name : '', cx, r.y + r.h - 8, col, 1, 'center');
       if (act) { const by = r.y - 9 + Math.sin(t * 0.14) * 1.5; ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 5, by); ctx.lineTo(cx + 5, by); ctx.lineTo(cx, by + 5); ctx.closePath(); ctx.fill(); }
     });
+    // the hand, carrying a token if it has picked one up
+    if (opts.cursor) {
+      const c = opts.cursor;
+      if (c.held >= 0) this.drawToken(c.x - 4, c.y - 2 + Math.sin(t * 0.2), colOf(c.held), c.held + 1, true);
+      this.drawHand(c.x, c.y + 2, colOf(c.own));
+    }
     const a = slots[active];
-    const hint = '1-4  SLOT   W A S D  FIGHTER   K  SKIN' + (opts.teams && a.type !== 'off' ? '   Y  TEAM' : '') + (active > 0 ? '   L  ' + (a.type === 'off' ? 'ADD' : 'REMOVE') : '') + (a.type === 'cpu' ? '   U / I  CPU LEVEL' : '');
-    drawText(ctx, opts.hint || hint, W / 2, H - 10, '#ffffff', 1, 'center', '#000000');
+    const hint = 'W A S D  MOVE   J  TOKEN   K  SKIN' + (opts.teams && a.type !== 'off' ? '   Y  TEAM' : '') + (active > 0 ? '   L  ' + (a.type === 'off' ? 'ADD' : 'REMOVE') : '') + (a.type === 'cpu' ? '   U / I  CPU LEVEL' : '');
+    // every few seconds the controls line becomes READY TO FIGHT (when no token is in the hand)
+    if (opts.ready && opts.cursor && opts.cursor.held < 0 && (t % 360) >= 200) {
+      ctx.fillStyle = 'rgba(8,8,24,0.9)'; ctx.fillRect(0, H - 14, W, 12);
+      ctx.fillStyle = '#ffe14a'; ctx.fillRect(0, H - 14, W, 1); ctx.fillRect(0, H - 3, W, 1);
+      drawText(ctx, opts.ready, W / 2, H - 10, (t >> 4) & 1 ? '#ffe14a' : '#ffffff', 1, 'center', '#000000');
+    } else drawText(ctx, opts.hint || hint, W / 2, H - 10, '#ffffff', 1, 'center', '#000000');
     if (opts.banner) {
       ctx.fillStyle = 'rgba(8,8,24,0.86)'; ctx.fillRect(0, 70, W, 26);
       drawText(ctx, opts.banner, W / 2, 78, '#ffe14a', 2, 'center', '#000000');
@@ -1677,6 +1686,38 @@ export class Renderer {
       const cols = Math.min(n, Math.floor((W - 20) / (size + 6))), rows = Math.ceil(n / cols);
       if (rows * (size + 6) <= 104 || size === 19) return { size, cols, rows };
     }
+  }
+  // Where each slot's token sits on the roster (slot -> {x, y}), leaving out
+  // `held` (the token in the cursor's hand). Tokens on the same fighter sit
+  // side by side along the top of its tile.
+  tokenSpots(chars, slots, held = -1) {
+    const n = chars.length + 1, out = {};
+    for (let k = 0; k < n; k++) {
+      const id = k < chars.length ? k : -1, r = this.charTileRect(k, n);
+      let m = 0;
+      slots.forEach((sl, i) => { if (sl.type !== 'off' && sl.char === id && i !== held) out[i] = { x: r.x + 6 + (m++) * 11, y: r.y + 6 }; });
+    }
+    return out;
+  }
+  drawToken(x, y, col, num, big = false) {
+    const ctx = this.ctx, k = big ? 1.25 : 1;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(x + 1, y + 2, 5.6 * k, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0c0b1c'; ctx.beginPath(); ctx.arc(x, y, 5.6 * k, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(x, y, 4.6 * k, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.45)'; ctx.fillRect(x - 2.5 * k, y - 3.2 * k, 2 * k, 1);
+    drawText(this.ctx, String(num), x, y - 2.5, '#101020', 1, 'center');
+  }
+  // The pointing hand you move round the select screen (fingertip at x, y).
+  drawHand(x, y, col) {
+    const ctx = this.ctx;
+    ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(1.3, 1.3);
+    const shape = () => { ctx.beginPath(); ctx.moveTo(-1, 0); ctx.lineTo(2, 0); ctx.lineTo(2, 5); ctx.lineTo(8, 5); ctx.lineTo(9, 7); ctx.lineTo(9, 13); ctx.lineTo(7, 16); ctx.lineTo(0, 16); ctx.lineTo(-3, 11); ctx.lineTo(-3, 7); ctx.lineTo(-1, 6); ctx.closePath(); };
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.translate(1.5, 2); shape(); ctx.fill(); ctx.translate(-1.5, -2);
+    ctx.lineWidth = 1.6; ctx.strokeStyle = '#0c0b1c'; shape(); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; shape(); ctx.fill();
+    ctx.fillStyle = '#c9c6e0'; ctx.fillRect(4, 8, 1, 3); ctx.fillRect(6.5, 8, 1, 3);   // knuckle creases
+    ctx.fillStyle = col; ctx.fillRect(-0.5, 14, 8, 2.5);                             // cuff in the player's colour
+    ctx.restore();
   }
   charTileRect(k, n) {
     const { size, cols, rows } = this.charGrid(n), pitch = size + 6;

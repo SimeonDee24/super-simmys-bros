@@ -43,6 +43,10 @@ let updateMessage = null;
 let fps = 0, fpsFrames = 0, fpsTime = 0, slowSeconds = 0;
 
 let selSlot = 0;        // fighter select: the slot the keys are moving
+// Fighter select, like Smash: a hand you move with W A S D (or the mouse).
+// J picks up a token and puts it down on a fighter; while it is in the hand
+// the panel shows whoever the hand is over.
+const cursor = { x: 240, y: 80, held: -1, speed: 0, was: '' };
 
 // The four saved fighter slots, kept valid if the roster changes. Slot 1 is
 // always the keyboard player, and there are always at least two fighters.
@@ -189,7 +193,85 @@ function tick() {
       screen = 'stageSelect'; match = null;
     }
   }
+  if (screen === 'charSelect') moveCursor();
+  cursor.was = screen;
   keyboard.endTick();
+}
+
+// --- Fighter select hand ---
+const SEL_KEYS = { left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'] };
+const heldAny = (codes) => codes.some((c) => keyboard.held(c));
+// Which slots this player may pick up: their own; offline or as host, CPUs too.
+function canHold(i) {
+  const sl = lobbySlots()[i];
+  if (!sl || sl.type === 'off') return false;
+  if (!online) return true;
+  return online.room.isHost ? online.room.canEdit(i) : i === online.room.me;
+}
+const tileUnder = (x, y) => { const n = CHARACTERS.length + 1; for (let k = 0; k < n; k++) { const r = renderer.charTileRect(k, n); if (x >= r.x - 2 && x < r.x + r.w + 2 && y >= r.y - 2 && y < r.y + r.h + 2) return k; } return -1; };
+const panelUnder = (x, y) => { for (let i = 0; i < 4; i++) { const r = renderer.slotPanelRect(i); if (x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) return i; } return -1; };
+function tokenUnder(x, y) {
+  const spots = renderer.tokenSpots(CHARACTERS, lobbySlots(), cursor.held);
+  let best = -1, bd = 12 * 12;   // (a generous reach: the token is small)
+  for (const i of Object.keys(spots).map(Number)) {
+    const dx = spots[i].x - x, dy = spots[i].y - y, d = dx * dx + dy * dy;
+    if (canHold(i) && (d < bd || (d === bd && i === curSlot()))) { best = i; bd = d; }
+  }
+  return best;
+}
+function moveCursor() {
+  // coming into the screen: the hand starts over your own fighter. Coming
+  // from the menu it is holding your token, ready to put down (as in Smash);
+  // coming back from a match your pick stays where it was.
+  if (cursor.was !== 'charSelect') {
+    const r = renderer.charTileRect(charTile(lobbySlots()[curSlot()].char), CHARACTERS.length + 1);
+    cursor.x = r.x + r.w / 2; cursor.y = r.y + r.h / 2 + 4; cursor.speed = 0;
+    cursor.held = (cursor.was === 'menu' || cursor.was === 'join') && canHold(curSlot()) ? curSlot() : -1;
+  }
+  if (cursor.held >= 0 && !canHold(cursor.held)) cursor.held = -1;   // (a friend left, the slot was switched off...)
+  const dx = heldAny(SEL_KEYS.right) - heldAny(SEL_KEYS.left), dy = heldAny(SEL_KEYS.down) - heldAny(SEL_KEYS.up);
+  // speeds up the longer it is held, so it is quick across the screen and precise in small taps
+  cursor.speed = dx || dy ? Math.min(4.6, cursor.speed + 0.3) : 1.4;
+  const k = dx && dy ? 0.72 : 1;
+  cursor.x = Math.max(2, Math.min(CONFIG.SCREEN_W - 2, cursor.x + dx * cursor.speed * k));
+  cursor.y = Math.max(24, Math.min(CONFIG.SCREEN_H - 14, cursor.y + dy * cursor.speed * k));
+  // carrying a token over a fighter shows them in that slot's panel straight away
+  if (cursor.held >= 0) {
+    const t = tileUnder(cursor.x, cursor.y);
+    if (t >= 0 && lobbySlots()[cursor.held].char !== tileChar(t)) pickChar(cursor.held, tileChar(t));
+  }
+}
+// J (or a click): pick up a token, put it down, or press what the hand is on.
+function selectPress() {
+  const t = tileUnder(cursor.x, cursor.y);
+  if (cursor.held >= 0) {
+    if (t >= 0) { pickChar(cursor.held, tileChar(t)); cursor.held = -1; sfx.play('menuOk'); }
+    else sfx.play('menuBack');
+    return;
+  }
+  const tok = tokenUnder(cursor.x, cursor.y);
+  if (tok >= 0) { cursor.held = tok; if (!online || online.room.isHost) selSlot = tok; sfx.play('menuMove'); return; }
+  // straight onto a fighter: puts your own token there
+  if (t >= 0) { pickChar(curSlot(), tileChar(t)); sfx.play('menuOk'); return; }
+  const p = panelUnder(cursor.x, cursor.y);
+  if (p >= 0) { pressPanel(p, cursor.y - renderer.slotPanelRect(p).y); sfx.play('menuMove'); return; }
+  goFromSelect();
+}
+// A player panel: the coloured header switches a CPU off, the rest selects the slot
+// (or changes skin if it is already the selected one).
+function pressPanel(i, dy) {
+  if (dy < 13 && i > 0 && lobbySlots()[i].type === 'cpu') toggleSlot(i);
+  else if (i === curSlot() && lobbySlots()[i].type !== 'off') nextSkin(i);
+  else selectSlot(i);
+}
+// On to the stage select (or tell them why not).
+function goFromSelect() {
+  if (cursor.held >= 0) cursor.held = -1;   // put down the token where it is
+  if (teamsOn() && teamCount(lobbySlots()) < 2) say('PUT FIGHTERS ON AT LEAST TWO TEAMS (Y CHANGES TEAM)', 2600);
+  else if (!online) screen = 'stageSelect';
+  else if (!online.room.isHost) say('THE HOST STARTS THE MATCH', 1600);
+  else if (online.room.activeCount() < 2) say('WAIT FOR A FRIEND TO JOIN, OR PRESS 2 TO ADD A CPU', 2600);
+  else { online.room.setPhase('stage'); screen = 'stageSelect'; }
 }
 
 function render() {
@@ -220,16 +302,22 @@ function drawScreen() {
     const room = online.room, host = room.isHost;
     renderer.drawCharSelect(CHARACTERS, room.slots, curSlot(), (i) => cpuLabel(room.slots[i].level), {
       title: 'ROOM CODE  ' + online.code,
-      right: host ? 'J  STAGE   ESC  CLOSE ROOM' : 'ESC  LEAVE',
+      right: host ? 'ENTER  STAGE   ESC  CLOSE ROOM' : 'ESC  LEAVE',
       tag: (i) => (i === room.me ? 'YOU' : room.slots[i].owner === 0 ? 'HOST' : 'FRIEND'),
       offText: (i) => (host ? 'OPEN.  ' + (i + 1) + '  ADDS A CPU' : 'OPEN'),
-      hint: host ? null : 'W A S D  FIGHTER     K  SKIN' + (room.mode === 'teams' ? '     Y  TEAM' : ''),
+      hint: host ? null : 'W A S D  MOVE     J  PICK UP / PUT DOWN     K  SKIN' + (room.mode === 'teams' ? '     Y  TEAM' : ''),
       teams: room.mode === 'teams', modeKey: host,
       banner: !host && room.phase === 'stage' ? 'THE HOST IS CHOOSING A STAGE' : null,
+      cursor: { x: cursor.x, y: cursor.y, held: cursor.held, own: curSlot() },
+      ready: host ? 'READY TO FIGHT!   PRESS ENTER' : null,
     });
     return;
   }
-  if (screen === 'charSelect') { renderer.drawCharSelect(CHARACTERS, slots(), selSlot, (i) => cpuLabel(slots()[i].level), { teams: settings.mode === 'teams' }); return; }
+  if (screen === 'charSelect') {
+    renderer.drawCharSelect(CHARACTERS, slots(), selSlot, (i) => cpuLabel(slots()[i].level), {
+      teams: settings.mode === 'teams', cursor: { x: cursor.x, y: cursor.y, held: cursor.held, own: 0 }, ready: 'READY TO FIGHT!   PRESS ENTER' });
+    return;
+  }
   if (screen === 'stageSelect') { renderer.drawStageSelect(stageTiles, stageIndex); return; }
   const opts = { showBoxes: settings.showBoxes };
   if (settings.showDebug) {
@@ -350,27 +438,15 @@ window.addEventListener('keydown', (e) => {
     const digit = ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(c) >= 0 ? ['Digit1', 'Digit2', 'Digit3', 'Digit4'].indexOf(c) : ['Numpad1', 'Numpad2', 'Numpad3', 'Numpad4'].indexOf(c);
     if (digit >= 0) selectSlot(digit);
     else if (c === 'Tab') selectSlot((selSlot + (e.shiftKey ? 3 : 1)) % 4, false);
-    // the roster grid has one more tile at the end: Random
-    else if (c === 'KeyA' || c === 'ArrowLeft') pickChar(at, tileChar((charTile(sl.char) + n) % (n + 1)));
-    else if (c === 'KeyD' || c === 'ArrowRight') pickChar(at, tileChar((charTile(sl.char) + 1) % (n + 1)));
-    else if (c === 'KeyW' || c === 'ArrowUp' || c === 'KeyS' || c === 'ArrowDown') {
-      // up and down move a row in the roster grid
-      const cols = renderer.charGrid(n + 1).cols, to = charTile(sl.char) + (c === 'KeyW' || c === 'ArrowUp' ? -cols : cols);
-      if (to >= 0 && to <= n) pickChar(at, tileChar(to));
-    }
-    else if (c === 'KeyK') nextSkin(at);
+    // (W A S D and the arrows move the hand: see moveCursor)
+    else if (c === 'KeyJ') selectPress();
+    else if (c === 'KeyK') { const p = panelUnder(cursor.x, cursor.y); nextSkin(cursor.held >= 0 ? cursor.held : p >= 0 && canHold(p) ? p : at); }
     else if (c === 'KeyL') toggleSlot(at);
     else if (c === 'KeyU' || c === 'KeyI') changeLevel(at, c === 'KeyU' ? -1 : 1);
     else if (c === 'KeyT') toggleMode();
     else if (c === 'KeyY') nextTeam(at);
-    else if (c === 'KeyJ' || c === 'Enter' || c === 'Space') {
-      if (teamsOn() && teamCount(lobbySlots()) < 2) say('PUT FIGHTERS ON AT LEAST TWO TEAMS (Y CHANGES TEAM)', 2600);
-      else if (!online) screen = 'stageSelect';
-      else if (!online.room.isHost) say('THE HOST STARTS THE MATCH', 1600);
-      else if (online.room.activeCount() < 2) say('WAIT FOR A FRIEND TO JOIN, OR PRESS 2 TO ADD A CPU', 2600);
-      else { online.room.setPhase('stage'); screen = 'stageSelect'; }
-    }
-    else if (c === 'Escape') { if (online) leaveOnline(); screen = 'menu'; }
+    else if (c === 'Enter' || c === 'Space') goFromSelect();
+    else if (c === 'Escape') { if (cursor.held >= 0) cursor.held = -1; else { if (online) leaveOnline(); screen = 'menu'; } }
     return;
   }
   if (screen === 'stageSelect') {
@@ -464,12 +540,13 @@ function changeLevel(i, d) {
 // Clicks and blips for the menus and the pause screen.
 function menuSound(code) {
   const ok = code === 'KeyJ' || code === 'Enter' || code === 'Space';
-  const dirKey = ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(code)
+  // (on the fighter select the hand moves silently, and J makes its own sounds)
+  const dirKey = (screen !== 'charSelect' && ['KeyA', 'KeyD', 'KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(code))
     || (screen === 'charSelect' && /^(Digit|Numpad)[1-4]$|^Key[KLUI]$|^Tab$/.test(code));
   if (screen === 'title') { if (!['F5', 'F12'].includes(code)) sfx.play('menuOk'); }
   else if (screen === 'charSelect' || screen === 'stageSelect' || screen === 'menu') {
     if (code === 'Escape') sfx.play('menuBack');
-    else if (ok && screen !== 'stageSelect') sfx.play('menuOk');
+    else if (ok && screen !== 'stageSelect' && !(screen === 'charSelect' && code === 'KeyJ')) sfx.play('menuOk');
     else if (dirKey) sfx.play('menuMove');
   } else if (screen === 'match') {
     if (code === 'Escape') sfx.play('pause');
@@ -489,6 +566,12 @@ function chooseStage(i) {
   else startMatch(stage);
 }
 
+// Mouse: on the fighter select the hand follows it.
+renderer.canvas.addEventListener('mousemove', (e) => {
+  if (screen !== 'charSelect') return;
+  const b = renderer.canvas.getBoundingClientRect();
+  cursor.x = ((e.clientX - b.left) / b.width) * CONFIG.SCREEN_W; cursor.y = ((e.clientY - b.top) / b.height) * CONFIG.SCREEN_H;
+});
 // Mouse: click a roster tile, a player panel or a stage tile.
 renderer.canvas.addEventListener('click', (e) => {
   const b = renderer.canvas.getBoundingClientRect();
@@ -496,17 +579,8 @@ renderer.canvas.addEventListener('click', (e) => {
   const inside = (r) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
   if (screen === 'charSelect') {
     sfx.unlock();
-    for (let k = 0; k <= CHARACTERS.length; k++) if (inside(renderer.charTileRect(k, CHARACTERS.length + 1))) { pickChar(curSlot(), tileChar(k)); sfx.play('menuMove'); }
-    for (let i = 0; i < 4; i++) {
-      const r = renderer.slotPanelRect(i);
-      if (!inside(r)) continue;
-      // the coloured header switches a slot on and off, the rest of the panel selects it
-      // (clicking the fighter of the selected slot changes skin)
-      if (y < r.y + 13 && i > 0 && lobbySlots()[i].type === 'cpu') toggleSlot(i);
-      else if (i === curSlot() && lobbySlots()[i].type !== 'off') nextSkin(i);
-      else selectSlot(i);
-      sfx.play('menuMove');
-    }
+    cursor.x = x; cursor.y = y;
+    selectPress();
     return;
   }
   if (screen !== 'stageSelect' || (online && !online.room.isHost)) return;
