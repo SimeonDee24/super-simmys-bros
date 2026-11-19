@@ -125,7 +125,8 @@ export function applyHit(state, att, vic, hit, proj = null) {
   // A hit that will send them out of the stage: the kill screen (as in
   // Smash Ultimate the game stops for a moment, zoomed on them, the
   // background red). Part of the game state, so it is the same for everyone.
-  if (kb >= CONFIG.TUMBLE_KB && !state.killFreeze && willKO(state, vic)) {
+  // (only on their last stock)
+  if (vic.stocks === 1 && kb >= CONFIG.TUMBLE_KB && !state.killFreeze && willKO(state, vic)) {
     state.killFreeze = CONFIG.KILL_FREEZE;
     state.killCam = { slot: vic.slot, by: att.slot, tick: state.tick };
   }
