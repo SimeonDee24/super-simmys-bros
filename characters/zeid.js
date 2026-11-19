@@ -281,7 +281,7 @@ export const ZEID = {
     // a lit cigarette butt, flicked at the floor: bounces along at the same
     // height every time (like a fireball) and pops on a hit
     butt: { draw: 'butt', r: 3, hitPad: 1, speed: [px(2.0), px(-0.6)], chargeSpeed: [0, 0],
-      gravity: px(0.17), maxFall: px(3.2), bounceTo: px(2.3), bounce: 0, bounceKeepX: 256, minBounce: 0, maxBounces: 99,
+      gravity: px(0.17), maxFall: px(3.2), bounceTo: px(3.2), bounce: 0, bounceKeepX: 256, minBounce: 0, maxBounces: 99,
       rollFriction: 0, minRollSpeed: 0, popUp: px(1.2),
       life: 80, fadeFrames: 6, hit: { damage: 50, angle: 361, bkb: 20, kbg: 50 } },
   },

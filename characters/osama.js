@@ -144,7 +144,7 @@ const animations = {
   ]),
   // Suplex: shoots in low...
   suplexShoot: anim(false, [
-    [6, { ...GUARD, hip: [0, 4] }],
+    [10, { ...GUARD, hip: [0, 6], torso: 14, head: 6 }],
     [6, SHOOT],
     [14, { ...SHOOT, armF: [96, 10], armB: [90, 16] }],
     [12, { hip: [0, 3], torso: 20, armF: [60, 30], armB: [40, 40], legF: [30, -30], legB: [-20, -10], handF: 'open', handB: 'open' }],
@@ -232,9 +232,9 @@ const moves = {
   // Side special: Suplex. Shoots in low for a double-leg; if he catches
   // someone, he lifts them and arches back, slamming them behind him (12%).
   // Only grabs on the ground.
-  suplexShoot: { faf: 42, landLag: 12, once: true, noDrift: true,
-    rocket: { frame: 8, frames: 14, speed: [px(3.8), px(3.8)], lift: 0, gravity: 30, drag: 16, bounce: [0, 0], ground: true },
-    grab: { frames: [9, 24], onlyGround: true, throw: 'suplex', boxes: [{ at: 'handF', r: 9, off: [4, 0] }, { at: 'chest', r: 8, off: [6, 0] }] },
+  suplexShoot: { faf: 48, landLag: 12, once: true, noDrift: true,
+    rocket: { frame: 12, frames: 14, speed: [px(3.8), px(3.8)], lift: 0, gravity: 30, drag: 16, bounce: [0, 0], ground: true },
+    grab: { frames: [13, 28], onlyGround: true, throw: 'suplex', boxes: [{ at: 'handF', r: 9, off: [4, 0] }, { at: 'chest', r: 8, off: [6, 0] }] },
     hitboxes: [] },
 
   // Up special: Jet Mode. Transforms into a little plane and flies up and

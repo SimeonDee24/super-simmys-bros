@@ -1238,7 +1238,7 @@ for (const hold of [0, 30]) {
     for (let i = 0; i < 100; i++) { step(s, [0, 0]); const p = (s.projectiles || [])[0]; if (!p) continue; if (out < 0) out = i + 1;
       if (p.vy < 0 && wasDown) bounces++; wasDown = p.vy > 0; if (bounces) top = Math.max(top, (a.y - p.y) / FX); }
     const dmg = run(mk(70), BTN.SPECIAL | BTN.RIGHT, 90);
-    check('Flick: a lit butt that bounces slowly along the floor like a fireball (5%, gone after one hit)', bounces >= 3 && top < 26 && out >= 17 && dmg === 5, `${bounces} bounces up to ${Math.round(top)}px, out on frame ${out}, ${dmg}%`);
+    check('Flick: a lit butt that bounces slowly along the floor like a fireball (5%, gone after one hit)', bounces >= 2 && top > 28 && top < 50 && out >= 17 && dmg === 5, `${bounces} bounces up to ${Math.round(top)}px, out on frame ${out}, ${dmg}%`);
   }
   { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); }
     check('Big Rip rides a plume up about 120px', top > 70 && top < 140, `${top.toFixed(0)}px`); }
