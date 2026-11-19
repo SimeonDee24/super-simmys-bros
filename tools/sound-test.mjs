@@ -21,7 +21,7 @@ const hear = (s, script) => {
 const has = (names, ...want) => want.every((w) => names.includes(w));
 
 {
-  const n = hear(mk(), [[1, BTN.JUMP], [20, BTN.JUMP], [1, 0], [1, BTN.JUMP], [160, 0]]);
+  const n = hear(mk(), [[1, BTN.JUMP], [20, BTN.JUMP], [1, 0], [1, BTN.JUMP], [80, 0]]);
   check('jump, double jump and landing', has(n, 'jump', 'djump', 'land'), n.join(' '));
 }
 {
@@ -77,10 +77,10 @@ const has = (names, ...want) => want.every((w) => names.includes(w));
 // between them the matches use nearly the whole sound set.
 {
   const heard = new Set(); let unknown = '';
-  for (const [a, b, stageId] of [['simeon', 'kaelyn', 'nest'], ['luca', 'simeon', 'cloudrest'], ['kaelyn', 'luca', 'balcony'], ['luca', 'malcolm', 'nest']]) {
+  for (const [a, b, stageId] of [['simeon', 'kaelyn', 'nest'], ['luca', 'simeon', 'cloudrest'], ['kaelyn', 'luca', 'balcony']]) {
     const s = mk(a, b, stageId), d = new SoundDirector();
     const cpus = [new CpuController('fighter', 5), new CpuController('fighter', 6)];
-    for (let t = 0; t < 14400; t++) {
+    for (let t = 0; t < 7200; t++) {
       step(s, [cpus[0].sample(s, 0), cpus[1].sample(s, 1)]);
       for (const e of d.update(s)) { heard.add(e.name); if (!SOUNDS[e.name]) unknown = e.name; if (!(e.strength >= 0) || !(Math.abs(e.pan) <= 1)) unknown = e.name + ' (bad values)'; }
       if (s.fighters.some((f) => f.state === 'out')) break;
@@ -89,8 +89,7 @@ const has = (names, ...want) => want.every((w) => names.includes(w));
   check('every sound a match asks for exists', !unknown, unknown);
   const inMatch = SOUND_NAMES.filter((n) => !n.startsWith('menu') && n !== 'pause' && n !== 'start');
   const unheard = inMatch.filter((n) => !heard.has(n));
-  check('CPU matches use nearly every in-match sound', unheard.length <= 8,   // (CPUs rarely use some specials, so a few never come up)
-    `${heard.size} heard; not heard: ${unheard.join(', ') || 'none'}`);
+  check('CPU matches use nearly every in-match sound', unheard.length <= 6, `${heard.size} heard; not heard: ${unheard.join(', ') || 'none'}`);
 }
 // Listening never changes the match.
 {

@@ -328,7 +328,7 @@ check('jumpsquat is 3 frames', full.left === 3, 'left ground on tick index ' + f
   // holding shield for too long breaks it
   s = near(60); [a, v] = s.fighters;
   let broke = false, dizzy = false;
-  for (let i = 0; i < 500; i++) { step(s, [0, BTN.SHIELD]); if (v.state === 'shieldBreak') broke = true; if (v.state === 'dizzy') dizzy = true; }
+  for (let i = 0; i < 400; i++) { step(s, [0, BTN.SHIELD]); if (v.state === 'shieldBreak') broke = true; if (v.state === 'dizzy') dizzy = true; }
   check('shield breaks: launched up, then dizzy', broke && dizzy);
   for (let i = 0; i < 300; i++) step(s, [0, 0]);
   check('recovers from dizzy with part of the shield back', v.state === 'idle' && v.shieldHp >= CONFIG.SHIELD_BREAK_REFILL);
@@ -550,7 +550,7 @@ for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BT
     return false;
   };
   const backThrowKO = (pct) => throwKO('back', pct);
-  check('back throw near the edge: survivable at 120%, KOs at 180%', !backThrowKO(120) && backThrowKO(180));
+  check('back throw near the edge: survivable at 100%, KOs at 140%', !backThrowKO(100) && backThrowKO(140));
   check('forward throw near the edge: still survivable at 180%', !throwKO('forward', 180));
   check('down throw near the edge: still survivable at 250%', !throwKO('down', 250));
   // mashing breaks free sooner
@@ -1028,7 +1028,7 @@ for (const hold of [0, 30]) {
   // down smashes hit behind as well, launching that way
   { const s = mk('luca'); const [a, v] = s.fighters; v.x = a.x - 17 * FX; step(s, [BTN.SMASH | BTN.DOWN, 0]); let d = 0; for (let i = 0; i < 40; i++) { step(s, [0, 0]); if (!d && v.state === 'hitstun') d = Math.sign(v.vx); } check('down smash hits behind and launches them away', v.percent > 0 && d === -1); }
   // a forward smash is a real kill move: KOs from the middle of the stage at high percent
-  { const s = mk(); const [a, v] = s.fighters; v.x = a.x + 26 * FX; v.percent = 1300; step(s, [BTN.SMASH, 0]); let ko = false; for (let i = 0; i < 300 && !ko; i++) { step(s, [0, 0]); ko = v.state === 'dead'; } check('Simeon forward smash KOs at 130% from mid-stage', ko); }
+  { const s = mk(); const [a, v] = s.fighters; v.x = a.x + 26 * FX; v.percent = 1100; step(s, [BTN.SMASH, 0]); let ko = false; for (let i = 0; i < 300 && !ko; i++) { step(s, [0, 0]); ko = v.state === 'dead'; } check('Simeon forward smash KOs at 110% from mid-stage', ko); }
   { const s = mk(); const [a, v] = s.fighters; v.x = a.x + 26 * FX; v.percent = 300; step(s, [BTN.SMASH, 0]); let ko = false; for (let i = 0; i < 300 && !ko; i++) { step(s, [0, 0]); ko = v.state === 'dead'; } check('...but not at 30%', !ko); }
 }
 

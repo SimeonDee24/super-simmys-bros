@@ -14,7 +14,7 @@ const stats = {
   runSpeed: px(2.5),
   dashSpeed: px(2.8),
   airSpeed: px(2.45),
-  fallSpeed: px(2.08),        // falls fast
+  fallSpeed: px(3.1),         // falls fast
 };
 
 // ---------------------------------------------------------------------------

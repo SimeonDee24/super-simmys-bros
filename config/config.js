@@ -50,30 +50,12 @@ export const CONFIG = {
   // --- Air dodge ---
   AIRDODGE_LAND_LAG: 11,    // landing lag if you hit the floor during an air dodge
 
-  // Rocket and flying specials (recoveries, dives, lunges) were designed
-  // around this gravity, so they keep it even though fighters themselves fall
-  // more gently now: their heights and distances stay as tuned.
-  MOVE_GRAVITY: 59,         // 0.23 px per frame per frame
-  MOVE_FALL: 742,           // 2.9 px per frame
-
   KILL_FREEZE: 34,          // frames the game stops for the kill screen
 
   // --- Hits and knockback ---
   // launch speed (px/frame) = knockback * KB_SPEED_NUM / KB_SPEED_DEN / 256
-  // Light hits (below tumbling) keep the gentle speed, so multi-hit moves and
-  // combos still hold together:
   KB_SPEED_NUM: 1344, KB_SPEED_DEN: 100000,   // = 0.0525 px per knockback unit
   KB_DECAY: 23,             // launch speed lost per frame (1/256 px) = 0.09 px
-  // Tumbling hits fly 1.6x faster, with a steeper slowdown, so they snap away
-  // and are tuned so KOs land near Smash Ultimate (a forward smash at centre
-  // stage about 115%, an up smash about 135%):
-  KB_FAST_NUM: 1960,        // = 0.077 px per knockback unit
-  KB_FAST_DECAY: 80,
-  // Big hits (tumbling knockback) also get a burst, as in Smash Ultimate: an
-  // extra share of the speed above the tumble threshold that fades fast
-  // (to 80% each frame), so strong hits snap away and then ease off.
-  KB_BURST: 60,             // percent of the speed above the threshold
-  KB_BURST_KEEP: 205,       // kept each frame, out of 256
   HITSTUN_NUM: 36, HITSTUN_DEN: 100000,       // hitstun frames = knockback * 0.36 (Smash uses 0.4)
   HITLAG_BASE: 3,           // freeze frames on any hit...
   HITLAG_PER_DMG: 35,       // ...plus 0.35 frames per 1% damage

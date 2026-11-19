@@ -14,7 +14,7 @@ export const onPlatform = (stage, f) => f.grounded && f.ground >= stage.solids.l
 // stick to it for a moment instead of bouncing off.
 function wallTech(f, away) {
   if (f.techTimer <= 0 || !(f.state === 'hitstun' || f.tumbling)) return false;
-  f.techTimer = 0; f.tumbling = 0; f.hitstun = 0; f.kbSpeed = 0; f.kbBurst = 0;
+  f.techTimer = 0; f.tumbling = 0; f.hitstun = 0; f.kbSpeed = 0;
   f.vx = 0; f.vy = 0; f.facing = away || f.facing;
   f.intangible = CONFIG.TECH_WALL_INTANGIBLE;
   f.techTick = 1;

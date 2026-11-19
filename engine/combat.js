@@ -13,14 +13,12 @@ import { setState, breakShield } from './fighter.js';
 // (without the stage in the way).
 function willKO(state, f) {
   const b = getStage(state.stageId).blast, st = getCharacter(f.charId).stats;
-  let x = f.x, y = f.y - 22 * FX, sp = f.kbSpeed, burst = f.kbBurst, gv = 0;
-  const decay = f.kbDecay || CONFIG.KB_DECAY;
+  let x = f.x, y = f.y - 22 * FX, sp = f.kbSpeed, gv = 0;
   for (let i = 0; i < f.hitstun + 8; i++) {
-    sp = Math.max(0, sp - decay);
-    burst = Math.max(0, Math.trunc((burst * CONFIG.KB_BURST_KEEP) / 256) - 4);
+    sp = Math.max(0, sp - CONFIG.KB_DECAY);
     gv = Math.min(gv + st.gravity, st.fallSpeed);
-    x += mulTrig(sp + burst, cosDeg(f.kbAngle));
-    y += -mulTrig(sp + burst, sinDeg(f.kbAngle)) + gv;
+    x += mulTrig(sp, cosDeg(f.kbAngle));
+    y += -mulTrig(sp, sinDeg(f.kbAngle)) + gv;
     if (x < b.left * FX || x > b.right * FX || y < b.top * FX) return true;
   }
   return false;
@@ -117,12 +115,7 @@ export function applyHit(state, att, vic, hit, proj = null) {
   const launch = dir > 0 ? angle : 180 - angle;
 
   vic.kbAngle = ((launch % 360) + 360) % 360;
-  // (fixed-knockback hits are the links of multi-hit moves: they stay gentle so the hits carry)
-  const fast = kb >= CONFIG.TUMBLE_KB && !hb.fkb;
-  vic.kbSpeed = Math.trunc((kb * (fast ? CONFIG.KB_FAST_NUM : CONFIG.KB_SPEED_NUM)) / CONFIG.KB_SPEED_DEN);
-  vic.kbDecay = fast ? CONFIG.KB_FAST_DECAY : CONFIG.KB_DECAY;
-  const burstFrom = Math.trunc((CONFIG.TUMBLE_KB * CONFIG.KB_FAST_NUM) / CONFIG.KB_SPEED_DEN);
-  vic.kbBurst = fast && vic.kbSpeed > burstFrom ? Math.trunc(((vic.kbSpeed - burstFrom) * CONFIG.KB_BURST) / 100) : 0;
+  vic.kbSpeed = Math.trunc((kb * CONFIG.KB_SPEED_NUM) / CONFIG.KB_SPEED_DEN);
   vic.gv = 0;
   vic.hitstun = Math.max(1, Math.trunc((kb * CONFIG.HITSTUN_NUM) / CONFIG.HITSTUN_DEN));
   // Hitlag: short for normal moves; a move can ask for more (smash attacks will).
@@ -132,7 +125,7 @@ export function applyHit(state, att, vic, hit, proj = null) {
   // A hit that will send them out of the stage: the kill screen (as in
   // Smash Ultimate the game stops for a moment, zoomed on them, the
   // background red). Part of the game state, so it is the same for everyone.
-  if (fast && !state.killFreeze && willKO(state, vic)) {
+  if (kb >= CONFIG.TUMBLE_KB && !state.killFreeze && willKO(state, vic)) {
     state.killFreeze = CONFIG.KILL_FREEZE;
     state.killCam = { slot: vic.slot, by: att.slot, tick: state.tick };
   }

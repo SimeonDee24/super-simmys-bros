@@ -999,8 +999,8 @@ export class Renderer {
         if (f.state === 'dash' && was.state !== 'dash') add({ type: 'dust', x: x - f.facing * 4, y, dir: -f.facing, n: 4 });
         if ((f.state === 'brake' || f.state === 'turn') && was.state !== f.state) add({ type: 'dust', x: x + Math.sign(f.vx) * 5, y, dir: Math.sign(f.vx), n: 3 });
         // launched hard: a trail of smoke puffs
-        if (f.state === 'hitstun' && f.hitlag <= 0 && f.kbSpeed > 3.8 * FX && state.tick !== was.tick && (state.tick & 1) === 0) {
-          add({ type: 'smoke', x, y: y - 20, slot: f.slot, big: f.kbSpeed > 8 * FX });
+        if (f.state === 'hitstun' && f.hitlag <= 0 && f.kbSpeed > 2.4 * FX && state.tick !== was.tick && (state.tick & 1) === 0) {
+          add({ type: 'smoke', x, y: y - 20, slot: f.slot, big: f.kbSpeed > 5 * FX });
         }
       }
       // moves marked `burst` (a misfire) go off with a bang, and rocket moves leave smoke

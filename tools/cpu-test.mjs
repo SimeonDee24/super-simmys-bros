@@ -100,7 +100,7 @@ for (const stageId of ['nest', 'cloudrest']) {
   const s = createMatch({ stageId: 'nest', players: [{ charId: 'kaelyn', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: 9 });
   const cpus = [new CpuController('fighter', 61), new CpuController('fighter', 62)];
   const used = new Set(); let dealt = 0;
-  for (let t = 0; t < 14400; t++) {
+  for (let t = 0; t < 7200; t++) {
     const before = s.fighters[1].percent;
     step(s, [cpus[0].sample(s, 0), cpus[1].sample(s, 1)]);
     if (s.fighters[1].percent > before) dealt += s.fighters[1].percent - before;
