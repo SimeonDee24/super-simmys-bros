@@ -288,7 +288,7 @@ export const ZEID = {
       gravity: px(0.17), maxFall: px(4), bounce: 110, bounceKeepX: 170, minBounce: px(0.9), maxBounces: 3,
       rollFriction: px(0.05), minRollSpeed: 0, popUp: 0, life: 180, fadeFrames: 999,
       // throws, [sideways, up]: forward, up, down, then the same thrown hard (smash)
-      toss: [[px(3.2), px(1.9)], [0, px(4.8)], [0, -px(3.6)], [px(5.2), px(1.0)], [0, px(6.8)], [0, -px(5.8)]], hit: { damage: 0, angle: 0, bkb: 0, kbg: 0 },
+      toss: [[px(5.0), px(2.0)], [0, px(6.4)], [0, -px(5.0)], [px(7.6), px(1.0)], [0, px(8.6)], [0, -px(8.0)]], hit: { damage: 0, angle: 0, bkb: 0, kbg: 0 },
       explode: { r: 22, frames: 14, hit: { damage: 70, angle: 80, bkb: 52, kbg: 55 } } },
     // a big cloud that drifts out and hangs in the air
     cloud: { type: 'cloud', draw: 'cloud', r: 11, hitPad: 1, speed: [px(2.6), 0], chargeSpeed: [0, 0], drag: px(0.07), rise: px(0.12),
