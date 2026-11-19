@@ -33,10 +33,11 @@ export function chargedHit(d, power) {
 export function sizeOf(d, power) { return d.full ? d.r + Math.trunc(((d.fullR - d.r) * (power || 0)) / 1000) : d.r; }
 
 // How high above the neck a tossed ball is (fixed-point), `fr` frames into a
-// toss that comes back down to head height on frame `at` (Header).
-export function tossLift(fr, at) {
+// toss that rises `peak` px and comes back down to `base` px above the neck on
+// frame `at` (Header).
+export function tossLift(fr, at, peak = 24, base = 12) {
   const t = Math.min(180, Math.trunc((fr * 207) / at));
-  return 12 * FX + mulTrig(24 * FX, sinDeg(t));
+  return base * FX + mulTrig(peak * FX, sinDeg(t));
 }
 
 // An item leaves his hand (thrown, dropped, or let go when he is hit): it

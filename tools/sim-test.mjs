@@ -1368,15 +1368,15 @@ for (const hold of [0, 30]) {
         if (p && !first) first = { vx: p.vx, vy: p.vy, frame: i }; if (p && p.bounces && !land) land = (p.x - a.x) / FX; if (p && i === press + 2 && hold === BTN.SHIELD) dropped = p.vx === 0; }
       return { first, land, dropped, state: a.state };
     };
-    const onTime = header(-1), early = header(12, BTN.SPECIAL), cancel = header(14, BTN.SHIELD);
-    check('Header: headed on its own it goes steeply down; pressed again early it goes flatter, faster and lands further; shield drops the ball',
+    const onTime = header(-1), early = header(26, BTN.SPECIAL), cancel = header(20, BTN.SHIELD);
+    check('Spike (side): spiked on its own it goes steeply down; pressed again early it goes flatter, faster and lands further; shield drops the ball',
       onTime.first && early.first && early.first.frame < onTime.first.frame && early.first.vy < onTime.first.vy && early.first.vx > onTime.first.vx && early.land > onTime.land && cancel.dropped,
       `on time vy ${onTime.first && onTime.first.vy} lands ${Math.round(onTime.land)}px / early vy ${early.first && early.first.vy} lands ${Math.round(early.land)}px / cancel drops ${cancel.dropped}`); }
-  { const hd = run(mk(60), BTN.SPECIAL | BTN.RIGHT, 90), close = run(mk(8), BTN.SPECIAL | BTN.RIGHT, 40);
+  { const hd = run(mk(60), BTN.SPECIAL | BTN.RIGHT, 100), close = run(mk(16), BTN.SPECIAL | BTN.RIGHT, 100);
     const fr = mk(400); step(fr, [BTN.SPECIAL, 0]); let far = 0, back = false;
     for (let i = 0; i < 200; i++) { step(fr, [0, 0]); const p = (fr.projectiles || [])[0]; if (p) far = Math.max(far, (p.x - fr.fighters[0].x) / FX); else if (far > 0) back = true; }
     const fh = run(mk(70), BTN.SPECIAL, 60);
-    check('Frisbee (neutral) flies out over 100px and comes back (6%); Header (side) heads a volleyball forward (7%), headbutt point-blank (4%)', hd === 7 && close >= 4 && far > 100 && back && fh === 6, `header ${hd}% / close ${close}% / out ${Math.round(far)}px back ${back} / frisbee ${fh}%`); }
+    check('Frisbee (neutral) flies out over 100px and comes back (6%); Spike (side) sends a volleyball forward (7%), and close up his hand hits too (4% more)', hd === 7 && close === 11 && far > 100 && back && fh === 6, `spike ${hd}% / close ${close}% / out ${Math.round(far)}px back ${back} / frisbee ${fh}%`); }
   { const s = mk(400); const a = s.fighters[0], y0 = a.y; step(s, [BTN.SPECIAL | BTN.UP, 0]); let top = 0, gone = false; for (let i = 0; i < 40; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); if (a.intangible > 0 && a.stateFrame > 7 && a.stateFrame < 15) gone = true; }
     const h = mk(400); const ha = h.fighters[0]; step(h, [BTN.SPECIAL | BTN.UP | BTN.RIGHT, 0]); for (let i = 0; i < 20; i++) step(h, [BTN.RIGHT, 0]);
     check('Flash blinks about 110px (up, or the way held), untouchable while gone', top > 80 && top < 150 && gone && (ha.x - h.fighters[0].x === 0) && ha.x > y0 * 0 && (ha.x - mk(400).fighters[0].x) / FX > 80, `${Math.round(top)}px up, sideways ${Math.round((ha.x - mk(400).fighters[0].x) / FX)}px`); }

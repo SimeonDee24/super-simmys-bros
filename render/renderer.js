@@ -525,7 +525,7 @@ export class Renderer {
       // (not there if a ball was already out when he started)
       if (f.tossDir) {
         const nk = s.neck, hd = mv.header, t = fr / hd.at;
-        const bx = f.x / FX + dir * (nk[0] / FX + 3 + t * 3), by = f.y / FX + nk[1] / FX - tossLift(fr, hd.at) / FX;
+        const bx = f.x / FX + dir * (nk[0] / FX + 3 + t * 5), by = f.y / FX + nk[1] / FX - tossLift(fr, hd.at, hd.peak, hd.base) / FX;
         this.drawVolleyball(bx, by, 4.4, fr * 60);
       }
     } else if (g.kind === 'frisbee') held(() => {

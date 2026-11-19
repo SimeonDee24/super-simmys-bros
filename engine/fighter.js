@@ -720,13 +720,13 @@ const STATES = {
         if (f.tossDir) {
           spawnProjectile(c.match, f, { ...mv, charge: null, spawn: { from: 'neck', projectile: hd.projectile } });
           const p = c.match.projectiles[c.match.projectiles.length - 1];
-          p.vx = 0; p.vy = 0; p.y -= tossLift(f.stateFrame, hd.at);
+          p.vx = 0; p.vy = 0; p.y -= tossLift(f.stateFrame, hd.at, hd.peak, hd.base);
         }
         f.move = ''; f.tossDir = 0;
         if (f.moveAir || !f.grounded) setState(f, 'helpless', 'helpless'); else setState(f, 'idle', 'idle');
         return;
       }
-      if (f.stateFrame === hd.at && f.tossDir) spawnProjectile(c.match, f, { ...mv, charge: { at: -99, max: hd.early[1] }, spawn: { from: 'neck', projectile: hd.projectile } });
+      if (f.stateFrame === hd.at && f.tossDir) spawnProjectile(c.match, f, { ...mv, charge: { at: -99, max: hd.at - hd.early[0] }, spawn: { from: hd.from || 'neck', projectile: hd.projectile } });
     }
     // pulling an item out (Bomb): it is in his hand from this frame, fuse lit
     if (mv.pullItem && f.stateFrame === mv.pullItem.frame && !f.item) { f.item = mv.pullItem.kind; f.itemFuse = c.ch.projectiles[f.item].life; }

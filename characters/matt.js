@@ -131,17 +131,19 @@ const STAND = { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6
 const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: [-14, -18], footF: 25, footB: 35 };
 
 const animations = {
-  // Header: tosses the volleyball up, hops, leans back watching it, and
-  // snaps forward to head it on frame 26 (or sooner, if special is pressed again).
+  // Spike: tosses the volleyball high, watches it, jumps with his arm drawn
+  // back, and spikes it with his hand on frame 40 (or sooner, if special is
+  // pressed again while he is in the air).
   header: anim(false, [
-    [4, { torso: -2, head: -6, armF: [150, 30], armB: [140, 30], legF: [8, -6], legB: [-8, -4], ...OPEN }],
-    [4, { torso: -4, head: -14, armF: [110, 40], armB: [100, 40], legF: [8, -6], legB: [-8, -4], ...OPEN }],
-    [2, { hip: [0, 4], torso: 8, head: -14, armF: [-30, 40], armB: [-50, 40], legF: [40, -70], legB: [20, -60], ...OPEN }],
-    [10, { torso: -10, head: -18, armF: [-40, 30], armB: [-60, 30], legF: [20, -40], legB: [-10, -30], footF: 20, footB: 30, ...OPEN }],
-    [6, { torso: -18, head: -22, armF: [-50, 30], armB: [-70, 30], legF: [24, -50], legB: [-12, -36], footF: 20, footB: 30, ...FISTS }],
-    [3, { hip: [1, 0], torso: 20, head: 20, armF: [-40, 30], armB: [-70, 30], legF: [30, -40], legB: [-20, -20], ...FISTS, face: 'yell' }],
-    [10, { torso: 14, head: 12, armF: [-30, 30], armB: [-60, 30], legF: [20, -30], legB: [-14, -16], ...FISTS, face: 'yell' }],
-    [8, { torso: 6, armF: [10, 20], armB: [-20, 20], legF: [10, -8], legB: [-8, -4] }],
+    [5, { torso: -2, head: -6, armF: [150, 30], armB: [140, 30], legF: [8, -6], legB: [-8, -4], ...OPEN }],
+    [5, { torso: -4, head: -16, armF: [100, 40], armB: [90, 40], legF: [8, -6], legB: [-8, -4], ...OPEN }],
+    [8, { torso: -2, head: -18, armF: [30, 30], armB: [20, 30], legF: [8, -6], legB: [-8, -4], ...OPEN }],
+    [4, { hip: [0, 5], torso: 12, head: -14, armF: [-40, 40], armB: [-60, 40], legF: [45, -80], legB: [25, -70], ...OPEN }],
+    [10, { torso: -12, head: -16, armF: [200, 40], armB: [120, 30], legF: [16, -30], legB: [-10, -40], footF: 20, footB: 30, ...OPEN }],
+    [8, { torso: -20, head: -14, armF: [218, 50], armB: [110, 30], legF: [20, -40], legB: [-12, -44], footF: 20, footB: 30, ...OPEN }],
+    [3, { hip: [1, 0], torso: 22, head: 6, armF: [100, 4], armB: [60, 30], legF: [24, -30], legB: [-16, -24], ...OPEN, face: 'yell' }],
+    [10, { torso: 16, head: 4, armF: [50, 10], armB: [30, 30], legF: [20, -24], legB: [-14, -16], ...OPEN, face: 'yell' }],
+    [10, { torso: 6, armF: [10, 20], armB: [-20, 20], legF: [10, -8], legB: [-8, -4] }],
     [1, STAND],
   ]),
   // Frisbee: the disc across his chest, then a backhand flick straight out.
@@ -216,18 +218,19 @@ const moves = {
   frisbee: { faf: 34, limit: 1, gear: { kind: 'frisbee', from: 0, to: 12 },
     spawn: { frame: 13, from: 'fistF', projectile: 'frisbee' }, hitboxes: [] },
 
-  // Side special: Header (like Wii Fit Trainer's). Two parts: he tosses a
-  // volleyball up and hops, then heads it on his own as it comes down, sending
-  // it forward and steeply down; or press special again while it is in the air
-  // to head it early, sending it flatter, faster and further. Shield while it
-  // is up to let the ball drop and stop (helpless if in the air). The ball hits
-  // for 7% and bounces along the floor; the headbutt itself spikes (4%). One
-  // ball at a time: with one already out he hops and heads thin air. Once per
-  // jump in the air.
-  header: { faf: 42, landLag: 9, once: true, gear: { kind: 'header', from: 0, to: 25 },
-    header: { at: 26, early: [10, 25], cancel: [6, 25], projectile: 'vball' },
-    rocket: { frame: 8, frames: 30, speed: [0, 0], lift: px(2.6), gravity: 100, drag: 0, bounce: [0, 0] },
-    hitboxes: [hit(26, 28, 'neck', 8, 4, 290, 30, 60)] },
+  // Side special: Spike (works like Wii Fit Trainer's Header, but spiked
+  // with his hand). Two parts: he tosses a volleyball high, watches it, then
+  // jumps and spikes it on his own as it comes down, sending it forward and
+  // steeply down; or press special again once he has jumped to spike it
+  // early, sending it flatter, faster and further. Shield while it is up to
+  // let the ball drop and stop (helpless if in the air). The ball hits for 7%
+  // and bounces along the floor; his hand spikes anyone in the way (4%). One
+  // ball at a time: with one already out he jumps and swings at thin air.
+  // Once per jump in the air.
+  header: { faf: 56, landLag: 9, once: true, gear: { kind: 'header', from: 0, to: 39 },
+    header: { at: 40, early: [24, 39], cancel: [6, 39], projectile: 'vball', from: 'fistF', peak: 52, base: 20 },
+    rocket: { frame: 22, frames: 30, speed: [0, 0], lift: px(3.2), gravity: 100, drag: 0, bounce: [0, 0] },
+    hitboxes: [hit(40, 42, 'fistF', 8, 4, 290, 30, 60)] },
 
   // Up special: Flash. Blinks a short way in the held direction (up if none)
   // in a flash of gold light, hitting anyone where he reappears (6%). Falls
@@ -280,7 +283,7 @@ export const MATT = {
     // a volleyball headed forward and down at an angle: bounces, then rolls
     vball: {
       draw: 'vball', r: 4, hitPad: 1,
-      // headed on time: steeply down; each frame earlier makes it flatter and faster
+      // spiked on time: steeply down; each frame earlier makes it flatter and faster
       speed: [px(3.4), -px(2.8)], chargeSpeed: [px(0.08), px(0.17)],
       gravity: px(0.16), maxFall: px(4.5),
       bounce: 150, bounceKeepX: 190, minBounce: px(0.7), maxBounces: 3,
