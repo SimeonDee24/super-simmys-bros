@@ -4,6 +4,7 @@
 import { BTN } from './input.js';
 import { CONFIG } from '../config/config.js';
 import { FX, approach, clamp, sinDeg, cosDeg, mulTrig, rngInt } from './fixed.js';
+import { tossLift } from './projectiles.js';
 import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { onPlatform } from './physics.js';
@@ -704,6 +705,29 @@ const STATES = {
       airMotion(mv.noDrift ? { ...c, dir: 0 } : c, mv.float);
     } else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
     if (mv.spawn && f.stateFrame === mv.spawn.frame) spawnProjectile(c.match, f, mv);
+    // Header (Wii Fit Trainer style): tosses a ball up, hops, and heads it on
+    // frame `at`. Pressing special again in `early` heads it sooner, at a
+    // flatter, faster angle; shield in `cancel` lets the ball drop and ends the
+    // move. With a ball already out, he hops and heads with no ball.
+    if (mv.header) {
+      const hd = mv.header;
+      if (f.stateFrame === 1) { f.tossDir = countProjectiles(c.match, f.slot, hd.projectile) ? 0 : 1; f.charge = 0; }
+      if (f.stateFrame >= hd.early[0] && f.stateFrame < hd.at && (c.pressed & BTN.SPECIAL)) {
+        f.buf &= ~BTN.SPECIAL;
+        f.charge = hd.at - f.stateFrame;              // how early: the earlier, the flatter
+        f.animFrame += hd.at - 1 - f.stateFrame; f.stateFrame = hd.at - 1;
+      } else if (f.stateFrame >= hd.cancel[0] && f.stateFrame < hd.at && (c.pressed & BTN.SHIELD)) {
+        if (f.tossDir) {
+          spawnProjectile(c.match, f, { ...mv, charge: null, spawn: { from: 'neck', projectile: hd.projectile } });
+          const p = c.match.projectiles[c.match.projectiles.length - 1];
+          p.vx = 0; p.vy = 0; p.y -= tossLift(f.stateFrame, hd.at);
+        }
+        f.move = ''; f.tossDir = 0;
+        if (f.moveAir || !f.grounded) setState(f, 'helpless', 'helpless'); else setState(f, 'idle', 'idle');
+        return;
+      }
+      if (f.stateFrame === hd.at && f.tossDir) spawnProjectile(c.match, f, { ...mv, charge: { at: -99, max: hd.early[1] }, spawn: { from: 'neck', projectile: hd.projectile } });
+    }
     // pulling an item out (Bomb): it is in his hand from this frame, fuse lit
     if (mv.pullItem && f.stateFrame === mv.pullItem.frame && !f.item) { f.item = mv.pullItem.kind; f.itemFuse = c.ch.projectiles[f.item].life; }
     // throwing it: [sideways, up] speeds by direction (forward, up, down; then the same thrown hard)

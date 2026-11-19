@@ -4,7 +4,7 @@
 //
 // A move spawns one by having `spawn: { frame, from, projectile }` in its data;
 // the projectile's behaviour comes from the character's `projectiles` table.
-import { FX, approach } from './fixed.js';
+import { FX, approach, mulTrig, sinDeg } from './fixed.js';
 import { getStage } from '../stages/index.js';
 import { getCharacter } from '../characters/index.js';
 import { hurtboxes } from './skeleton.js';
@@ -31,6 +31,13 @@ export function chargedHit(d, power) {
   return { damage: k(h.damage, F.damage), angle: power >= 330 ? F.angle : h.angle, bkb: k(h.bkb, F.bkb), kbg: k(h.kbg, F.kbg), ...(power < 330 && h.fkb ? { fkb: h.fkb } : {}) };
 }
 export function sizeOf(d, power) { return d.full ? d.r + Math.trunc(((d.fullR - d.r) * (power || 0)) / 1000) : d.r; }
+
+// How high above the neck a tossed ball is (fixed-point), `fr` frames into a
+// toss that comes back down to head height on frame `at` (Header).
+export function tossLift(fr, at) {
+  const t = Math.min(180, Math.trunc((fr * 207) / at));
+  return 12 * FX + mulTrig(24 * FX, sinDeg(t));
+}
 
 // An item leaves his hand (thrown, dropped, or let go when he is hit): it
 // becomes a projectile with the fuse it had left. `self`: it can hurt him

@@ -1362,6 +1362,16 @@ for (const hold of [0, 30]) {
   const f = run(mk(26), BTN.SMASH), u = run(mk(3, -40), BTN.SMASH | BTN.UP), d1 = run(mk(16), BTN.SMASH | BTN.DOWN), d2 = run(mk(-16), BTN.SMASH | BTN.DOWN);
   check('Power Serve 17%, Set 15%, Disc Sweep 13% in front and behind', f === 17 && u === 15 && d1 === 13 && d2 === 13, `${f}% / ${u}% / ${d1}% / ${d2}%`);
   TEST_CONFIG.SMASH_FLICK_FRAMES = 0;
+  { // Header: on time it goes steeply down; pressed again early it goes flatter and further; shield drops the ball
+    const header = (press, hold = 0) => { const s = mk(400); const a = s.fighters[0]; step(s, [BTN.SPECIAL | BTN.RIGHT, 0]); let first = null, land = 0, dropped = false;
+      for (let i = 1; i < 120; i++) { step(s, [i === press ? hold : 0, 0]); const p = (s.projectiles || [])[0];
+        if (p && !first) first = { vx: p.vx, vy: p.vy, frame: i }; if (p && p.bounces && !land) land = (p.x - a.x) / FX; if (p && i === press + 2 && hold === BTN.SHIELD) dropped = p.vx === 0; }
+      return { first, land, dropped, state: a.state };
+    };
+    const onTime = header(-1), early = header(12, BTN.SPECIAL), cancel = header(14, BTN.SHIELD);
+    check('Header: headed on its own it goes steeply down; pressed again early it goes flatter, faster and lands further; shield drops the ball',
+      onTime.first && early.first && early.first.frame < onTime.first.frame && early.first.vy < onTime.first.vy && early.first.vx > onTime.first.vx && early.land > onTime.land && cancel.dropped,
+      `on time vy ${onTime.first && onTime.first.vy} lands ${Math.round(onTime.land)}px / early vy ${early.first && early.first.vy} lands ${Math.round(early.land)}px / cancel drops ${cancel.dropped}`); }
   { const hd = run(mk(60), BTN.SPECIAL | BTN.RIGHT, 90), close = run(mk(8), BTN.SPECIAL | BTN.RIGHT, 40);
     const fr = mk(400); step(fr, [BTN.SPECIAL, 0]); let far = 0, back = false;
     for (let i = 0; i < 200; i++) { step(fr, [0, 0]); const p = (fr.projectiles || [])[0]; if (p) far = Math.max(far, (p.x - fr.fighters[0].x) / FX); else if (far > 0) back = true; }

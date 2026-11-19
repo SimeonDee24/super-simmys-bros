@@ -9,6 +9,7 @@ import { samplePose, solve, hurtboxes } from '../engine/skeleton.js';
 import { activeHitboxes, jointAt, shieldRadius, shieldCentre } from '../engine/combat.js';
 import { getCharacter, CHARACTERS } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
+import { tossLift } from '../engine/projectiles.js';
 import { DollRenderer } from './doll.js';
 import { Background } from './background.js';
 import { drawLabel as drawText, labelWidth, labelFont } from './font.js';
@@ -521,9 +522,12 @@ export class Renderer {
     });
     else if (g.kind === 'header') {
       // the volleyball tossed up over his head, coming down onto his forehead
-      const nk = s.neck, t = fr / Math.max(1, g.to);
-      const bx = f.x / FX + dir * (nk[0] / FX + 3 + t * 3), by = f.y / FX + nk[1] / FX - 12 - Math.sin(Math.PI * Math.min(1, t * 1.15)) * 24;
-      this.drawVolleyball(bx, by, 4.4, fr * 60);
+      // (not there if a ball was already out when he started)
+      if (f.tossDir) {
+        const nk = s.neck, hd = mv.header, t = fr / hd.at;
+        const bx = f.x / FX + dir * (nk[0] / FX + 3 + t * 3), by = f.y / FX + nk[1] / FX - tossLift(fr, hd.at) / FX;
+        this.drawVolleyball(bx, by, 4.4, fr * 60);
+      }
     } else if (g.kind === 'frisbee') held(() => {
       // a frisbee gripped at its rim
       ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(0, 6, 3.4, 7.4, 0, 0, Math.PI * 2); ctx.fill();
