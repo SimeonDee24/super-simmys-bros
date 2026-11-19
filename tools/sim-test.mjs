@@ -565,13 +565,18 @@ for (const [name, input] of [['Bluff', BTN.SPECIAL | BTN.DOWN], ['Jump Shot', BT
   for (let i = 0; i < 14; i++) step(s, [0, 0]);
   check('grab while running is a dash grab', dg === 'dashGrab');
 }
-// Specials by direction in the air: none = Jump Shot, sideways = Fast Break, up = Alley-Oop
-for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['holding sideways', BTN.RIGHT, 6, 'fastBreak'], ['holding up', BTN.UP, 20, 'alleyOop']]) {
+// Specials by direction in the air: none = Jump Shot, sideways = Combo Breaker, up = Alley-Oop
+for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['holding sideways', BTN.RIGHT, 6, 'combo1'], ['holding up', BTN.UP, 20, 'alleyOop']]) {
   const s = createMatch(setup); const a = s.fighters[0]; s.fighters[1].x = 900 * FX;
   step(s, [BTN.JUMP, 0]); for (let i = 0; i < wait; i++) step(s, [BTN.JUMP | hold, 0]);
   step(s, [BTN.SPECIAL | hold, 0]);
   check(`special in the air while ${label} is ${want}`, a.move === want, a.move);
 }
+// Fast Break: no longer Simeon's side special, but kept (for another fighter):
+// these tests put it back on his side special while they run.
+const SIM_SPECIALS = (await import('../characters/index.js')).getCharacter('simeon').specials;
+const SIM_SIDE = SIM_SPECIALS.side;
+SIM_SPECIALS.side = 'fastBreak';
 // Fast Break (side special): charge for distance and damage; 1 in 10 misfires
 {
   const fb = (hold, seed, gap) => {
@@ -611,6 +616,27 @@ for (const [label, hold, wait, want] of [['no direction', 0, 20, 'jumpShot'], ['
   const x0 = a.x;
   for (let i = 0; i < 12; i++) step(s, [BTN.SPECIAL | BTN.LEFT, 0]);
   check('charging fast break in the air: holding a direction does not drift', a.move === 'fastBreak' && Math.abs(a.x - x0) < FX, `moved ${((a.x - x0) / FX).toFixed(1)}px`);
+}
+SIM_SPECIALS.side = SIM_SIDE;
+// Combo Breaker (side special): up to four swings of the controller; direction picks each one
+{
+  const run = (dirs) => {
+    const s = createMatch(setup); const [a, v] = s.fighters; v.x = a.x + 24 * FX; const moves = []; let high = false;
+    step(s, [BTN.SPECIAL | BTN.RIGHT, 0]);
+    for (let i = 0, k = 0; i < 160; i++) {
+      // press again in each swing's window
+      const pressNow = k < dirs.length && a.state === 'attack' && a.stateFrame === 12;
+      step(s, [pressNow ? BTN.SPECIAL | dirs[k] : 0, 0]); if (pressNow) k++;
+      if (a.move && moves[moves.length - 1] !== a.move) moves.push(a.move);
+      if (v.y < a.y - 30 * FX) high = true;
+    }
+    return { moves, pct: v.percent / 10, up: high };
+  };
+  const fwd = run([0, 0, 0]), up = run([BTN.UP, BTN.UP, BTN.UP]), down = run([BTN.DOWN, BTN.DOWN, BTN.DOWN]), one = run([]);
+  check('Combo Breaker: four forward swings for 18%, ending in a launch', fwd.moves.join() === 'combo1,combo2,combo3,combo4' && fwd.pct === 18, `${fwd.moves.join()} ${fwd.pct}%`);
+  check('Combo Breaker: holding up or down changes the swings (up ends launching them upward)', up.moves.join() === 'combo1,combo2Up,combo3Up,combo4Up' && up.up && down.moves.join() === 'combo1,combo2Down,combo3Down,combo4Down' && down.pct >= 15,
+    `${up.moves.join()} ${up.pct}% / ${down.moves.join()} ${down.pct}%`);
+  check('Combo Breaker: a single press is a single 4% swing', one.moves.join() === 'combo1' && one.pct === 4, `${one.moves.join()} ${one.pct}%`);
 }
 // Falling below the screen is not an instant KO: there is time to recover
 {

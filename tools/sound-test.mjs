@@ -60,8 +60,12 @@ const has = (names, ...want) => want.every((w) => names.includes(w));
   const u = hear(mk(), [[1, BTN.SPECIAL | BTN.UP], [200, 0]]);
   check('Simeon alley-oop: a run of kick swings', u.filter((x) => x.startsWith('swing')).length >= 5, u.join(' '));
   let mis = false;
+  // (Fast Break is no longer Simeon's side special, but is kept: put it back for this test)
+  const { getCharacter } = await import('../characters/index.js');
+  const sp = getCharacter('simeon').specials, side = sp.side; sp.side = 'fastBreak';
   for (let sd = 1; sd < 60 && !mis; sd++) { const m = createMatch({ stageId: 'cloudrest', players: [{ charId: 'simeon', alt: 0 }, { charId: 'simeon', alt: 1 }], stocks: 3, seed: sd }); m.fighters[1].x = 900 * FX; if (hear(m, [[1, BTN.SPECIAL | BTN.RIGHT], [60, 0]]).includes('misfire')) mis = true; }
   check('Simeon fast break: launch, and a misfire sounds different', has(hear(s, [[1, BTN.SPECIAL | BTN.RIGHT], [60, 0]]), 'rocket') && mis);
+  sp.side = side;
 }
 {
   const s = mk('kaelyn'); s.fighters[1].x = 900 * FX;

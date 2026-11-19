@@ -509,7 +509,17 @@ export class Renderer {
     } else if (g.kind === 'vball') {
       // a volleyball resting on his hand (above it when the hand is raised)
       this.drawVolleyball(hx, hy - 4, 4.4, fr * 40);
-    } else if (g.kind === 'header') {
+    } else if (g.kind === 'controller') held(() => {
+      // a game controller swung by its cord: the cord from his fist, the pad at the end
+      ctx.strokeStyle = OUT; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(1.5, 5, 0, 10); ctx.stroke();
+      ctx.strokeStyle = '#3a3a44'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(1.5, 5, 0, 10); ctx.stroke();
+      ctx.fillStyle = OUT; ctx.beginPath(); ctx.ellipse(-4.2, 14.4, 3.1, 3.8, 0, 0, Math.PI * 2); ctx.ellipse(4.2, 14.4, 3.1, 3.8, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(-5, 9.4, 10, 5.6);
+      ctx.fillStyle = '#e4e7ee'; ctx.beginPath(); ctx.ellipse(-4.2, 14.2, 2.4, 3.1, 0, 0, Math.PI * 2); ctx.ellipse(4.2, 14.2, 2.4, 3.1, 0, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(-4.4, 10, 8.8, 4.6);
+      ctx.fillStyle = '#3a3a44'; ctx.fillRect(-5, 11.6, 2.4, 0.8); ctx.fillRect(-4.2, 10.8, 0.8, 2.4);          // d-pad
+      ctx.fillStyle = '#ff5a5a'; ctx.fillRect(3.4, 10.6, 1, 1); ctx.fillStyle = '#5aa2ff'; ctx.fillRect(4.6, 11.8, 1, 1);
+      ctx.fillStyle = '#ffd23a'; ctx.fillRect(2.2, 11.8, 1, 1); ctx.fillStyle = '#4fd06a'; ctx.fillRect(3.4, 13, 1, 1);
+    });
+    else if (g.kind === 'header') {
       // the volleyball tossed up over his head, coming down onto his forehead
       const nk = s.neck, t = fr / Math.max(1, g.to);
       const bx = f.x / FX + dir * (nk[0] / FX + 3 + t * 3), by = f.y / FX + nk[1] / FX - 12 - Math.sin(Math.PI * Math.min(1, t * 1.15)) * 24;

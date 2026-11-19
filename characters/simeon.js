@@ -232,6 +232,29 @@ const RUN_D = { hip: [1, 1], torso: 20, head: 8, armF: [10, 85], armB: [-10, 80]
 
 // Shared bits of attack poses.
 const FISTS = { handF: 'fist', handB: 'fist' };
+// Combo Breaker swings: [front arm from, to, body lean, hip drop]. The front
+// arm angle is 0 hanging down, 90 straight forward, 180 straight up.
+const COMBO_SWINGS = {
+  combo1: [150, 40, 10, 0],          // a diagonal chop
+  combo2: [30, 140, -6, 0],          // a rising backswing
+  combo2Up: [50, 165, -8, 0],         // up from in front to high
+  combo2Down: [120, -10, 24, 4],     // down low
+  combo3: [160, 50, 12, 0],
+  combo3Up: [0, 165, -16, 0],
+  combo3Down: [110, -20, 26, 5],
+  combo4: [200, 70, 18, 1],          // a big overhead smash forward
+  combo4Up: [-10, 175, -20, 0],       // a big upswing
+  combo4Down: [100, 60, 30, 6],      // low, jabbing at their feet
+};
+// (angles must be whole degrees)
+const comboAnim = ([a0, a1, lean, drop]) => { const R = Math.round; return anim(false, [
+  [3, { hip: [0, drop], torso: R(-lean * 0.5), armF: [a0, 30], armB: [-30, 30], legF: [16, -12], legB: [-12, -6], handF: 'fist' }],
+  [2, { hip: [1, drop], torso: R(lean * 0.4), armF: [R((a0 + a1) / 2), 10], armB: [-40, 30], legF: [22, -18], legB: [-14, -6], handF: 'fist', face: 'yell' }],
+  [4, { hip: [2, drop], torso: lean, armF: [a1, 6], armB: [-50, 30], legF: [28, -24], legB: [-16, -4], handF: 'fist', face: 'yell' }],
+  [14, { hip: [1, drop], torso: R(lean * 0.7), armF: [a1, 14], armB: [-40, 30], legF: [24, -20], legB: [-14, -4], handF: 'fist' }],
+  [8, { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6, -2] }],
+]); };
+const COMBO_ANIMS = Object.fromEntries(Object.entries(COMBO_SWINGS).map(([k, v]) => [k, comboAnim(v)]));
 const STAND = { torso: 2, armF: [4, 10], armB: [-6, 8], legF: [5, -4], legB: [-6, -2] };
 const AIR = { torso: 6, armF: [75, 20], armB: [-80, 15], legF: [18, -28], legB: [-14, -18], footF: 25, footB: 35 };
 // down air: knees pulled up high, then both feet driven straight down
@@ -406,8 +429,11 @@ const animations = {
     [10, { torso: 2, armF: [60, 40], armB: [30, 40] }],
     [6, STAND],
   ]),
-  // Fast Break: coils back (holding here while charging), then launches
-  // head first with both fists out.
+  // Combo Breaker: swings a game controller by its cord like a sword, up to
+  // four times. Each swing: wind up, strike, follow through.
+  ...COMBO_ANIMS,
+  // Fast Break (no longer his: kept for another fighter): coils back
+  // (holding here while charging), then launches head first with both fists out.
   fastBreak: anim(false, [
     [4, { hip: [-1, 3], torso: -12, armF: [-40, 60], armB: [-60, 50], legF: [40, -70], legB: [10, -50], ...FISTS }],
     [6, FB_CHARGE],
@@ -707,6 +733,37 @@ const LEG_F = [['toeF', 6], ['shinF', 5], ['kneeF', 5]];
 const LEG_B = [['toeB', 6], ['shinB', 5], ['kneeB', 5], ['toeF', 5]];
 const ARM_F = [['fistF', 7], ['elbowF', 5]];
 
+// Combo Breaker: four swings in a chain; swings 2-4 come in three flavours
+// (forward, up, down) picked by the direction held when special is pressed.
+// Early swings barely move them, so the next one connects.
+function comboMoves() {
+  const GEAR = { kind: 'controller', from: 0, to: 30 };
+  const FLOAT = { gravity: 15, fall: 20 };
+  const next = (n) => (n > 4 ? null : { from: 8, to: 24, move: 'combo' + n, up: 'combo' + n + 'Up', down: 'combo' + n + 'Down' });
+  // (each swing steps him forward a little, so he keeps up with them)
+  const STEP = { frame: 2, frames: 7, speed: [px(1.5), px(1.5)], lift: 0, gravity: 0, drag: 120, bounce: [0, 0], ground: true };
+  const swing = (n, hitboxes, extra = {}) => ({ faf: 30, landLag: 8, float: FLOAT, gear: GEAR, rocket: STEP, ...(next(n + 1) ? { followUp: next(n + 1) } : {}),
+    trail: { part: 'weaponF', from: 1, to: 6, width: 8, arc: true }, hitboxes, ...extra });
+  const blade = (dmg, angle, bkb, kbg, extra) => hits(3, 6, [['weaponF', 9], ['weaponMidF', 7], ['fistF', 5]], dmg, angle, bkb, kbg, extra);
+  return {
+    // (the first three swings use set knockback: a small pop that keeps them in reach)
+    combo1: swing(1, blade(4, 80, 0, 100, { fkb: 40 }), { once: true }),
+    combo2: swing(2, blade(3, 80, 0, 100, { fkb: 40 })),
+    combo2Up: swing(2, blade(3, 88, 0, 100, { fkb: 50 })),
+    combo2Down: swing(2, blade(3, 75, 0, 100, { fkb: 35 })),
+    combo3: swing(3, blade(5, 80, 0, 100, { fkb: 40 })),
+    combo3Up: swing(3, blade(4, 88, 0, 100, { fkb: 50 })),
+    combo3Down: swing(3, blade(3, 75, 0, 100, { fkb: 35 })),
+    combo4: swing(4, blade(6, 361, 60, 85, { lagMult: 140 }), { faf: 38 }),
+    combo4Up: swing(4, blade(6, 88, 60, 85, { lagMult: 140 }), { faf: 38 }),
+    // down: three quick jabs at their feet (1% each), then a last one (2%) that launches
+    combo4Down: swing(4, [
+      ...[0, 1, 2].map((i) => hit(4 + i * 3, 5 + i * 3, 'weaponF', 9, 1, 80, 0, 100, { fkb: 30, group: i })),
+      hit(14, 16, 'weaponF', 10, 2, 45, 55, 80, { group: 3 }),
+    ], { faf: 40 }),
+  };
+}
+
 const moves = {
   // --- Jab combo: press attack again to continue into the next hit ---
   jab1: { faf: 16, next: { move: 'jab2', from: 5 }, hitboxes: [...hits(2, 3, [['fistF', 5], ['elbowF', 4]], 2.2, 361, 22, 15), low(2, 3, 6, 2.2, 361, 22, 15, 12)] },
@@ -769,6 +826,15 @@ const moves = {
   // Side special: Fast Break. Hold the button to charge (up to a second),
   // let go to launch head first. Damage 6% to 21% and distance grow with the
   // charge. One time in ten it misfires instead: see fastBreakMisfire.
+  // Side special: Combo Breaker (like Lucina's Dancing Blade, with a game
+  // controller swung by its cord). Press special again (or attack) up to three
+  // more times; hold up or down for a different swing each time. Forward all
+  // the way: 4% + 3% + 5% + 6% (the last launches). Up: rising swings ending
+  // in a launcher straight up. Down: low swings, the last jabbing several times.
+  // He hangs in the air while swinging. (Once per jump in the air.)
+  ...comboMoves(),
+  // Fast Break: no longer his (kept for another fighter). Hold the button to
+  // charge, then launches head first with both fists out; 1 in 10 misfires.
   fastBreak: { faf: 54, landLag: 16, landContinue: true, noDrift: true, float: { gravity: 20, fall: 25 },
     charge: { at: 10, max: 60 },
     rocket: { frame: 12, frames: 26, speed: [px(3.3), px(5.0)], lift: px(1.0), gravity: 30, drag: 12, bounce: [px(0.7), px(1.4)],
@@ -889,7 +955,7 @@ export const SIMEON = {
   moves: { ...SHARED_MOVES, ...moves },
   throws: THROWS,
   // Which move each special input uses. Missing slots do nothing yet.
-  specials: { neutral: 'jumpShot', side: 'fastBreak', up: 'alleyOop', down: 'bluff' },
+  specials: { neutral: 'jumpShot', side: 'combo1', up: 'alleyOop', down: 'bluff' },
 
   // Projectiles his moves can create (see engine/projectiles.js).
   // Speeds are pixels per frame; charge adds chargeSpeed per frame charged.

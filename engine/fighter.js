@@ -721,7 +721,9 @@ const STATES = {
     // the move into another one (e.g. a kick out of a flip), keeping him airborne
     if (mv.followUp && (c.pressed & (BTN.ATTACK | BTN.SPECIAL)) && f.stateFrame >= mv.followUp.from && f.stateFrame <= mv.followUp.to) {
       const air = f.moveAir;
-      startMove(f, mv.followUp.move, !!air);
+      // (a follow-up can branch on the direction held: up / down / otherwise)
+      const fu = mv.followUp, next = (c.input & BTN.UP) && fu.up ? fu.up : (c.input & BTN.DOWN) && fu.down ? fu.down : fu.move;
+      startMove(f, next, !!air);
       return;
     }
     if (f.stateFrame < mv.faf) return;

@@ -382,7 +382,7 @@ function drawScreen() {
 
 // Each fighter's specials, for the pause screen (two lines each).
 const FIGHTER_HELP = {
-  simeon: [' SIMEON  K = JUMP SHOT (HOLD TO CHARGE)     A / D + K = FAST BREAK (HOLD TO CHARGE, 1 IN 10 MISFIRES)', '         W + K = ALLEY-OOP (RISING KICKS)   S + K = BLUFF (COUNTER)'],
+  simeon: [' SIMEON  K = JUMP SHOT (HOLD TO CHARGE)     A / D + K = COMBO BREAKER (PRESS K UP TO 4 TIMES; + W / S CHANGES SWINGS)', '         W + K = ALLEY-OOP (RISING KICKS)   S + K = BLUFF (COUNTER)'],
   kaelyn: [' KAELYN  K = PUFF PASS (BOOMERANG)          A / D + K = ROLL OUT (SKATING DASH INTO AN UPPERCUT)', '         W + K = KICKFLIP (RISE, THEN DIVE) S + K = HALF PIPE (FLIP JUMP; PRESS K OR J AGAIN TO KICK)'],
   luca: ['   LUCA  K = BASS DROP (HOLD TO CHARGE)      A / D + K = SUPPLY & DEMAND (TAP: UP ARROW, HOLD: CRASH)', '         W + K = WIRE TRANSFER (TELEPORT)   S + K = STAGE DIVE (LEAPING KICK)'],
   sara: ['   SARA  K = TO-GO (CUP. HOLD: DOUBLE SHOT)  A / D + K = BOARDING CALL (RIDES HER SUITCASE FORWARD)', '         W + K = TAKEOFF (PAPER PLANE, STEER) S + K = FRESH POT (SWING, AND COFFEE ALONG THE FLOOR)'],
