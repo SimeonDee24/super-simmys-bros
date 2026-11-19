@@ -227,6 +227,7 @@ export class Renderer {
     for (const p of state.projectiles || []) this.drawProjectile(p, 0, 0);
     for (const f of state.fighters) this.drawChargeMeter(state, f, getCharacter(f.charId), 0, 0);
     for (const f of state.fighters) this.drawStoredCharge(state, f, getCharacter(f.charId));
+    for (const f of state.fighters) this.drawHeldItem(f, getCharacter(f.charId));
     this.drawEffects(state);
     if (opts.showBoxes) { this.world(); this.drawBoxes(state, stage, 0, 0); }
     this.ui();
@@ -1244,10 +1245,17 @@ export class Renderer {
     const y = (f.y + ((a[1] + b[1]) >> 1)) / FX - 3;
     this.drawBall(x, y, ch.projectiles.basketball.r, 0);
   }
+  // An item in his hand (Zeid's bomb), drawn like the thrown one.
+  drawHeldItem(f, ch) {
+    if (!f.item) return;
+    const s = solve(ch.skeleton, samplePose(ch.animations[f.anim] || ch.animations.idle, f.animFrame));
+    const h = jointAt(s, 'fistF');
+    this.drawProjectile({ kind: f.item, charId: f.charId, x: f.x + f.facing * h[0], y: f.y + h[1] - 3 * FX, life: f.itemFuse, boom: 0, spin: 0, vx: 0, vy: 0 });
+  }
   // A stored charge (Oil Beam): a drop of oil at his mouth that swells with
   // the charge and pulses, flashing when full.
   drawStoredCharge(state, f, ch) {
-    if (!f.stored || (f.state === 'attack' && f.move) || f.state === 'out') return;
+    if (!f.stored || (f.state === 'attack' && f.move) || f.state === 'out' || f.state === 'dead') return;
     const mv = ch.moves[ch.specials.neutral];
     if (!mv || !mv.charge) return;
     const full = f.stored >= mv.charge.max;

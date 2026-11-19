@@ -97,7 +97,8 @@ export class SoundDirector {
       const d = getCharacter(p.charId).projectiles[p.kind];
       const pan = Math.max(-0.8, Math.min(0.8, (p.x / 256 - 240) / 300));
       const was = this.balls.get(key);
-      if (!was && prev && !d.silent) out.push({ name: { vape: 'vape', arrow: 'arrow', wave: 'wave', card: 'vape', ace: 'vape', cork: 'arrow', butt: 'arrow', cloud: 'vape', oil: 'arrow', bomb: 'throw' }[d.draw] || 'shoot', strength: 1, pan });
+      if (!was && prev && p.boom) { out.push({ name: 'bass', strength: 1, pan }); out.push({ name: 'hitL', strength: 1, pan }); }   // went off in someone's hand
+      else if (!was && prev && !d.silent) out.push({ name: { vape: 'vape', arrow: 'arrow', wave: 'wave', card: 'vape', ace: 'vape', cork: 'arrow', butt: 'arrow', cloud: 'vape', oil: 'arrow', bomb: 'throw' }[d.draw] || 'shoot', strength: 1, pan });
       else if (was && p.boom && !was.boom) { out.push({ name: 'bass', strength: 1, pan }); out.push({ name: 'hitL', strength: 1, pan }); }
       else if (was && p.bounces > was.bounces) out.push({ name: 'bounce', strength: 1, pan });
       balls.set(key, { bounces: p.bounces, boom: p.boom | 0, draw: d.draw, pan });

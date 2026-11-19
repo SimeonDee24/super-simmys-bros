@@ -32,6 +32,25 @@ export function chargedHit(d, power) {
 }
 export function sizeOf(d, power) { return d.full ? d.r + Math.trunc(((d.fullR - d.r) * (power || 0)) / 1000) : d.r; }
 
+// An item leaves his hand (thrown, dropped, or let go when he is hit): it
+// becomes a projectile with the fuse it had left. `self`: it can hurt him
+// too (it went off in his hand).
+export function releaseItem(state, f, vx, vy, self = false) {
+  const ch = getCharacter(f.charId);
+  const d = ch.projectiles[f.item];
+  const at = jointAt(fighterSolve(f, ch), 'fistF');
+  if (!state.projectiles) state.projectiles = [];
+  const p = {
+    kind: f.item, charId: f.charId, owner: f.slot,
+    x: f.x + f.facing * at[0], y: f.y + at[1], vx, vy,
+    bounces: 0, rolling: 0, life: Math.max(1, f.itemFuse), spent: 0, spin: 0, born: state.tick | 0,
+    dir: vx < 0 ? -1 : 1, cool: 0,
+  };
+  if (self) { p.self = 1; blowUp(p, d); }
+  state.projectiles.push(p);
+  f.item = ''; f.itemFuse = 0;
+}
+
 // Called by the move on its spawn frame. `charge` (0..max) makes the shot
 // travel further and higher.
 export function spawnProjectile(state, f, mv) {
@@ -169,7 +188,8 @@ function contact(vic, ball) {
 // inside it once, launching them away from its centre.
 function bombHits(state, p, d) {
   const owner = state.fighters[p.owner];
-  const foes = state.fighters.filter((v) => v.slot !== p.owner && v.team !== owner.team && !(v.invuln > 0) && !(v.intangible > 0) && !UNHITTABLE[v.state]);
+  // (one that went off in his own hand hurts him too)
+  const foes = state.fighters.filter((v) => (v.slot === p.owner ? p.self : v.team !== owner.team) && !(v.invuln > 0) && !(v.intangible > 0) && !UNHITTABLE[v.state]);
   if (!p.boom) {
     const ball = { cx: p.x, cy: p.y, r: (d.r + d.hitPad) * FX };
     if (!foes.some((v) => contact(v, ball))) return;

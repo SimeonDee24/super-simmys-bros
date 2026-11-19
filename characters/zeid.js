@@ -158,14 +158,20 @@ const animations = {
     [10, { torso: 4, armF: [80, 30], armB: [-90, 20], legF: [20, -30], legB: [-14, -20], handF: 'fist' }],
     [14, AIR],
   ]),
-  // Bomb: reaches into his pocket, pulls out a bomb, and lobs it forward.
+  // Bomb: reaches into his pocket, pulls out a bomb and holds it up.
   bomb: anim(false, [
     [6, { torso: 4, head: 6, armF: [-20, 20], armB: [-6, 8], legF: [6, -4], legB: [-6, -2], handF: 'fist' }],
-    [6, { torso: -8, head: -4, armF: [-70, 40], armB: [30, 30], legF: [12, -8], legB: [-10, -4], handF: 'fist', face: 'smile' }],
-    [4, { torso: -12, head: -6, armF: [-100, 30], armB: [40, 30], legF: [14, -10], legB: [-12, -6], handF: 'fist', face: 'smile' }],
+    [6, { torso: -2, head: 2, armF: [-10, 30], armB: [-6, 8], legF: [6, -4], legB: [-6, -2], handF: 'fist' }],
+    [6, { torso: -4, head: -6, armF: [60, 70], armB: [-10, 10], legF: [6, -4], legB: [-6, -2], handF: 'fist', face: 'smile' }],
+    [6, { torso: 2, head: -2, armF: [40, 60], armB: [-8, 10], legF: [5, -4], legB: [-6, -2], handF: 'fist', face: 'smile' }],
+    [1, STAND],
+  ]),
+  // Throwing what he holds: winds back and hurls it.
+  itemToss: anim(false, [
+    [4, { torso: -12, head: -6, armF: [-100, 30], armB: [40, 30], legF: [14, -10], legB: [-12, -6], handF: 'fist' }],
     [3, { torso: 10, armF: [80, 10], armB: [-30, 30], legF: [20, -14], legB: [-14, -6], handF: 'open', face: 'yell' }],
-    [12, { torso: 8, armF: [70, 10], armB: [-30, 30], legF: [18, -12], legB: [-14, -6], handF: 'open', face: 'smile' }],
-    [10, { torso: 4, armF: [30, 20], armB: [-20, 20], legF: [10, -6], legB: [-8, -4] }],
+    [8, { torso: 8, armF: [70, 10], armB: [-30, 30], legF: [18, -12], legB: [-14, -6], handF: 'open' }],
+    [6, { torso: 4, armF: [30, 20], armB: [-20, 20], legF: [10, -6], legB: [-8, -4] }],
     [1, STAND],
   ]),
   // --- Smash attacks ---
@@ -232,11 +238,15 @@ const moves = {
       hit(26, 28, 'hip', 12, 4, 80, 50, 70, { group: 4, off: [0, 6] }),
     ] },
 
-  // Down special: Bomb (like Toon Link's). Pulls out a bomb and lobs it
-  // forward; it bounces, rolls to a stop, and blows up when it touches an
-  // opponent or when its fuse runs out (about two seconds): 7%, launching up
-  // and away from the blast. One bomb at a time.
-  bomb: { faf: 42, limit: 1, spawn: { frame: 17, from: 'fistF', projectile: 'bomb' }, hitboxes: [] },
+  // Down special: Bomb (like Toon Link's). Pulls out a bomb with its fuse
+  // lit and holds it: he can walk, run and jump with it. Attack or special
+  // throws it (up, down, forward, or back by holding the other way; the smash
+  // button throws it hard), grab drops it. It blows up when it touches an
+  // opponent or when the fuse runs out (3 seconds from pulling it out): 7%,
+  // launching up and away. Hold it too long and it goes off in his hand,
+  // hitting him too. He lets go of it if he is hit. One bomb at a time.
+  bomb: { faf: 26, limit: 1, pullItem: { frame: 13, kind: 'bomb' }, hitboxes: [] },
+  itemToss: { faf: 20, toss: { frame: 6 }, hitboxes: [] },
 
   // --- Smash attacks (see simeon.js for how they are performed) ---
   // Forward: Exhale. A long jet of smoke straight ahead: 16% close in, a
@@ -274,9 +284,11 @@ export const ZEID = {
   specials: { neutral: 'cloudChaser', side: 'flick', up: 'bigRip', down: 'bomb' },
   projectiles: {
     // a round black bomb with a lit fuse: lobbed, bounces, rolls, then BOOM
-    bomb: { draw: 'bomb', r: 4, hitPad: 1, speed: [px(2.2), px(1.2)], chargeSpeed: [0, 0],
+    bomb: { draw: 'bomb', r: 4, hitPad: 1, speed: [0, 0], chargeSpeed: [0, 0],
       gravity: px(0.17), maxFall: px(4), bounce: 110, bounceKeepX: 170, minBounce: px(0.9), maxBounces: 3,
-      rollFriction: px(0.05), minRollSpeed: 0, popUp: 0, life: 120, fadeFrames: 999, hit: { damage: 0, angle: 0, bkb: 0, kbg: 0 },
+      rollFriction: px(0.05), minRollSpeed: 0, popUp: 0, life: 180, fadeFrames: 999,
+      // throws, [sideways, up]: forward, up, down, then the same thrown hard (smash)
+      toss: [[px(2.6), px(1.6)], [0, px(4.2)], [0, -px(3)], [px(4.4), px(0.8)], [0, px(6)], [0, -px(5)]], hit: { damage: 0, angle: 0, bkb: 0, kbg: 0 },
       explode: { r: 22, frames: 14, hit: { damage: 70, angle: 80, bkb: 52, kbg: 55 } } },
     // a big cloud that drifts out and hangs in the air
     cloud: { type: 'cloud', draw: 'cloud', r: 11, hitPad: 1, speed: [px(2.6), 0], chargeSpeed: [0, 0], drag: px(0.07), rise: px(0.12),

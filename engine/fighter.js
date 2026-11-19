@@ -7,7 +7,7 @@ import { FX, approach, clamp, sinDeg, cosDeg, mulTrig, rngInt } from './fixed.js
 import { getCharacter } from '../characters/index.js';
 import { getStage } from '../stages/index.js';
 import { onPlatform } from './physics.js';
-import { spawnProjectile, countProjectiles } from './projectiles.js';
+import { spawnProjectile, countProjectiles, releaseItem } from './projectiles.js';
 import { placeHeld, releaseGrab, launchThrow, throwPos } from './grabs.js';
 import { THROWS, PUMMEL } from '../characters/shared.js';
 
@@ -36,6 +36,7 @@ export function newFighter(slot, charId, alt, spawn, stocks) {
     counterDmg: 0, counterTick: -1,   // counter specials
     charge: 0,                        // chargeable moves (Jump Shot)
     stored: 0,                        // charge kept for later (Osama's Oil Beam, like a charge shot)
+    item: '', itemFuse: 0, tossDir: 0, // an item in his hand (Zeid's bomb) and its fuse; how it is being thrown
     fuel: 1000,                       // stream moves (Max's money gun): runs down while held, refills when not
     airUsed: 0,
     dropThru: 0,                      // frames left falling through a platform
@@ -190,7 +191,7 @@ function trySpecial(c, air) {
   if (!name) { slot = 'neutral'; name = sp.neutral; }
   if (!name) return false;
   const mv = c.ch.moves[name];
-  if (mv.limit && countProjectiles(c.match, f.slot, mv.spawn.projectile) >= mv.limit) return false;
+  if (mv.limit && countProjectiles(c.match, f.slot, mv.spawn ? mv.spawn.projectile : mv.pullItem.kind) >= mv.limit) return false;
   // `once` moves can be used one time in the air until he lands, grabs a ledge or is hit
   if (mv.once && air) { if (f.airUsed) return false; f.airUsed = 1; }
   if (slot === 'side' && c.dir) f.facing = c.dir;
@@ -221,7 +222,24 @@ function trySmash(c, allowFlick = true) {
   return true;
 }
 
+// Holding an item (a bomb): attack, smash or special throws it (up, down,
+// forward, or back if holding the other way; harder with smash); grab drops
+// it. A throw is a short move of its own (`itemToss`).
+function tryItem(c, air) {
+  const f = c.f;
+  if (!f.item) return false;
+  if (c.pressed & BTN.GRAB) { f.buf &= ~BTN.GRAB; releaseItem(c.match, f, 0, air ? 0 : -FX); return true; }
+  if (!(c.pressed & (BTN.ATTACK | BTN.SMASH | BTN.SPECIAL))) return false;
+  const hard = !!(c.pressed & BTN.SMASH);
+  if (c.dir === -f.facing && !(c.input & (BTN.UP | BTN.DOWN))) f.facing = -f.facing;   // a back throw: turns and throws
+  f.tossDir = (c.input & BTN.UP) ? 1 : (c.input & BTN.DOWN) ? 2 : 0;
+  if (hard) f.tossDir += 3;
+  startMove(f, 'itemToss', air);
+  return true;
+}
+
 function tryGroundAttack(c) {
+  if (tryItem(c, false)) return true;
   if (tryGrab(c)) return true;
   if (trySpecial(c, false)) return true;
   if (trySmash(c)) return true;
@@ -236,6 +254,7 @@ function tryGroundAttack(c) {
 
 // Air attack button: direction relative to facing picks the aerial.
 function tryAerial(c) {
+  if (tryItem(c, true)) return true;
   if (trySpecial(c, true)) return true;
   if (c.pressed & BTN.GRAB) { startMove(c.f, 'nair', true); return true; }   // grab in the air: neutral air
   if (!(c.pressed & (BTN.ATTACK | BTN.SMASH))) return false;   // the smash button does aerials in the air
@@ -273,6 +292,7 @@ function airMotion(c, float) {
 
 // Attack while dashing or running.
 function tryDashAttack(c) {
+  if (tryItem(c, false)) return true;
   if (tryGrab(c, true)) return true;
   if (trySpecial(c, false)) return true;
   if (trySmash(c, false)) return true;   // smash button out of a run (no flick: that is the dash attack)
@@ -684,6 +704,15 @@ const STATES = {
       airMotion(mv.noDrift ? { ...c, dir: 0 } : c, mv.float);
     } else f.vx = approach(f.vx, 0, mv.slide ? mv.slide.friction : st.traction);
     if (mv.spawn && f.stateFrame === mv.spawn.frame) spawnProjectile(c.match, f, mv);
+    // pulling an item out (Bomb): it is in his hand from this frame, fuse lit
+    if (mv.pullItem && f.stateFrame === mv.pullItem.frame && !f.item) { f.item = mv.pullItem.kind; f.itemFuse = c.ch.projectiles[f.item].life; }
+    // throwing it: [sideways, up] speeds by direction (forward, up, down; then the same thrown hard)
+    if (mv.toss && f.stateFrame === mv.toss.frame && f.item) {
+      const d = c.ch.projectiles[f.item], t = d.toss[f.tossDir] || d.toss[0];
+      // (down on the ground just sets it at his feet)
+      if (f.tossDir % 3 === 2 && f.grounded) releaseItem(c.match, f, 0, 0);
+      else releaseItem(c.match, f, f.facing * t[0], -t[1]);
+    }
     // several projectiles from one move (e.g. a fan of cards)
     if (mv.spawns) for (const sp of mv.spawns) if (f.stateFrame === sp.frame) spawnProjectile(c.match, f, { ...mv, spawn: sp });
     // combo link (jab 1 -> 2 -> 3)
@@ -999,6 +1028,14 @@ export function updateFighter(match, f, input) {
     f.y += FX;
     enterAir(f, 'fall');
     f.vy = FX;
+  }
+  // An item in his hand: the fuse burns down (it goes off in his hand if he
+  // holds it too long); he lets go of it when he is hit or grabbed, and loses
+  // it if he is KO'd.
+  if (f.item) {
+    if (f.state === 'out' || f.state === 'dead' || f.state === 'respawn') { f.item = ''; f.itemFuse = 0; }
+    else if (f.state === 'hitstun' || f.state === 'grabbed' || f.state === 'dizzy' || f.state === 'shieldBreak' || f.state === 'ledge') releaseItem(match, f, 0, -FX);
+    else if (--f.itemFuse <= 0) releaseItem(match, f, 0, 0, true);
   }
   STATES[f.state]({ match, f, ch, st, input, raw: pressed, pressed: pressed | f.buf, dir, tap, dashInput });
   f.prevIn = input;

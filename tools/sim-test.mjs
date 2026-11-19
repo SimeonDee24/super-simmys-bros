@@ -1245,18 +1245,30 @@ for (const hold of [0, 30]) {
   }
   { const s = mk(400); const a = s.fighters[0], y0 = a.y; let top = 0; step(s, [BTN.SPECIAL | BTN.UP, 0]); for (let i = 0; i < 60; i++) { step(s, [0, 0]); top = Math.max(top, (y0 - a.y) / FX); }
     check('Big Rip rides a plume up about 120px', top > 70 && top < 140, `${top.toFixed(0)}px`); }
-  { // a bomb lobbed at someone blows up on them; one left alone blows up on its fuse; nobody is hit twice
-    const s = mk(60); const v = s.fighters[1]; step(s, [BTN.SPECIAL | BTN.DOWN, 0]); let boomAt = -1;
-    let up = false;
-    for (let i = 0; i < 160; i++) { step(s, [0, 0]); const p = (s.projectiles || [])[0]; if (p && p.boom && boomAt < 0) boomAt = i; if (v.y < s.fighters[0].y - 15 * FX) up = true; }
-    const touch = v.percent / 10;
-    const f = mk(400); step(f, [BTN.SPECIAL | BTN.DOWN, 0]); let fuse = -1, gone = -1;
-    for (let i = 0; i < 200; i++) { step(f, [0, 0]); const p = (f.projectiles || [])[0]; if (p && p.boom && fuse < 0) fuse = i; if (fuse >= 0 && !p && gone < 0) gone = i; }
-    // a bomb sitting on the floor blows up when someone walks into it, hitting them once
-    const w = mk(200); const [za, zv] = w.fighters; step(w, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 60; i++) step(w, [0, 0]);
-    const still = w.projectiles[0] && !w.projectiles[0].boom && zv.percent === 0; for (let i = 0; i < 60; i++) step(w, [0, BTN.LEFT]);
-    check('Bomb: lobbed forward, blows up on touch for 7% (launches up), or on its own after about two seconds; one hit per blast',
-      touch === 7 && up && fuse > 100 && fuse < 140 && gone > fuse && still && zv.percent === 70, `touch ${touch}% (boom at ${boomAt}), fuse ${fuse}, gone ${gone}, walk-in ${zv.percent / 10}% (resting ${still})`); }
+  { // Bomb: pulled out and held; thrown with attack; blows up on touch or on its fuse; goes off in his hand if held too long
+    const s = mk(70); const [a, v] = s.fighters; step(s, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 30; i++) step(s, [0, 0]);
+    const held = a.item === 'bomb' && !(s.projectiles || []).length && a.state === 'idle';
+    for (let i = 0; i < 20; i++) step(s, [BTN.RIGHT, 0]);   // walks with it
+    const walked = a.item === 'bomb' && a.state !== 'attack';
+    step(s, [BTN.ATTACK, 0]); let up = false; for (let i = 0; i < 100; i++) { step(s, [0, 0]); if (v.y < a.y - 15 * FX) up = true; }
+    const thrown = v.percent / 10;
+    // thrown up, it comes back down on him? no: his own bombs never hurt him once thrown
+    const u = mk(400); const [ua] = u.fighters; step(u, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 30; i++) step(u, [0, 0]);
+    step(u, [BTN.ATTACK | BTN.UP, 0]); let rose = 0; for (let i = 0; i < 20; i++) { step(u, [0, 0]); const p = (u.projectiles || [])[0]; if (p) rose = Math.max(rose, (ua.y - p.y) / FX); }
+    // grab drops it at his feet; back throw turns him round
+    const g = mk(400); const ga = g.fighters[0]; step(g, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 30; i++) step(g, [0, 0]); step(g, [BTN.GRAB, 0]); step(g, [0, 0]);
+    const dropped = !ga.item && g.projectiles.length === 1 && Math.abs(g.projectiles[0].vx) === 0;
+    const bk = mk(400); const ba = bk.fighters[0]; step(bk, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 30; i++) step(bk, [0, 0]); step(bk, [BTN.ATTACK | BTN.LEFT, 0]); for (let i = 0; i < 10; i++) step(bk, [0, 0]);
+    const back = ba.facing === -1 && bk.projectiles.length === 1 && bk.projectiles[0].vx < 0;
+    // held too long: it goes off in his hand and hurts him
+    const h = mk(400); const ha = h.fighters[0]; step(h, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 220; i++) step(h, [0, 0]);
+    const self = ha.percent === 70 && !ha.item;
+    // hit while holding it: he lets go
+    const x = mk(20); const [xa, xv] = x.fighters; step(x, [BTN.SPECIAL | BTN.DOWN, 0]); for (let i = 0; i < 30; i++) step(x, [0, 0]); xv.facing = -1;
+    step(x, [0, BTN.ATTACK]); for (let i = 0; i < 12; i++) step(x, [0, 0]);
+    const letGo = xa.percent > 0 && !xa.item;
+    check('Bomb: pulled out and held (he can walk with it), thrown with attack for 7% that launches, up, back, or dropped with grab; goes off in his hand if held too long; let go when hit',
+      held && walked && thrown === 7 && up && rose > 40 && dropped && back && self && letGo, `held ${held} walked ${walked} thrown ${thrown}% up ${up} rose ${Math.round(rose)}px dropped ${dropped} back ${back} self ${ha.percent / 10}% letGo ${letGo}`); }
 }
 
 // Sam: melee, plus a powder stream
