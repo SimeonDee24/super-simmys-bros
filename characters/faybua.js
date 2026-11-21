@@ -5,6 +5,7 @@
 import { px } from '../engine/fixed.js';
 import { anim } from '../engine/skeleton.js';
 import { SIMEON } from './simeon.js';
+import { chubby } from './chubby.js';
 import { KAELYN } from './kaelyn.js';
 
 const stats = {
@@ -76,7 +77,7 @@ const HAIR = [
   'aaaAAaa...........',
   'aaaAA.............',
 ];
-const parts = {
+const parts = chubby({
   ...SIMEON.parts,
   head_neutral: face(),
   head_smile: face([10, 9, 'ppp']),
@@ -120,7 +121,7 @@ const parts = {
   // long sleeves with a cuff, as Kaelyn's sweater
   upperArm: KAELYN.parts.upperArm,
   lowerArm: KAELYN.parts.lowerArm,
-};
+});
 
 const darker = (hex, k) => '#' + [1, 3, 5].map((i) => Math.round(parseInt(hex.slice(i, i + 2), 16) * k).toString(16).padStart(2, '0')).join('');
 const BASE_COLORS = {

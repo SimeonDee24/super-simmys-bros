@@ -1,5 +1,5 @@
 {
-  "version": "0.53.0",
+  "version": "0.53.1",
   "modules": [
     "config/config.js",
     "config/version.js",
@@ -13,6 +13,7 @@
     "engine/projectiles.js",
     "engine/sim.js",
     "engine/skeleton.js",
+    "characters/chubby.js",
     "characters/faybua.js",
     "characters/ginger.js",
     "characters/index.js",
